@@ -1,9 +1,8 @@
 import { IGame } from "../interfaces/Game";
 
 
-export const createCover = (game : IGame) => {
+export const createCover = (game : IGame) : HTMLElement => {
     const coverDOM : HTMLElement = document.createElement('article');
-    if(!coverDOM) return;
     coverDOM.classList.add('w-56', 'h-80', 'rounded-md', 'shadow-md', 'border',
         'border-slate-500', 'overflow-hidden', 'cursor-pointer', 'relative', 'bg-cover',
         'bg-center', 'duration-75', 'hover:shadow-lg', 'focus:shadow-lg', 'focus:shadow-black/15', 'group'

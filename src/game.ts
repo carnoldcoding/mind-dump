@@ -7,7 +7,6 @@ const snakeToCamel = (str: string): string => {
 
 const transformGameData = (gameData: any): IGame => {
     const transformedGame: any = {};
-
     Object.keys(gameData).forEach(key => {
         const camelKey = snakeToCamel(key);
         transformedGame[camelKey] = gameData[key];

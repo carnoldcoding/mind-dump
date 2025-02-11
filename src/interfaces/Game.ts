@@ -9,5 +9,6 @@ export interface IGame {
     releaseDate: Date,
     rating: number,
     imagePath: string,
-    previewGifPath: string
+    previewGifPath: string,
+    bannerPath: string
 }
