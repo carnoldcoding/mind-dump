@@ -14,10 +14,11 @@ export const createCover = (game : IGame) => {
             hover:shadow-lg
             hover:shadow-black/15
             group
-            bg-[url(${game.imagePath})]">
-            <div class="absolute bottom-0 bg-black/60 backdrop-blur-md p-2 flex items-center
+            "
+            style="background-image: url(${game.imagePath})">
+            <div class="absolute bottom-0 bg-black/60 backdrop-blur-md p-2 flex items-center justify-between w-full h-16
               duration-100 z-1">
-              <p class="text-white text-center">${game.title}</p>
+              <p class="text-white text-left">${game.title}</p>
               <div>
                 <p class="text-white text-l border-1 h-10 w-10 flex items-center justify-center rounded-sm ">${game.rating}</p>
               </div>
@@ -25,8 +26,7 @@ export const createCover = (game : IGame) => {
 
             <div class="
             h-full w-full bg-center bg-cover absolute z-0 duration-100 opacity-0 group-hover:opacity-100 flex flex-col
-            justify-center items-center
-            bg-[url('${game.previewGifPath}')]">
+            justify-center items-center" style="background-image: url(${game.previewGifPath})">
               <div class="absolute bg-black/60 h-full w-full">
               </div>
               <ion-icon name="eye-outline" class="text-white text-4xl"></ion-icon>

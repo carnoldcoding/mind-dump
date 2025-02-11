@@ -2,6 +2,7 @@ export interface IGame {
     id: string,
     title: string,
     description: string,
+    review: string,
     genres: string[],
     developers: string[],
     platforms: string[],

@@ -3,12 +3,28 @@
         "id": 1,
         "title": "Legend of Zelda Ocarina of Time",
         "description": "A young boy named Link must travel to Death Mountain and defeat the pig-like monster, Ganon, to restore peace to the kingdom of Hyrule. A teenage Link embarks on a journey to awaken the sleeping maiden, Zelda, and learn the origin of the Triforce.",
+        "review": "",
         "genres": [],
         "developers": ["Nintendo"],
         "platforms": ["N64", "3DS"], 
         "release_date": "MM/DD/YYYY",
         "rating": 4.3,
         "image_path": "https://cdn2.steamgriddb.com/grid/babd046c02ed033d6633ccb5bc12e57e.png",
-        "preview_gif_path": "https://daladybug.productions/wp-content/uploads/2022/06/65a7633518f6d6a8e7281b7f0f11d76f.gif"
+        "preview_gif_path": "https://daladybug.productions/wp-content/uploads/2022/06/65a7633518f6d6a8e7281b7f0f11d76f.gif",
+        "banner_path": ""
+    },
+    {
+        "id": 2,
+        "title": "Shadow Warrior",
+        "description": "Shadow Warrior is a series of first-person shooter video games that focuses on the exploits of Lo Wang, ",
+        "review": "",
+        "genres": [],
+        "developers": ["Nintendo"],
+        "platforms": ["N64", "3DS"], 
+        "release_date": "MM/DD/YYYY",
+        "rating": 3.5,
+        "image_path": "https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/233130/capsule_616x353.jpg?t=1710246206",
+        "preview_gif_path": "https://giffiles.alphacoders.com/743/74368.gif",
+        "banner_path": ""
     }
 ]
