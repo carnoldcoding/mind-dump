@@ -5,7 +5,12 @@ export interface IGame {
     title: string,
     description: string,
     slug: string,
-    review: string,
+    review: {
+      story: string,
+      gameplay: string,
+      graphics: string,
+      sound: string  
+    },
     genres: string[],
     developers: string[],
     platforms: string[],
