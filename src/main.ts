@@ -30,6 +30,6 @@ history.listen(({action, location}) => {
 })
 
 
-window.addEventListener('load', handleRouting);
-window.addEventListener('popstate', handleRouting);
-window.addEventListener('load', mountNavListeners);
+// window.addEventListener('load', handleRouting);
+// window.addEventListener('popstate', handleRouting);
+// window.addEventListener('load', mountNavListeners);
