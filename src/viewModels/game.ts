@@ -1,0 +1,48 @@
+import { createCover, gameContainer } from "../views/gameListPage";
+import { IGame, transformGameData, fetchGameData } from "../models/Game";
+import { createGamePage } from "../views/gamePage";
+
+const mountGameCardListeners = () => {
+    const cards = document.querySelectorAll('.game-card') as NodeListOf<HTMLElement>;
+        cards.forEach((card : HTMLElement) => {
+            card.addEventListener('click', (e) => {
+                const gameSlug = (e.target as HTMLElement).dataset.slug;
+                if(gameSlug){
+                    window.history.pushState(null, '', `/game/${gameSlug}`);
+                    renderGamePage(gameSlug);
+                }
+            });
+        })
+}
+
+export const renderGameListPage = async () => {
+    const data = await fetchGameData();
+    const app = document.querySelector('#app');
+    if(!app) return;
+
+    app.innerHTML = '';
+    app.innerHTML = gameContainer;
+    const gameList = document.querySelector('#game-list') as HTMLElement;
+    
+    if(gameList){
+        gameList.innerHTML = '';
+
+        data.forEach((game: any) => {
+            const gameCoverDOM = createCover(transformGameData(game));
+            gameList.append(gameCoverDOM);
+        })
+
+        mountGameCardListeners();
+    }
+}
+
+export const renderGamePage = async (slug : string) => {
+    const games = await fetchGameData();
+    const game = games.find((g: IGame) => g.slug === slug);
+    const app = document.querySelector('#app') as HTMLElement;
+    if(!app) return;
+
+    app.innerHTML = '';
+    const gamePageHTML = createGamePage(transformGameData(game));
+    app.append(gamePageHTML);
+}

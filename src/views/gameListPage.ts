@@ -1,13 +1,22 @@
-import { IGame } from "../interfaces/Game";
+import { IGame } from "../models/Game";
 
-
+export const gameContainer = `
+    <section id="game-list-container" class="p-5">
+        <div id="game-list-controls">
+        </div>
+        <div id="game-list" class="flex gap-5 flex-wrap justify-center">
+        </div>
+    </section>
+`
+    
 export const createCover = (game : IGame) : HTMLElement => {
     const coverDOM : HTMLElement = document.createElement('article');
     coverDOM.classList.add('w-56', 'h-80', 'rounded-md', 'shadow-md', 'border',
         'border-slate-500', 'overflow-hidden', 'cursor-pointer', 'relative', 'bg-cover',
-        'bg-center', 'duration-75', 'hover:shadow-lg', 'focus:shadow-lg', 'focus:shadow-black/15', 'group'
+        'bg-center', 'duration-75', 'hover:shadow-lg', 'focus:shadow-lg', 'focus:shadow-black/15', 'group', 'game-card'
     );
     coverDOM.setAttribute('tabindex', '0');
+    coverDOM.dataset.slug = game.slug;
     coverDOM.style.backgroundImage = `url(${game.imagePath})`
     let coverHTML : string = `
         <div class="absolute bottom-0 bg-black/60 backdrop-blur-md p-2 flex items-center justify-between w-full h-16
