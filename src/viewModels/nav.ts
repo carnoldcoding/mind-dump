@@ -1,4 +1,6 @@
-export const mountNavListeners = (handleRouting) => {
+import { history } from "../main";
+
+export const mountNavListeners = () => {
     const mind = document.getElementById('nav-mind');
     const home = document.getElementById('nav-home');
     const games = document.getElementById('nav-games');
@@ -6,17 +8,14 @@ export const mountNavListeners = (handleRouting) => {
     if(!mind || !home || !games) return;
     
     mind.addEventListener('click', ()=> {
-        window.history.pushState(null, '', '/');
-        handleRouting();
+        history.push('/');
     })
     
     home.addEventListener('click', ()=> {
-        window.history.pushState(null, '', '/');
-        handleRouting();
+        history.push('/');
     })
 
     games.addEventListener('click', ()=> {
-        window.history.pushState(null, '', '/game-list');
-        handleRouting();
+        history.push('/game-list');
     })
 }

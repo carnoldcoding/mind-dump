@@ -1,6 +1,7 @@
 import { createCover, gameContainer } from "../views/gameListPage";
 import { IGame, transformGameData, fetchGameData } from "../models/Game";
 import { createGamePage } from "../views/gamePage";
+import { history } from "../main";
 
 const mountGameCardListeners = () => {
     const cards = document.querySelectorAll('.game-card') as NodeListOf<HTMLElement>;
@@ -8,8 +9,7 @@ const mountGameCardListeners = () => {
             card.addEventListener('click', (e) => {
                 const gameSlug = (e.target as HTMLElement).dataset.slug;
                 if(gameSlug){
-                    window.history.pushState(null, '', `/game/${gameSlug}`);
-                    renderGamePage(gameSlug);
+                    history.push(`/game/${gameSlug}`);
                 }
             });
         })
@@ -31,7 +31,6 @@ export const renderGameListPage = async () => {
             const gameCoverDOM = createCover(transformGameData(game));
             gameList.append(gameCoverDOM);
         })
-
         mountGameCardListeners();
     }
 }
