@@ -11,5 +11,5 @@ const handleRouting = () => {
     }
 }
 
-// window.addEventListener('load', handleRouting);
-// window.addEventListener('popstate', handleRouting);
+window.addEventListener('load', handleRouting);
+window.addEventListener('popstate', handleRouting);
