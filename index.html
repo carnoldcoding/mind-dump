@@ -8,13 +8,11 @@
   <body class="bg-slate-700 min-h-screen">
     <nav class="sticky top-0 z-9 bg-black/30 p-3 backdrop-blur-lg flex items-end justify-center h-15 border-b border-slate-100/20">
        <div class="absolute left-0 top-1/2 -translate-y-1/2">
-        <a href="/" class="">
-          <h3 class="text-white font-bold text-4xl ml-48">mind.</h3>
-        </a>
+          <h3 id="nav-mind" class="text-white font-bold text-4xl ml-48 cursor-pointer">mind.</h3>
        </div>
        <ul class="flex gap-10">
-        <li><a href="/" class="text-white text-lg tracking-wide capitalize">home</a></li>
-        <li><a href="/game-list" class="text-white text-lg tracking-wide capitalize">games</a></li>
+        <li id="nav-home" class="text-white text-lg tracking-wide capitalize cursor-pointer">home</li>
+        <li id="nav-games" class="text-white text-lg tracking-wide capitalize cursor-pointer">games</li>
        </ul>
     </nav>
     <div id="app" class="">
