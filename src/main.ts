@@ -1,5 +1,6 @@
 import { renderGameListPage, renderGamePage } from './viewModels/game'
 import { renderNotFoundPage } from './viewModels/notFound';
+import { renderHomePage } from './viewModels/homePage';
 import './style.css'
 
 const handleRouting = () => {
@@ -11,7 +12,7 @@ const handleRouting = () => {
     }else if (path.startsWith('/game-list')){
         renderGameListPage();
     }else if(path == '/'){
-
+        renderHomePage();
     }else{
         renderNotFoundPage();
     }
