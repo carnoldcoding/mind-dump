@@ -12,7 +12,7 @@ const createGenreBubbles = (genres : string[]) => {
 
 export const createGamePage = (game : IGame) : HTMLElement => {
     const gamePageDOM = document.createElement('section');
-    gamePageDOM.classList.add('game-container', 'flex', 'flex-col', 'items-center')
+    gamePageDOM.classList.add('game-container', 'flex', 'flex-col', 'items-center', '-mt-15')
     gamePageDOM.innerHTML = `
         <div class=" w-full h-72 bg-cover bg-center relative "
             style="background-image: url('${game.bannerPath}')">

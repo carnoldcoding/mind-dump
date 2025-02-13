@@ -19,6 +19,13 @@ const handleRouting = () => {
     }else{
         renderNotFoundPage();
     }
+    setTimeout(()=>{
+        window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: "smooth"
+        });
+    },10)
 }
 
 history.listen(({action, location}) => {
