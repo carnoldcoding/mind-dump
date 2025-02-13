@@ -44,5 +44,5 @@ history.listen(({action, location}) => {
       handleRouting();
 })
 
-window.addEventListener('load', setup);
-window.addEventListener('popstate', handleRouting);
+// window.addEventListener('load', setup);
+// window.addEventListener('popstate', handleRouting);

@@ -3,7 +3,7 @@ import { IGame } from "../models/game";
 export const gameContainer = `
     <section id="game-list-container" class="p-5 w-3xl m-auto">
         <div id="game-list-controls">
-            <ion-icon name="list-outline"></ion-icon>
+            <ion-icon class="text-white" name="list-outline"></ion-icon>
             <ion-icon name="funnel-outline"></ion-icon>
         </div>
         <div id="game-list" class="flex gap-5 flex-wrap justify-center">
