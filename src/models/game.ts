@@ -21,6 +21,8 @@ export interface IGame {
     bannerPath: string
 }
 
+export let gameData :IGame[] = [];
+
 export const transformGameData = (gameData: any): IGame => {
     const transformedGame: any = {};
     Object.keys(gameData).forEach(key => {
@@ -35,8 +37,8 @@ export const fetchGameData = async () => {
     try {
         const response = await fetch("/gameData.json");
         if(response.ok){
-            const data = await response.json();
-            return data;
+            gameData = await response.json();
+            return gameData;
         }
     } catch (error) {
         console.log("Error fetching data");

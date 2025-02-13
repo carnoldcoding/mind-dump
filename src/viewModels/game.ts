@@ -1,7 +1,8 @@
 import { createCover, gameContainer } from "../views/gameListPage";
-import { IGame, transformGameData, fetchGameData } from "../models/Game";
+import { IGame, transformGameData } from "../models/game";
 import { createGamePage } from "../views/gamePage";
 import { history } from "../main";
+import { gameData } from "../models/game";
 
 const mountGameCardListeners = () => {
     const cards = document.querySelectorAll('.game-card') as NodeListOf<HTMLElement>;
@@ -16,7 +17,6 @@ const mountGameCardListeners = () => {
 }
 
 export const renderGameListPage = async () => {
-    const data = await fetchGameData();
     const app = document.querySelector('#app');
     if(!app) return;
 
@@ -27,7 +27,7 @@ export const renderGameListPage = async () => {
     if(gameList){
         gameList.innerHTML = '';
 
-        data.forEach((game: any) => {
+        gameData.forEach((game: any) => {
             const gameCoverDOM = createCover(transformGameData(game));
             gameList.append(gameCoverDOM);
         })
@@ -36,8 +36,7 @@ export const renderGameListPage = async () => {
 }
 
 export const renderGamePage = async (slug : string) => {
-    const games = await fetchGameData();
-    const game = games.find((g: IGame) => g.slug === slug);
+    const game = gameData.find((g: IGame) => g.slug === slug);
     const app = document.querySelector('#app') as HTMLElement;
     if(!app) return;
 

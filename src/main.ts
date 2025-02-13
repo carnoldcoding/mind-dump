@@ -3,9 +3,11 @@ import { renderNotFoundPage } from './viewModels/notFound';
 import { renderHomePage } from './viewModels/homePage';
 import { mountNavListeners } from './viewModels/nav';
 import { createBrowserHistory } from 'history';
+import { fetchGameData } from './models/game';
 import './style.css'
 
 export const history = createBrowserHistory();
+
 
 const handleRouting = () => {
     const path = window.location.pathname;
@@ -28,6 +30,12 @@ const handleRouting = () => {
     },10)
 }
 
+const setup = async () => {
+    await fetchGameData();
+    handleRouting();
+    mountNavListeners();
+}
+
 history.listen(({action, location}) => {
     console.log(
         `The current URL is ${location.pathname}${location.search}${location.hash}`
@@ -36,7 +44,5 @@ history.listen(({action, location}) => {
       handleRouting();
 })
 
-
-// window.addEventListener('load', handleRouting);
-// window.addEventListener('popstate', handleRouting);
-// window.addEventListener('load', mountNavListeners);
+window.addEventListener('load', setup);
+window.addEventListener('popstate', handleRouting);

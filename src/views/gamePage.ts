@@ -1,4 +1,4 @@
-import { IGame } from "../models/Game";
+import { IGame } from "../models/game";
 
 const createGenreBubbles = (genres : string[]) => {
     let genresHTML = ``;
