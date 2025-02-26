@@ -3,6 +3,7 @@ import { IGame, transformGameData } from "../models/game";
 import { createGamePage } from "../views/gamePage";
 import { history } from "../main";
 import { gameData } from "../models/game";
+import { mountGenreListeners, mountSidebarListeners } from "./sidebar";
 
 const mountGameCardListeners = () => {
     const cards = document.querySelectorAll('.game-card') as NodeListOf<HTMLElement>;
@@ -32,6 +33,8 @@ export const renderGameListPage = async () => {
             gameList.append(gameCoverDOM);
         })
         mountGameCardListeners();
+        mountSidebarListeners();
+        mountGenreListeners();
     }
 }
 

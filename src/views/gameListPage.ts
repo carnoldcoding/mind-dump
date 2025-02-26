@@ -1,13 +1,16 @@
 import { IGame } from "../models/game";
+import { createSidebar } from "./sidebar";
 
 export const gameContainer = `
     <section id="game-list-container" class="p-5 w-3xl m-auto">
-        <div id="game-list-controls">
-            <ion-icon class="text-white" name="list-outline"></ion-icon>
-            <ion-icon name="funnel-outline"></ion-icon>
-        </div>
+        ${createSidebar()}
         <div id="game-list" class="flex gap-5 flex-wrap justify-center">
         </div>
+        <div id="game-list-controls-open" class="fixed top-0 right-0 z-9 p-3 flex items-end justify-center h-15 border-slate-100/20">
+        <div class="flex items-center justify-center h-10 w-10 bg-black/30 rounded-md cursor-pointer">
+          <ion-icon class="text-white text-2xl" name="list-outline"></ion-icon>
+        </div>
+      </div>
     </section>
 `
     
