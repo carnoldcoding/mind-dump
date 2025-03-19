@@ -4,18 +4,29 @@ import { renderHomePage } from './viewModels/homePage';
 import { mountNavListeners } from './viewModels/nav';
 import { createBrowserHistory } from 'history';
 import { fetchGameData } from './models/game';
+import { renderSelectedGenres } from './viewModels/sidebar';
 import './style.css'
 
 export const history = createBrowserHistory();
 
-
 const handleRouting = () => {
     const path = window.location.pathname;
+    const urlParams = new URLSearchParams(window.location.search);
+
     if(path.startsWith('/game/')){
         const gameSlug = path.split('/')[2];
         renderGamePage(gameSlug);
     }else if (path.startsWith('/game-list')){
-        renderGameListPage();
+        const genres = urlParams.get('genres')?.split(',');
+        console.log('Genre: ', genres);
+        const filters = {
+            genres: genres,
+            ratingRange: '',
+            developer: '',
+            dateReleased: '12/2/2024'
+        }
+        renderGameListPage(filters);
+        renderSelectedGenres();
     }else if(path == '/'){
         renderHomePage();
     }else{

@@ -1,7 +1,8 @@
 import { IGame } from "../models/game";
 import { createSidebar } from "./sidebar";
 
-export const gameContainer = `
+export const createGameContainer = () => {
+    return`
     <section id="game-list-container" class="p-5 w-3xl m-auto">
         ${createSidebar()}
         <div id="game-list" class="flex gap-5 flex-wrap justify-center">
@@ -13,6 +14,7 @@ export const gameContainer = `
       </div>
     </section>
 `
+} 
     
 export const createCover = (game : IGame) : HTMLElement => {
     const coverDOM : HTMLElement = document.createElement('article');

@@ -1,9 +1,9 @@
-import { createCover, gameContainer } from "../views/gameListPage";
+import { createCover, createGameContainer } from "../views/gameListPage";
 import { IGame, transformGameData } from "../models/game";
 import { createGamePage } from "../views/gamePage";
 import { history } from "../main";
 import { gameData } from "../models/game";
-import { mountGenreListeners, mountSidebarListeners } from "./sidebar";
+import { renderGenreSelection, mountGenreListeners, mountSidebarListeners } from "./sidebar";
 
 const mountGameCardListeners = () => {
     const cards = document.querySelectorAll('.game-card') as NodeListOf<HTMLElement>;
@@ -17,21 +17,31 @@ const mountGameCardListeners = () => {
         })
 }
 
-export const renderGameListPage = async () => {
+export const renderGameListPage = async (filters : any) => {
     const app = document.querySelector('#app');
     if(!app) return;
 
     app.innerHTML = '';
-    app.innerHTML = gameContainer;
+    app.innerHTML = createGameContainer();
+    renderGenreSelection();
     const gameList = document.querySelector('#game-list') as HTMLElement;
     
     if(gameList){
         gameList.innerHTML = '';
 
-        gameData.forEach((game: any) => {
-            const gameCoverDOM = createCover(transformGameData(game));
-            gameList.append(gameCoverDOM);
-        })
+        if(filters.genres){
+            const filteredList = gameData.filter((game : any) => game.genres.some((genre : any) => filters.genres.includes(genre)))
+            filteredList.forEach((game: any) => {
+                const gameCoverDOM = createCover(transformGameData(game));
+                gameList.append(gameCoverDOM);
+            })
+        }else{
+            gameData.forEach((game: any) => {
+                const gameCoverDOM = createCover(transformGameData(game));
+                gameList.append(gameCoverDOM);
+            })
+        }
+       
         mountGameCardListeners();
         mountSidebarListeners();
         mountGenreListeners();
