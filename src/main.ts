@@ -1,11 +1,11 @@
 import { renderGameListPage, renderGamePage } from './viewModels/game'
 import { renderNotFoundPage } from './viewModels/notFound';
 import { renderHomePage } from './viewModels/homePage';
-import { mountNavListeners } from './viewModels/nav';
 import { createBrowserHistory } from 'history';
 import { fetchGameData } from './models/game';
 import { renderSelectedGenres } from './viewModels/sidebar';
 import './style.css'
+import { renderNavbar } from './viewModels/nav';
 
 export const history = createBrowserHistory();
 
@@ -44,7 +44,7 @@ const handleRouting = () => {
 const setup = async () => {
     await fetchGameData();
     handleRouting();
-    mountNavListeners();
+    renderNavbar();
 }
 
 history.listen(({action, location}) => {
