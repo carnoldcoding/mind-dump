@@ -1,5 +1,5 @@
 import { __unstable__loadDesignSystem } from "tailwindcss";
-import { history } from "../main";
+import { history } from "../router";
 
 export let filters : string[] = [];
 const genres = ["action", "rpg", "third-person", "first-person"]

@@ -1,7 +1,7 @@
 import { createCover, createGameContainer } from "../views/gameListPage";
 import { IGame, transformGameData } from "../models/game";
 import { createGamePage } from "../views/gamePage";
-import { history } from "../main";
+import { history } from "../router";
 import { gameData } from "../models/game";
 import { renderGenreSelection, mountGenreListeners, mountSidebarListeners } from "./sidebar";
 

@@ -1,5 +1,5 @@
 import { createNavbar } from "../views/nav";
-import { history } from "../main";
+import { history } from "../router";
 
 export const renderNavbar = () => {
     const body = document.body as HTMLElement;
