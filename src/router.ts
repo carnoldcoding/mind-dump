@@ -3,6 +3,7 @@ import { renderGameListPage } from "./viewModels/gameList";
 import { renderGameReview } from "./viewModels/gameReview";
 import { renderNotFoundPage } from "./viewModels/notFound";
 import { createBrowserHistory } from 'history';
+import { renderSidebar } from "./viewModels/sidebar";
 
 export const history = createBrowserHistory();
 
@@ -31,6 +32,7 @@ export const handleRouting = () => {
             dateRange: ''
         }
         renderGameListPage(filters);
+        renderSidebar();
     }else if(path == '/'){
         renderHomePage();
     }else{

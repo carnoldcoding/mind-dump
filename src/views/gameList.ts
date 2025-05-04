@@ -4,10 +4,6 @@ import { createParentElement } from "../utils";
 export const createGameContainer = () : HTMLElement => {
     const gameContainerTemplate = `
         <div id="game-list" class="flex gap-5 flex-wrap justify-center">
-            <div id="game-list-controls-open" class="fixed top-0 right-0 z-9 p-3 flex items-end justify-center h-15 border-slate-100/20"></div>
-            <div class="flex items-center justify-center h-10 w-10 bg-black/30 rounded-md cursor-pointer">
-                <ion-icon class="text-white text-2xl" name="list-outline"></ion-icon>
-            </div>
         </div>
     `
 
