@@ -1,7 +1,6 @@
 import { renderHomePage } from "./viewModels/homePage";
-import { renderGameListPage } from "./viewModels/game";
-import { renderSelectedGenres } from "./viewModels/sidebar";
-import { renderGamePage } from "./viewModels/game";
+import { renderGameListPage } from "./viewModels/gameList";
+import { renderGameReview } from "./viewModels/gameReview";
 import { renderNotFoundPage } from "./viewModels/notFound";
 import { createBrowserHistory } from 'history';
 
@@ -21,7 +20,7 @@ export const handleRouting = () => {
 
     if(path.startsWith('/game/')){
         const gameSlug = path.split('/')[2];
-        renderGamePage(gameSlug);
+        renderGameReview(gameSlug);
     }else if (path.startsWith('/game-list')){
         const genres = urlParams.get('genres')?.split(',');
         console.log('Genre: ', genres);
@@ -29,10 +28,9 @@ export const handleRouting = () => {
             genres: genres,
             ratingRange: '',
             developer: '',
-            dateReleased: '12/2/2024'
+            dateRange: ''
         }
         renderGameListPage(filters);
-        renderSelectedGenres();
     }else if(path == '/'){
         renderHomePage();
     }else{

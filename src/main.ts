@@ -3,7 +3,6 @@ import { renderNavbar } from './viewModels/nav';
 import { handleRouting } from './router';
 import './style.css'
 
-
 const init = async () => {
     await fetchGameData();
     renderNavbar();
