@@ -1,9 +1,8 @@
 import { createGenreFilter } from "../views/genreFilter";
-
-const genres = ["action", "rpg", "third-person", "first-person"]
+import { genres } from "../models/genre";
+3
 export let selectedGenres : string[] = [];
 const onGenreSelect = (e : any) => {
-  // Add genre, then re-render
   addGenre(e);
   renderGenreFilter();
 }
