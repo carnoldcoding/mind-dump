@@ -1,5 +1,7 @@
 
-export const createSidebar = () : {
+export const createSidebar = (
+  applyFilters : ()=> void, 
+  resetFilters: ()=> void ) : {
   element: HTMLElement,
   openMenu: () => void,
   closeMenu: () => void
@@ -15,11 +17,7 @@ export const createSidebar = () : {
           <ion-icon id="game-list-controls-close" class="text-white text-3xl absolute top-4 right-4 cursor-pointer" name="close-outline"></ion-icon>
           <div class="flex flex-col gap-3">
             <div class="text-white text-2xl">Filters</div>
-            <div>
-              <div class="rounded-sm text-white w-full p-2 bg-slate-700 relative flex justify-between items-center cursor-pointer" id="genre-dropdown">
-                <p class="text-slate-300 select-none ">Genres</p>
-                <ion-icon name="caret-down-outline"></ion-icon>
-              </div>
+            <div class="filters-container">
             </div>
             <button class="apply-filter-button bg-green-300 hover:bg-green-200 py-2 px-5 rounded-md cursor-pointer capitalize grow">
               apply
@@ -38,6 +36,8 @@ export const createSidebar = () : {
     const closeToggle = sidebar.querySelector('#game-list-controls-close') as HTMLElement;
     const menu = sidebar.querySelector('#game-list-controls') as HTMLElement;
     const menuBackdrop = sidebar.querySelector('#side-menu-backdrop') as HTMLElement;
+    const applyFiltersButton = sidebar.querySelector('.apply-filter-button');
+    const resetFiltersButton = sidebar.querySelector('.reset-filter-button');
     
   
     const openMenu = () => {
@@ -53,10 +53,13 @@ export const createSidebar = () : {
       menuBackdrop.style.display = 'none';
       document.body.style.overflow = 'auto';
     }
+
   
     menuBackdrop.addEventListener('click', closeMenu);
     openToggle.addEventListener('click', openMenu);
     closeToggle.addEventListener('click', closeMenu);
+    applyFiltersButton?.addEventListener('click', applyFilters);
+    resetFiltersButton?.addEventListener('click', resetFilters);
 
     return {
       element: sidebar,

@@ -1,84 +1,56 @@
-import { history } from "../router";
+import { createGenreFilter } from "../views/genreFilter";
 
-export let filters : string[] = [];
 const genres = ["action", "rpg", "third-person", "first-person"]
-
-
-const createGenreSelection = () => {
-  const unselectedGenres = genres.filter((genre : any) => !filters.includes(genre));
-  let genresTemplate = ``;
-  unselectedGenres.forEach(option => {
-      genresTemplate += `<p class="p-2 text-white w-full hover:bg-slate-600 cursor-pointer select-none" data-filter=${option}>${option}</p>`;
-  })
-
-  return genresTemplate;
+export let selectedGenres : string[] = [];
+const onGenreSelect = (e : any) => {
+  // Add genre, then re-render
+  addGenre(e);
+  renderGenreFilter();
 }
 
-export const renderGenreSelection = () => {
-  const genreSelectBox = document.querySelector('#genre-select') as HTMLElement;
-  genreSelectBox.innerHTML = createGenreSelection();
-  const options = document.querySelectorAll('#genre-select > p');
-  options.forEach(option => {
-    option.addEventListener('click', addFilter);
-  })
+export const resetSelectedGenres = () => {
+  selectedGenres = [];
 }
 
+const addGenre = (e:any) => {
+  const selectedGenre = e.target.dataset.genre;
+  if(selectedGenres.includes(selectedGenre)) return;
+  selectedGenres.push(e.target.dataset.genre); 
+  console.log(selectedGenres);
+}
+
+const removeGenre = (e:any) => {
+  const selectedGenre = e.target.dataset.genre;
+  selectedGenres = selectedGenres.filter(genre => genre != selectedGenre);
+  renderGenreFilter();
+}
+
+export const renderGenreFilter = () => {
+  const filterContainer = document.querySelector(".filters-container");
+  if(!filterContainer) return;
+
+  filterContainer.innerHTML = ``;
+
+  const availableGenres = genres.filter(genre => !selectedGenres.includes(genre));
+  filterContainer.append(createGenreFilter(
+    availableGenres, 
+    selectedGenres, 
+    onGenreSelect, 
+    removeGenre));
+}
 
 export const renderSelectedGenres = () => {
   const selectedGenreContainer = document.querySelector('#genres-selected') as HTMLElement;
-   const selectedGenreTemplate = filters.map(filter =>
+   const selectedGenreTemplate = selectedGenres.map(genre =>
 `<p class="text-white tracking-wide bg-slate-700 hover:bg-slate-600 cursor-pointer
- py-.5 px-4 rounded-2xl flex text-center select-none selected-genre" data-filter=${filter}>${filter}</p>`).join('');
+ py-.5 px-4 rounded-2xl flex text-center select-none selected-genre" data-genre=${genre}>${genre}</p>`).join('');
 
    selectedGenreContainer.innerHTML = selectedGenreTemplate;
 
    const genreElements = document.querySelectorAll('.selected-genre');
   
   genreElements.forEach(genre => {
-    genre.addEventListener('click', removeFilter);
+    genre.addEventListener('click', removeGenre);
   });
 }
 
-
-const addFilter = (e:any) => {
-  const filter = e.target.dataset.filter;
-  if(filters.includes(filter)) return;
-  filters.push(filter);
-  renderSelectedGenres();
-  renderGenreSelection();
-}
-
-const removeFilter = (e:any) => {
- const selectedFilter = e.target.dataset.filter;
- if(!filters.includes(selectedFilter)) return;
- filters = filters.filter(f => f != selectedFilter);
- renderSelectedGenres();
- renderGenreSelection();
-}
-
-const applyFilters = async (e:any) => {
-  if(filters.length > 0){
-    history.push(`/game-list/?genres=${filters}`)
-  }else{
-    history.push('/game-list');
-  }
-}
-
-const resetFilters = async (e:any) => {
-  filters = [];
-  applyFilters(e);
-}
-
-export const mountGenreListeners = () => {
-    const optionContainer = document.querySelector('#genre-select') as HTMLElement;
-    const dropdownIcon = document.querySelector('#genre-dropdown > ion-icon');
-    const applyButton = document.querySelector('.apply-filter-button');
-    const resetButton = document.querySelector('.reset-filter-button');
-    
-   dropdownIcon?.addEventListener('click', ()=>{
-    optionContainer.classList.toggle('hidden');
-   })
-
-   applyButton?.addEventListener('click', applyFilters)
-   resetButton?.addEventListener('click', resetFilters);
-}

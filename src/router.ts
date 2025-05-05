@@ -24,7 +24,6 @@ export const handleRouting = () => {
         renderGameReview(gameSlug);
     }else if (path.startsWith('/game-list')){
         const genres = urlParams.get('genres')?.split(',');
-        console.log('Genre: ', genres);
         const filters = {
             genres: genres,
             ratingRange: '',
