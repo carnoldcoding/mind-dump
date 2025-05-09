@@ -5,21 +5,26 @@ export const createGenreFilter = (
   selectedGenres: string[],
   onGenreSelect: (e: any) => void,
   removeGenre: (e: any) => void,
+  toggleDropdown: (e: any) => void,
+  isOpen: boolean
 ): HTMLElement => {
 
     //Create Genre Select Box
     const genreFilterTemplate = `
 
     <div class="rounded-sm text-white w-full p-2 bg-slate-700 relative flex justify-between items-center cursor-pointer" id="genre-dropdown">
-        <p class="text-slate-300 select-none ">Genres</p>
-        <ion-icon name="caret-down-outline"></ion-icon>
+        <p class="text-slate-300 select-none pointer-events-none ">Genres</p>
+        <ion-icon class="pointer-events-none" name="caret-down-outline"></ion-icon>
     </div>
 
-    <div id="genre-select" class="mt-2 max-h-20 overflow-y-scroll w-full bg-slate-700">
-    </div>
+    <div class="genre-select-container ${!isOpen && "hidden"}">
+       <div id="genre-select" class="mt-2 max-h-20 overflow-y-scroll w-full bg-slate-700">
+       </div>
 
-    <div id="genres-selected" class="mt-2 flex gap-2 flex-wrap">
-    </div>`
+       <div id="genres-selected" class="mt-2 flex gap-2 flex-wrap">
+    </div>
+    </div>
+    `
 
     const genreFilter = document.createElement('div');
     genreFilter.innerHTML = genreFilterTemplate;
@@ -39,6 +44,12 @@ export const createGenreFilter = (
     choices.forEach(choice => {
         choice.addEventListener('click', onGenreSelect);
     })
+
+    //Add EventListener to toggle menu
+    const genreContainer = genreFilter.querySelector('.genre-select-container');
+    const genreDropdown = genreFilter.querySelector('#genre-dropdown');
+
+    genreDropdown?.addEventListener('click', toggleDropdown);
 
     //Create Selected Genre Bubbles
     const selectedGenreContainer = genreFilter.querySelector('#genres-selected') as HTMLElement;

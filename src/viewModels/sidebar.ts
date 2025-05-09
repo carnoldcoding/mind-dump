@@ -26,7 +26,8 @@ export const renderSidebar = () => {
   const app = document.querySelector("#app");
   const { element, openMenu, closeMenu } = createSidebar(applyFilters, resetFilters);
   app?.append(element);
-
+  closeMenu();
+  
   // Render filters
   renderGenreFilter();
 }

@@ -1,7 +1,9 @@
 import { createGenreFilter } from "../views/genreFilter";
 import { genres } from "../models/genre";
-3
+
 export let selectedGenres : string[] = [];
+let isOpen = false;
+
 const onGenreSelect = (e : any) => {
   addGenre(e);
   renderGenreFilter();
@@ -11,17 +13,31 @@ export const resetSelectedGenres = () => {
   selectedGenres = [];
 }
 
+
 const addGenre = (e:any) => {
   const selectedGenre = e.target.dataset.genre;
   if(selectedGenres.includes(selectedGenre)) return;
   selectedGenres.push(e.target.dataset.genre); 
-  console.log(selectedGenres);
 }
 
 const removeGenre = (e:any) => {
   const selectedGenre = e.target.dataset.genre;
   selectedGenres = selectedGenres.filter(genre => genre != selectedGenre);
   renderGenreFilter();
+}
+
+const toggleDropdown = (e : any) => {
+  const peerElement = e.target as HTMLElement;
+  const element = peerElement.parentElement?.querySelector('.genre-select-container') as HTMLElement;
+  if(element){
+    if(isOpen){
+      element.classList.add('hidden');
+      isOpen = false;
+    }else{
+      element.classList.remove('hidden');
+      isOpen = true;
+    }
+  }
 }
 
 export const renderGenreFilter = () => {
@@ -35,7 +51,9 @@ export const renderGenreFilter = () => {
     availableGenres, 
     selectedGenres, 
     onGenreSelect, 
-    removeGenre));
+    removeGenre,
+    toggleDropdown,
+    isOpen));
 }
 
 export const renderSelectedGenres = () => {
