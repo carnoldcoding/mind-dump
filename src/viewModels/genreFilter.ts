@@ -28,13 +28,16 @@ const removeGenre = (e:any) => {
 
 const toggleDropdown = (e : any) => {
   const peerElement = e.target as HTMLElement;
+  const icon = peerElement.parentElement?.querySelector('ion-icon') as HTMLElement;
   const element = peerElement.parentElement?.querySelector('.genre-select-container') as HTMLElement;
-  if(element){
+  if(element && icon){
     if(isOpen){
       element.classList.add('hidden');
+      icon.classList.remove('rotate-180');
       isOpen = false;
     }else{
       element.classList.remove('hidden');
+      icon.classList.add('rotate-180');
       isOpen = true;
     }
   }

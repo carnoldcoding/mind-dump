@@ -12,8 +12,10 @@ export const createGenreFilter = (
     //Create Genre Select Box
     const genreFilterTemplate = `
 
-    <div class="rounded-sm text-white w-full p-2 bg-slate-700 relative flex justify-between items-center cursor-pointer" id="genre-dropdown">
-        <p class="text-slate-300 select-none pointer-events-none ">Genres</p>
+    <div class="rounded-sm text-white w-full p-2 bg-slate-700 relative flex 
+    hover:bg-slate-600
+    justify-between items-center cursor-pointer" id="genre-dropdown">
+        <p class="text-slate-300 select-none pointer-events-none">Genres</p>
         <ion-icon class="pointer-events-none" name="caret-down-outline"></ion-icon>
     </div>
 
