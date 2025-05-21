@@ -9,4 +9,4 @@ const init = async () => {
     handleRouting();
 }
 
-window.addEventListener('load', init);
+//window.addEventListener('load', init);

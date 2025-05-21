@@ -9,8 +9,8 @@ export const createNavbar = ({
 }) : HTMLElement => {
     const navbarTemplate = `
         <ul class="flex items-end gap-6 bg-black/30 px-5 py-2 rounded-lg backdrop-blur-lg">
-            <ion-icon id="nav-games" class="text-white text-2xl tracking-wide capitalize cursor-pointer" name="game-controller-outline"></ion-icon>
             <ion-icon id="nav-home" class="text-white text-2xl tracking-wide capitalize cursor-pointer" name="home-outline"></ion-icon>
+            <ion-icon id="nav-games" class="text-white text-2xl tracking-wide capitalize cursor-pointer" name="game-controller-outline"></ion-icon>
             <ion-icon id="search-icon" class="text-white text-2xl tracking-wide capitalize cursor-pointer" name="search-outline"></ion-icon>
         </ul>
     `
