@@ -34,9 +34,89 @@
         "developers": ["Flying Wild Hog"],
         "platforms": ["PC", "360"], 
         "release_date": "September 26, 2013",
-        "rating": 4.0,
+        "rating": 3.0,
         "image_path": "https://upload.wikimedia.org/wikipedia/en/9/97/Shadow_Warrior_2013_cover.jpg",
         "preview_gif_path": "https://giffiles.alphacoders.com/743/74368.gif",
         "banner_path": "https://images.gog-statics.com/8013e5989a357f1eeea83d494b1b158cbf06cb268b73254fda94244ed633fb5d.jpg"
+    },
+    {
+        "id": 3,
+        "title": "Lies of P",
+        "description": "Lies of P follows the journey of Pinocchio in the decaying city of Krat, where a petrification disease and puppet uprising threaten humanity. The narrative delves into themes of morality, humanity, and the consequences of blind obedience, offering a dark twist on the classic tale.",
+        "slug": "lies-of-p",
+        "review": {
+            "story": "Lies of P is set in the waning days of Krat, a once-prosperous city renowned for its technological innovation, refined culture, and aristocratic splendor. The game's theme is centered around the danger of utilitarian thinking and how technological advancement delegated to that philosophy breeds eventual decay of self and society.",
+            "gameplay": "Mechanically, Lies of P sits comfortably amongst the top titles in the souls-like genre. Combat is very polished. Attacks feel dense and are complimented by an expansive catalogue of moves that are utilized in their modular weapon crafting system. Triumph over difficult bosses yields genuinely powerful weaponry that rewards the player for their trials. Defense feels responsive, from simple movement, to evasion, to their tight parry system. Due to solid hitbox design, you won't find yourself confused as to whether or not you were in range of an attack. ",
+            "graphics": "Aesthetically, Lies of P has some of the most intricate steampunk art deco architectural design of any games in the sphere. From grand marble theatres adorned with ornate carvings to decaying stone cathedrals beset by sky scraping spires. Stories are told through the clothing that each character wears, with every detail representing a chapter in their life through dark victorian elegance.",
+            "sound": "Musically, Lies of P delivers a masterclass of orchestral melodies you can easily confuse with a renowned classical opus. Music serves as an expression of humanity via stories that speak to our souls with or without words, this essence is captured in Lies of P."
+        },
+        "genres": ["action", "rpg", "soulslike", "adventure", "single-player"],
+        "developers": ["Round8 Studio"],
+        "platforms": ["PC", "PS5", "Xbox"],
+        "release_date": "September 19, 2023",
+        "rating": 4.5,
+        "image_path": "https://www.creativeuncut.com/gallery-45/art/lop-cover-art.jpg",
+        "preview_gif_path": "https://i.pinimg.com/originals/d9/df/66/d9df669a8729210249d4db0eeb1b54c0.gif",
+        "banner_path": "https://blog.playstation.com/tachyon/2025/02/cff58a770b67b309496baa30a88b9fa4a5d036ae.jpg?resize=1088,612&crop_strategy=smart"
+    },
+    {
+        "id": 4,
+        "title": "Nioh",
+        "description": "Nioh is an action role-playing game set in Japan during the year 1600, with players taking the role of an Irish samurai named William.",
+        "slug": "nioh",
+        "review": {
+            "story": "The campaign of Nioh felt difficult to follow outside of the main over-arching plot. I believe prior knowledge of this era of Japanese history would've bolstered my experience and enjoyment, however I do not have that knowledge. I was not enthralled with Nioh's storytelling.",
+            "gameplay": "Certain aspects of Nioh's gameplay are top class, and others are atrocious. The combat system has a high skill floor, and an even higher skill ceiling. Users can choose between various weapon types, ninjutsu, onmyo (magic), and weave different aspects of each into their gameplay. Progression is tied mostly to the level of your gear, and less the level of your character which encourages interaction with their remnant system. The remnant system allows players to defeat echoes of other players scattered throughout the map in order to loot their equipment. \n\n Levels and enemies are re-used constantly, to the point where some missions are literally traversing the same level backwards. The map layouts are disjointed, the enemy placement is abhorrent, and the bosses are not memorable. The DLC is scaled to the next NG cycle, which means to enjoy it as intended you have to beat the game twice. Overall, the positives do not outweigh the negatives.",
+            "graphics":"Sadly, not even for the time period is this game graphically stunning. Games that released years prior have better map design, art direction, lighting, rendering, and effects. The weapons and armor sets however, are normally very well done.",
+            "sound": "The sound design felt like an old action movie, nothing really of note that made me take notice."
+        },
+        "genres": ["action", "rpg", "soulslike", "adventure", "single-player"],
+        "developers": ["Team Ninja"],
+        "platforms": ["PC", "PS4"],
+        "release_date": "February 7, 2017",
+        "rating": 2.5,
+        "image_path": "https://cdn.mobygames.com/covers/7828890-nioh-playstation-4-front-cover.jpg",
+        "preview_gif_path": "https://giffiles.alphacoders.com/154/15494.gif",
+        "banner_path": "https://cdn1.epicgames.com/salesEvent/salesEvent/EGS_NiohTheCompleteEdition_KOEITECMOGAMESCOLTD_S1_2560x1440-2a6124e6033545b37abd715282f8ba98"
+    },
+    {
+        "id": 5,
+        "title": "The Room",
+        "description": "The Room is an eldritch puzzle game that entices you to discover forbidden knowledge through a series of puzzles.",
+        "slug": "the-room",
+        "review": {
+            "story": "The player pursues eldritch knowledge of the hidden fifth element through a series of puzzles.",
+            "gameplay": "Diverse puzzles coupled with unique engineering help to craft a unique experience you'd be hard pressed to find elsewhere. It is easy for puzzle games to fall into common tropes in order to facilitate user engagement and familiarity, which takes away from the essence of a puzzle. The Room boasts various unique puzzling aspects, while offering vague hints after a specific amount of time has passed since the player completed the last puzzle. Overall a great puzzler. ",
+            "graphics":"Winding gears, wooden shelves and drawers, brass knobs and levers, all contribute to the steampunk aesthetic that greets the user with each unfolding mechanism. The art style perfectly matches the game.",
+            "sound": "Minimalistic sound design that matches the game's aesthetic quite well. Each drawer, gear, and lever sounded as you think they should."
+        },
+        "genres": ["puzzle"],
+        "developers": ["Fireproof Studios"],
+        "platforms": ["PC", "Mobile"],
+        "release_date": "September 12, 2012",
+        "rating": 3.5,
+        "image_path": "https://static.prod.thinkygames.com/uploads/cover_images/2024-09-The-Room-1280x720.jpg",
+        "preview_gif_path": "https://media.gq.com/photos/5a789d043a1ebe07861af05c/16:9/w_2560%2Cc_limit/RPC_Screenshot_02.jpg",
+        "banner_path": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/288160/capsule_616x353.jpg?t=1646758287"
+    },
+    {
+        "id": 6,
+        "title": "Nioh 2",
+        "description": "Nioh 2 is an action RPG fused with historical fiction that challenges players to interact deeply with its gameplay mechanics to dive further into the depths of combat.",
+        "slug": "nioh-2",
+        "review": {
+            "story": "Bringing ancient Japanese mythology to life and interweaving significant historical geopolitics is where Nioh shines the most. Japanese folklore features spiritual beings of both positive and negative energy called 'Yokai', that can bring harmony or cataclysm with their spiritual energy. In Nioh this energy can be crystalized and leveraged as a catalyst for alchemy of the self or environment called 'Amrita', and is thus sought after by those who would seek to gain political power. That's where we come in. \n The protagonist exists as the product of a Yokai and Human union, half of each, yet neither, living off of mercenary contracts to survive. Through a peculiar twist of fate, the protagonist finds themselves thrust into the center Feudal Japan's Sengoku era - the 'Age of the Warring States' where Oda Nobunaga aimed to unite all of Japan under a single ruling force through conquest. Shattering the rigid traditions of his ancestors, Oda forged a revolutionary meritocracy that elevated talent over bloodline — assembling a formidable brotherhood of warriors, outcasts, and visionaries, including the Protagonist. Nioh weaves a blood-soaked tapestry of cursed prophecies, forbidden magic, political betrayal, and a destiny forged in the fires of war-torn Japan.",
+            "gameplay": "Nioh 2 improves upon every aspect of Nioh 1. Any and every mechanic that you wish would be in an ARPG is in Nioh 2. Character customization, eleven unique weapon archetypes, ranged combat that works, offensive and defensive magic/ninjutsu, stat allocation, comprehensive bestiary, NG cycles with unique mechanics, an expanded diablo-inspired looting system, easy equipment transmogrification, and even seamless co-op integration. Let me elaborate. \n Each of the eleven weapons have their own distinct skill trees that feature a use-based progression system. This means quite simply that the more you use your weapon, the more skill points you acquire for expenditure in the tree. The protagonist has three stances, low, mid, and high which all correlate to completely different skillsets and movesets within the currently equipped weapon. The depth that the stance system affords Nioh is revealed as nodes on the skill tree are unlocked sequentially, which perfectly compliments the use-based system in place. This way players don't get overwhelmed with mid-combat stance switching before gaining familiarity with the game, because before you unlock the appropriate skills it's generally pointless.\n The equipment system is almost perfect, allowing players to re-roll specific stats, refashion their gear immediately, carry their favorite gear onward and inherit gear stats via soul-matching, and providing new gear mechanics with every new game cycle. The exception to perfection is how low drop rates are alongside how poor in-game transparency is for the acquisition of hidden skills and smithing tablets. There comes a point where engaging with the community is the only way forward. \n Tragically, the world and level design, while upgraded from Nioh 1, is not great in Nioh 2. Compared to the perfect combat system, the level design sticks out like a sore thumb in an otherwise brilliant experience.",
+            "graphics":"This game released in 2020, and visually you'd think it released in 2014, which wouldn't be a problem if the environmental style had personality. The level design is often uninteresting and recycled without the character to bring excitement to exploration. There were only a handful of times when I felt any sense of awe or wonder, and those feelings were diluted significantly when migrating through the same castle in reverse for the sixth time in a region. \n The mark that Nioh misses in environmental design is hit when it comes to enemy and equipment design. From decorated spiritual weaponry with jaded beads strung around their hilt, to traditional stainless steel blades coated in battle-worn woven grips, Nioh impresses with its armory. The same may be said about the enemies, branching out into a much more diverse cast than its predecessor, I was delighted with each new encounter and impressed by their mythos-inspired designs.",
+            "sound": "There isn't much to be said about the sound design in Nioh 2, good or bad, it simply isn't memorable. There were very few times when music captivated me, and the general combat effects are very generic."
+        },
+        "genres": ["action", "rpg", "third-person"],
+        "developers": ["Team Ninja"],
+        "platforms": ["PS5", "PC"],
+        "release_date": "March 13, 2020",
+        "rating": 3.8,
+        "image_path": "https://image.api.playstation.com/vulcan/img/rnd/202011/0623/OKKpWNnsCZpURW2N6nnhMcj6.png",
+        "preview_gif_path": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1325200/ss_c3e930f5ed476ff2812a7765a8fe2767fd87a984.1920x1080.jpg?t=1749459548",
+        "banner_path": "https://image.api.playstation.com/vulcan/img/rnd/202010/2218/BnGKDAlN4U5WyrQ5oRj4cDco.png"
     }
 ]

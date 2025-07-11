@@ -10,6 +10,13 @@ const createGenreBubbles = (genres : string[]) => {
     return genresHTML
 }
 
+const reviewPropMap = {
+    "story": "Story and World Building",
+    "gameplay": "Gameplay System",
+    "graphics": "Graphical Design",
+    "sound": "Sound Design"
+} as const;
+
 export const createGamePage = (game : IGame) : HTMLElement => {
     const gamePageDOM = document.createElement('section');
     gamePageDOM.classList.add('game-container', 'flex', 'flex-col', 'items-center', '-mt-15')
@@ -52,32 +59,14 @@ export const createGamePage = (game : IGame) : HTMLElement => {
             <div class="w-full p-2 flex flex-col gap-3">
                 <h3 class="text-white text-4xl">Review</h3>
                 <hr class="text-white">
-                <div class="mt-2">
-                    <h3 class="text-white text-lg font-bold">Story & World Building</h3>
-                    <p class="text-slate-200">
-                        ${game.review.story}
-                    </p>
-                </div>
-                <div class="mt-2">
-                    <h3 class="text-white text-lg font-bold">Gameplay</h3>
-                    <p class="text-slate-200">
-                        ${game.review.gameplay}
-                    </p>
-                </div>
-
-                <div class="mt-2">
-                    <h3 class="text-white text-lg font-bold">Graphics</h3>
-                    <p class="text-slate-200">
-                        ${game.review.graphics}
-                    </p>
-                </div>
-
-                <div class="mt-2">
-                    <h3 class="text-white text-lg font-bold">Sound Design</h3>
-                    <p class="text-slate-200">
-                        ${game.review.sound}
-                    </p>
-                </div>
+                ${Object.entries(game.review).map(([key, value]) => `
+                    <div class="mt-2">
+                        <h3 class="text-white text-lg font-bold">${reviewPropMap[key]}</h3>
+                        <p class="text-slate-200">
+                            ${value.replace(/[\r\n]+/g, "<br><br>")}
+                        </p>
+                    </div>
+                `).join('\n')}
             </div>
         </article>
       `

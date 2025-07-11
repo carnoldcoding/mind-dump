@@ -13,48 +13,75 @@
       <section class="bg-black/30 backdrop-blur-sm absolute top-0 left-0 z-5 min-h-full min-w-full
       flex justify-center items-center
       ">
-        <article class="flex flex-col gap-5 w-[60rem] h-[40rem] bg-gray-900 border-gray-700/60 border-1 rounded-md shadow-black/20 shadow-lg
+        <article class="flex flex-col gap-5 min-w-[60rem] h-[40rem] bg-gray-900 border-gray-700/60 border-1 rounded-md shadow-black/20 shadow-lg
         p-5">
 
-        <!-- Searchbar -->
-        <div class="relative">
-          <input type="text" class="rounded-sm border-1 border-gray-400 w-full h-12 text-white text-xl p-8 pl-15 pr-15">
-          </input>
-          <ion-icon class="left-5 top-1/2 -translate-y-1/2 absolute text-2xl text-white" name="search-outline"></ion-icon>
+        <!-- Top Bar -->
+        <div class="search-actions flex flex-col gap-5">
+          <!-- Searchbar -->
+          <div class="relative">
+            <input type="text" class="rounded-sm border-1 border-gray-400 w-full h-12 text-white text-xl p-8 pl-15 pr-15">
+            </input>
+            <ion-icon class="left-5 top-1/2 -translate-y-1/2 absolute text-2xl text-white" name="search-outline"></ion-icon>
+          </div>
+
+          <!-- Search Filter Bubbles -->
+          <div class="flex gap-3">
+            <div class="text-gray-900 rounded-sm border-1 bg-gray-200 py-1 px-2 cursor-pointer">All Content</div>
+            <div class="text-gray-100 rounded-sm border-1 border-gray-400 py-1 px-2 cursor-pointer">Games</div>
+          </div>
+
+          <hr class="text-gray-300/50"/>
         </div>
 
-        <!-- Search Filter Bubbles -->
-         <div class="flex gap-3">
-          <div class="text-gray-900 rounded-sm border-1 bg-gray-200 py-1 px-2 cursor-pointer">All Content</div>
-          <div class="text-gray-100 rounded-sm border-1 border-gray-400 py-1 px-2 cursor-pointer">Games</div>
+
+        <!-- Content -->
+         <div class="flex flex-col gap-5 overflow-y-scroll">
+            <!-- Recent Searches -->
+            <div>
+              <h3 class="text-gray-400 font-semibold">
+                Recent Searches
+              </h3>
+
+              <ul>
+                <li class="flex gap-2 items-center">
+                  <div class="text-gray-200 w-full cursor-pointer hover:bg-gray-700 hover:text-white p-2 rounded-md flex items-center gap-2">
+                    <ion-icon name="search-outline" class="text-white"></ion-icon>
+                    <p>Search</p>
+                  </div>
+                  <ion-icon class="text-gray-400 text-2xl cursor-pointer hover:text-white" name="close-outline"></ion-icon>
+                </li>
+                
+                <li class="flex gap-2 items-center">
+                  <div class="text-gray-200 w-full cursor-pointer hover:bg-gray-700 hover:text-white p-2 rounded-md flex items-center gap-2">
+                    <ion-icon name="search-outline" class="text-white"></ion-icon>
+                    <p>Search</p>
+                  </div>
+                  <ion-icon class="text-gray-400 text-2xl cursor-pointer hover:text-white" name="close-outline"></ion-icon>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Games -->
+            <div class="h-full">
+              <h3 class="text-gray-400 font-semibold mb-2">
+                Games
+              </h3>
+              <ul class="flex flex-wrap h-full">
+                <li class="flex flex-col gap-2 items-center justify-center cursor-pointer">
+                  <div class="
+                  bg-[url('https://cdn.mobygames.com/covers/3992144-metal-gear-solid-playstation-front-cover.jpg')]
+                  bg-cover
+                  bg-center
+                  h-64 w-44">
+                  </div>
+                  <div class="text-gray-200 w-40 text-center">
+                    <p>Metal Gear Solid Wings of Anarchy the Sequel</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
          </div>
-
-         <hr class="text-gray-300/50"/>
-
-         <!-- Recent Searches -->
-          <div>
-            <h3 class="text-gray-400 font-semibold">
-              Recent Searches
-            </h3>
-
-            <ul>
-              <li class="flex gap-2 items-center">
-                <div class="text-gray-200 w-full cursor-pointer hover:bg-gray-700 hover:text-white p-2 rounded-md flex items-center gap-2">
-                  <ion-icon name="search-outline" class="text-white"></ion-icon>
-                  <p>Search</p>
-                </div>
-                <ion-icon class="text-gray-400 text-2xl cursor-pointer hover:text-white" name="close-outline"></ion-icon>
-              </li>
-              
-              <li class="flex gap-2 items-center">
-                <div class="text-gray-200 w-full cursor-pointer hover:bg-gray-700 hover:text-white p-2 rounded-md flex items-center gap-2">
-                  <ion-icon name="search-outline" class="text-white"></ion-icon>
-                  <p>Search</p>
-                </div>
-                <ion-icon class="text-gray-400 text-2xl cursor-pointer hover:text-white" name="close-outline"></ion-icon>
-              </li>
-            </ul>
-          </div>
         </article>
       </section>
 
