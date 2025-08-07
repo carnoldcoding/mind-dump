@@ -1,9 +1,11 @@
 
 @layer utilities {
     .nier-dot-pattern {
-      background: var(--color-nier-text-dark);
-      height: 1.25px;
-      margin-top: 1.25rem;
+      height: 1.25rem;
+      border-bottom: 1.5px solid var(--color-nier-text-dark);
+      @media screen and (max-width: 1024px) {
+        height: 4rem;
+      }
     }
   }
 

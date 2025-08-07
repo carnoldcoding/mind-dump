@@ -15,6 +15,22 @@ export const router = createBrowserRouter([
         {
           path: 'games',
           element: <Games />
+        },
+        {
+          path: 'cinema',
+          element: <></>
+        },
+        {
+          path: 'books',
+          element: <></>
+        },
+        {
+          path: 'system',
+          element: <></>
+        },
+        {
+          path: 'journal',
+          element: <></>
         }
       ],
     },
