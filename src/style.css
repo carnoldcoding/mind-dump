@@ -1,9 +1,0 @@
-@import "tailwindcss";
-
-html, body{
-    margin: unset;
-    padding: unset;
-    outline: unset;
-    box-sizing: border-box;
-    scroll-behavior: smooth;
-}
