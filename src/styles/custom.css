@@ -1,0 +1,35 @@
+
+@layer utilities {
+    .nier-dot-pattern {
+      background: var(--color-nier-text-dark);
+      height: 1.25px;
+      margin-top: 1.25rem;
+    }
+  }
+
+@layer base {
+    body{
+        font-family: "Baloo Bhaijaan 2", sans-serif;
+        background-color: var(--color-nier-50);
+        background-attachment: fixed;
+    }
+
+    #nier-grid {
+        position: relative;
+    }
+    
+    #nier-grid::before{
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-image:
+          linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
+        background-size: 7px 7px;
+        pointer-events: none; 
+        z-index: 9999;
+    }
+}

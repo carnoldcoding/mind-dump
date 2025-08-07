@@ -1,0 +1,100 @@
+/*
+    Nier line background animations.
+*/
+@layer utilities {
+
+    .nier-background-animation {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 1; /* Above grid (999) but below UI */
+        overflow: hidden;
+      }
+      
+      .diagonal-lines {
+        position: absolute;
+        width: 200%;
+        height: 200%;
+        top: -50%;
+        left: -50%;
+      }
+      
+      .diagonal-line {
+        position: absolute;
+        width: 1px;
+        height: 100%;
+        background-color: rgba(109, 104, 88, 0.3);
+        transform: rotate(135deg);
+      }
+      
+      .line-1 {
+        left: 35%;
+      }
+      
+      .line-2 {
+        left: 37%;
+        animation: shift-horizontal 20s ease-in-out infinite;
+      }
+      
+      .line-3 {
+        left: 39%;
+      }
+      
+      @keyframes shift-horizontal {
+        0%, 100% {
+          transform: rotate(135deg) translateX(0);
+        }
+        25%, 75% {
+          transform: rotate(135deg) translateX(1vw);
+        }
+        50%{
+            transform: rotate(135deg) translateX(-1vw);
+        }
+      }
+
+
+      /*
+        Circular Animation
+      */
+
+      .nier-circles {
+        position: absolute;
+        top: 0%;
+        left: 0%;
+        width: 70dvw;
+        height: 70dvw;
+        pointer-events: none;
+      }
+      
+      .circle-outline {
+        position: absolute;
+        border: 1px solid rgba(109, 104, 88, 0.3);
+        border-radius: 50%;
+        top: 0%;
+        left: 0%;
+        transform: translate(-50%, -50%);
+      }
+      
+      .outer-circle {
+        width: 100%;
+        height: 100%;
+      }
+      
+      .inner-circle {
+        width: 95%;
+        height: 95%;
+        animation: pulse-subtle 12s ease-in-out infinite;
+      }
+      
+      @keyframes pulse-subtle {
+        0%, 100% {
+          transform: translate(-50%, -50%) scale(1);
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(0.95);
+        }
+      }
+  }

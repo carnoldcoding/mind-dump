@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@400..800&display=swap');
+@import './styles/animations.css';
+@import './styles/custom.css';
 @import "tailwindcss";
-
 
 @theme {
     --color-nier-50: #DCD7B7;
@@ -10,38 +11,3 @@
     --color-nier-text-dark: #48483D;
     --color-nier-text-light: #C4BEAC;
 }
-
-@layer base {
-    body{
-        font-family: "Baloo Bhaijaan 2", sans-serif;
-        background-color: var(--color-nier-50);
-        background-attachment: fixed;
-    }
-
-    #nier-grid {
-        position: relative;
-    }
-    
-    #nier-grid::before{
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background-image:
-          linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);
-        background-size: 7px 7px;
-        pointer-events: none; 
-        z-index: 9999;
-    }
-}
-
-@layer utilities {
-    .nier-dot-pattern {
-      background: var(--color-nier-text-dark);
-      height: 1.25px;
-      margin-top: 1.25rem;
-    }
-  }
