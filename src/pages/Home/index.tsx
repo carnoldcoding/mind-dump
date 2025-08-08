@@ -1,7 +1,9 @@
+import PageHeader from "../../components/common/PageHeader"
+
 const Home = () => {
     return (
         <>
-            Homepage
+            <PageHeader name="home" />
         </>
     )
 }
