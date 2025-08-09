@@ -7,9 +7,9 @@ interface NavItem {
 
 export const navItems : NavItem[] = [
     {
-        iconActive: "/src/assets/home.svg",
-        icon: "/src/assets/home-light.svg",
-        label: "home",
+        iconActive: "/src/assets/search.svg",
+        icon: "/src/assets/search-light.svg",
+        label: "search",
         path: "/"
     },
     {

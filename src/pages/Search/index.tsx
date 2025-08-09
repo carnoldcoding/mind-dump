@@ -3,7 +3,7 @@ import PageHeader from "../../components/common/PageHeader"
 const Home = () => {
     return (
         <>
-            <PageHeader name="home" />
+            <PageHeader name="SEARCH" />
         </>
     )
 }

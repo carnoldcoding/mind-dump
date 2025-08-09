@@ -5,9 +5,11 @@ const Navigation = () => {
     const location = useLocation();
     return (
         <>
-            <nav className="flex justify-center pt-8 gap-10 fixed w-screen nier-dot-pattern bg-nier-50">
+            <nav className="flex justify-center pt-8 gap-10 fixed w-screen nier-dot-pattern bg-nier-50 z-50">
             {navItems.map(item => {
-                const isActive = location.pathname === item.path;
+                const isActive =
+                location.pathname === item.path ||
+                location.pathname.startsWith(item.path + "/");
                 return (
                     isActive ?
                     <Link 

@@ -1,7 +1,8 @@
 import { createBrowserRouter } from "react-router";
 import Layout from "../components/layout/Layout";
-import Home from "../pages/Home";
+import Search from "../pages/Search";
 import Games from "../pages/Games";
+import GameDetail from "../pages/Games/GameDetail";
 
 export const router = createBrowserRouter([
     {
@@ -10,11 +11,15 @@ export const router = createBrowserRouter([
       children: [
         {
           index: true,
-          element: <Home />,
+          element: <Search />,
         },
         {
           path: 'games',
           element: <Games />
+        },
+        {
+          path: 'games/:id',
+          element: <GameDetail />
         },
         {
           path: 'cinema',

@@ -21,7 +21,9 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
             transition-all ease-in-out duration-300 overflow-hidden
             shadow-[-3px_5px_0_0] shadow-nier-shadow pt-15 z-40 ${isOpen ? 'w-60 p-5' : 'w-0 p0'}`}>
             {navItems.map(item => {
-                const isActive = location.pathname === item.path;
+                const isActive =
+                location.pathname === item.path ||
+                location.pathname.startsWith(item.path + "/");
                 return (
                     isActive ?
                     <Link 

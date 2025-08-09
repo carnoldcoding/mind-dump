@@ -1,9 +1,12 @@
 import PageHeader from "../../components/common/PageHeader";
+import Card from "./Card";
 import { useEffect, useState } from "react";
+import type { GamePost } from "../../types";
+
 const Games = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [posts, setPosts] = useState<any>([]);
+    const [posts, setPosts] = useState<GamePost[]>([]);
 
     useEffect(()=> {
         const fetchGamePosts = async () => {
@@ -33,17 +36,9 @@ const Games = () => {
         if (error) return <div>Error: {error}</div>;
         
         return (
-          <section className="flex flex-wrap gap-10 justify-center mt-10">
-            {posts.map((post: any) => (
-                <article key={post._id} className="flex flex-col items-center w-50 relative cursor-pointer group">
-                    <div className="h-70 w-50 relative z-20 bg-nier-100 flex flex-col items-center" >
-                        <div className="h-10 w-full bg-nier-150 flex items-center px-2 group-hover:bg-nier-dark transition-all duration-150">
-                            <p className="text-left text-nier-text text-lg overflow-hidden text-nowrap group-hover:text-nier-text-light transition-all duration-150">{post.title}</p>
-                        </div>
-                        <div className="h-55 w-45 bg-cover bg-center mt-2" style={{backgroundImage: `url(${post.image_path})`}}></div>
-                    </div>
-                    <div className="absolute h-70 w-50 bg-nier-shadow z-10 top-1 left-1"></div>
-                </article>
+          <section className="flex flex-wrap gap-5 md:gap-10 justify-center mt-10">
+            {posts.map((post: GamePost) => (
+                <Card {...post} />
             ))}
           </section>
         );
