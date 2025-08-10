@@ -2,6 +2,7 @@ import PageHeader from "../../components/common/PageHeader";
 import Card from "./Card";
 import { useEffect, useState } from "react";
 import type { GamePost } from "../../types";
+import Loader from "../../components/common/Loader";
 
 const Games = () => {
     const [loading, setLoading] = useState<boolean>(true);
@@ -13,7 +14,7 @@ const Games = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch('http://192.168.1.7:5000/api/posts?type=game');
+                const response = await fetch(`${import.meta.env.VITE_API_URI}/api/posts?type=game`);
                 
                 if(response.ok){
                     const data = await response.json();
@@ -32,7 +33,10 @@ const Games = () => {
     },[])
 
     const renderContent = () => {
-        if (loading) return <div>Loading games...</div>;
+        if (loading) return (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2">
+                <Loader size={64}/>
+            </div>)
         if (error) return <div>Error: {error}</div>;
         
         return (
