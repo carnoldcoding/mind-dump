@@ -69,12 +69,16 @@ const Search = () => {
                     </div>
 
                     <div className="">
-                        <div className="flex items-center justify-start gap-2">
-                            <img src="/src/assets/game-light.svg" className="bg-nier-dark p-1" alt=""/>
-                            <h2 className="text-2xl">GAMES</h2>
-                        </div>
+                        
 
                         {/* Game Results */}
+                        {
+                            filteredPosts.filter((post:any) => post.type==='game').length > 0 && 
+                            <div className="flex items-center justify-start gap-2">
+                                <img src="/src/assets/game-light.svg" className="bg-nier-dark p-1" alt=""/>
+                                <h2 className="text-2xl">GAMES</h2>
+                            </div>
+                        }
 
                         <div className="ml-10 mt-3 flex flex-col gap-2">
                             {
