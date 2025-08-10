@@ -1,7 +1,6 @@
 import PageHeader from "../../components/common/PageHeader"
 import { useState, useEffect } from "react";
 import type { GamePost } from "../../types";
-import Loader from "../../components/common/Loader";
 import { Link } from "react-router-dom";
 
 
@@ -75,11 +74,11 @@ const Search = () => {
                             <h2 className="text-2xl">GAMES</h2>
                         </div>
 
-                        {/* Results */}
+                        {/* Game Results */}
 
                         <div className="ml-10 mt-3 flex flex-col gap-2">
                             {
-                                filteredPosts.map((post : GamePost)=>{
+                                filteredPosts.filter((post : any) => post.type === 'game').map((post : GamePost)=>{
                                     return (
                                         <Link to={`/games/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
                                             <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light"></div>
@@ -89,6 +88,10 @@ const Search = () => {
                                 })
                             }
                         </div>
+
+                        {/* Cinema Results */}
+                        {/* Book Results */}
+                        {/* Journal Results */}
                     </div>
                 </div>
                 
