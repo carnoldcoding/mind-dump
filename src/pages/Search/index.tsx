@@ -1,6 +1,6 @@
 import PageHeader from "../../components/common/PageHeader"
 import { useState, useEffect } from "react";
-import type { GamePost } from "../../types";
+import type { BookPost, CinemaPost, GamePost } from "../../types";
 import { Link } from "react-router-dom";
 
 
@@ -68,34 +68,83 @@ const Search = () => {
                         <input type="text" onKeyUp={handleTyping} className="focus:outline focus:border-nier-dark w-full p-2 px-4"/>
                     </div>
 
-                    <div className="">
+                    <div className="flex flex-col gap-10 overflow-y-scroll h-100">
+                        
+                        {/* Game Results */}
+                            <div>
+                            {
+                                filteredPosts.filter((post:any) => post.type==='game').length > 0 && 
+                                <div className="flex items-center justify-start gap-2">
+                                    <img src="/src/assets/game-light.svg" className="bg-nier-dark p-1" alt=""/>
+                                    <h2 className="text-2xl">GAMES</h2>
+                                </div>
+                            }
+
+                            <div className="ml-10 mt-3 flex flex-col gap-2">
+                                {
+                                    filteredPosts.filter((post : any) => post.type === 'game').map((post : GamePost)=>{
+                                        return (
+                                            <Link to={`/games/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
+                                                <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light"></div>
+                                                <p className="text-lg leading-none group-hover:text-nier-text-light">{post.title}</p>
+                                            </Link>
+                                        )
+                                    })
+                                }
+                            </div>
+                        </div>
                         
 
-                        {/* Game Results */}
-                        {
-                            filteredPosts.filter((post:any) => post.type==='game').length > 0 && 
-                            <div className="flex items-center justify-start gap-2">
-                                <img src="/src/assets/game-light.svg" className="bg-nier-dark p-1" alt=""/>
-                                <h2 className="text-2xl">GAMES</h2>
-                            </div>
-                        }
-
-                        <div className="ml-10 mt-3 flex flex-col gap-2">
-                            {
-                                filteredPosts.filter((post : any) => post.type === 'game').map((post : GamePost)=>{
-                                    return (
-                                        <Link to={`/games/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
-                                            <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light"></div>
-                                            <p className="text-lg leading-none group-hover:text-nier-text-light">{post.title}</p>
-                                        </Link>
-                                    )
-                                })
-                            }
-                        </div>
-
                         {/* Cinema Results */}
+                        <div>
+                            {
+                                filteredPosts.filter((post:any) => post.type==='cinema').length > 0 && 
+                                <div className="flex items-center justify-start gap-2">
+                                    <img src="/src/assets/game-light.svg" className="bg-nier-dark p-1" alt=""/>
+                                    <h2 className="text-2xl">CINEMA</h2>
+                                </div>
+                            }
+
+                            <div className="ml-10 mt-3 flex flex-col gap-2">
+                                {
+                                    filteredPosts.filter((post : any) => post.type === 'cinema').map((post : GamePost)=>{
+                                        return (
+                                            <Link to={`/games/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
+                                                <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light"></div>
+                                                <p className="text-lg leading-none group-hover:text-nier-text-light">{post.title}</p>
+                                            </Link>
+                                        )
+                                    })
+                                }
+                            </div>
+                        </div>
+                        
                         {/* Book Results */}
+                        <div>
+                            {
+                                filteredPosts.filter((post:any) => post.type==='book').length > 0 && 
+                                <div className="flex items-center justify-start gap-2">
+                                    <img src="/src/assets/game-light.svg" className="bg-nier-dark p-1" alt=""/>
+                                    <h2 className="text-2xl">BOOK</h2>
+                                </div>
+                            }
+
+                            <div className="ml-10 mt-3 flex flex-col gap-2">
+                                {
+                                    filteredPosts.filter((post : any) => post.type === 'book').map((post : GamePost)=>{
+                                        return (
+                                            <Link to={`/games/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
+                                                <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light"></div>
+                                                <p className="text-lg leading-none group-hover:text-nier-text-light">{post.title}</p>
+                                            </Link>
+                                        )
+                                    })
+                                }
+                            </div>
+                        </div>
+                        
                         {/* Journal Results */}
+                        
                     </div>
                 </div>
                 
