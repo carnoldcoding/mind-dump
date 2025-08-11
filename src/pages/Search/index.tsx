@@ -100,7 +100,7 @@ const Search = () => {
                             {
                                 filteredPosts.filter((post:any) => post.type==='cinema').length > 0 && 
                                 <div className="flex items-center justify-start gap-2">
-                                    <img src="/src/assets/game-light.svg" className="bg-nier-dark p-1" alt=""/>
+                                    <img src="/src/assets/monitor-light.svg" className="bg-nier-dark p-1" alt=""/>
                                     <h2 className="text-2xl">CINEMA</h2>
                                 </div>
                             }
@@ -124,7 +124,7 @@ const Search = () => {
                             {
                                 filteredPosts.filter((post:any) => post.type==='book').length > 0 && 
                                 <div className="flex items-center justify-start gap-2">
-                                    <img src="/src/assets/game-light.svg" className="bg-nier-dark p-1" alt=""/>
+                                    <img src="/src/assets/book-light.svg" className="bg-nier-dark p-1" alt=""/>
                                     <h2 className="text-2xl">BOOK</h2>
                                 </div>
                             }

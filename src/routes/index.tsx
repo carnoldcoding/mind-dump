@@ -7,6 +7,7 @@ import Books from "../pages/Books";
 import BookDetail from "../pages/Books/BookDetail";
 import Cinema from "../pages/Cinema";
 import CinemaDetail from "../pages/Cinema/CinemaDetail";
+import { UnderConstruction } from "../components/common/UnderConstruction";
 
 export const router = createBrowserRouter([
     {
@@ -43,11 +44,11 @@ export const router = createBrowserRouter([
         },
         {
           path: 'system',
-          element: <></>
+          element: <UnderConstruction />
         },
         {
           path: 'journal',
-          element: <></>
+          element: <UnderConstruction />
         }
       ],
     },

@@ -28,7 +28,7 @@ const CinemaDetail = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch(`http://192.168.1.7:5000/api/posts?slug=${slug}`);
+                const response = await fetch(`${import.meta.env.VITE_API_URI}/api/posts?slug=${slug}`);
                 
                 if(response.ok){
                     const data = await response.json();
