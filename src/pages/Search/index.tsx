@@ -3,6 +3,9 @@ import { useState, useEffect } from "react";
 import type { BookPost, CinemaPost, GamePost } from "../../types";
 import { Link } from "react-router-dom";
 import config from "../../config";
+import gameLight from "../../assets/game-light.svg";
+import monitorLight from "../../assets/monitor-light.svg";
+import bookLight from "../../assets/book-light.svg";
 
 
 const Search = () => {
@@ -81,7 +84,7 @@ const Search = () => {
                             {
                                 filteredPosts.filter((post:any) => post.type==='game').length > 0 && 
                                 <div className="flex items-center justify-start gap-2">
-                                    <img src="/src/assets/game-light.svg" className="bg-nier-dark p-1" alt=""/>
+                                    <img src={gameLight} className="bg-nier-dark p-1" alt=""/>
                                     <h2 className="text-2xl">GAMES</h2>
                                 </div>
                             }
@@ -106,7 +109,7 @@ const Search = () => {
                             {
                                 filteredPosts.filter((post:any) => post.type==='cinema').length > 0 && 
                                 <div className="flex items-center justify-start gap-2">
-                                    <img src="/src/assets/monitor-light.svg" className="bg-nier-dark p-1" alt=""/>
+                                    <img src={monitorLight} className="bg-nier-dark p-1" alt=""/>
                                     <h2 className="text-2xl">CINEMA</h2>
                                 </div>
                             }
@@ -130,7 +133,7 @@ const Search = () => {
                             {
                                 filteredPosts.filter((post:any) => post.type==='book').length > 0 && 
                                 <div className="flex items-center justify-start gap-2">
-                                    <img src="/src/assets/book-light.svg" className="bg-nier-dark p-1" alt=""/>
+                                    <img src={bookLight} className="bg-nier-dark p-1" alt=""/>
                                     <h2 className="text-2xl">BOOK</h2>
                                 </div>
                             }
