@@ -2,6 +2,7 @@ import PageHeader from "../../components/common/PageHeader"
 import { useState, useEffect } from "react";
 import type { BookPost, CinemaPost, GamePost } from "../../types";
 import { Link } from "react-router-dom";
+import config from "../../config";
 
 
 const Search = () => {
@@ -15,7 +16,7 @@ const Search = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch(`${import.meta.env.VITE_API_URI}/api/posts`);
+                const response = await fetch(`${config.apiUri}/api/posts`);
                 
                 if(response.ok){
                     const data = await response.json();

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import type { CinemaPost } from "../../types";
 import PageHeader from "../../components/common/PageHeader";
 import TextDropdown from "../../components/common/TextDropdown";
+import config from "../../config";
 
 const CinemaDetail = () => {
     const [loading, setLoading] = useState<boolean>(false);
@@ -28,7 +29,7 @@ const CinemaDetail = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch(`${import.meta.env.VITE_API_URI}/api/posts?slug=${slug}`);
+                const response = await fetch(`${config.apiUri}/api/posts?slug=${slug}`);
                 
                 if(response.ok){
                     const data = await response.json();

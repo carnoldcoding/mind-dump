@@ -3,6 +3,7 @@ import Card from "../../components/common/Card";
 import { useEffect, useState } from "react";
 import type { GamePost } from "../../types";
 import Loader from "../../components/common/Loader";
+import config from "../../config";
 
 const Games = () => {
     const [loading, setLoading] = useState<boolean>(true);
@@ -14,7 +15,7 @@ const Games = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch(`${import.meta.env.VITE_API_URI}/api/posts?type=game`);
+                const response = await fetch(`${config.apiUri}/api/posts?type=game`);
                 
                 if(response.ok){
                     const data = await response.json();

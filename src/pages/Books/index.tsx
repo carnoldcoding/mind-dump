@@ -3,6 +3,7 @@ import Card from "../../components/common/Card";
 import { useEffect, useState } from "react";
 import type { BookPost } from "../../types";
 import Loader from "../../components/common/Loader";
+import config from "../../config";
 
 const Books = () => {
     const [loading, setLoading] = useState<boolean>(true);
@@ -14,7 +15,7 @@ const Books = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch(`${import.meta.env.VITE_API_URI}/api/posts?type=book`);
+                const response = await fetch(`${config.apiUri}/api/posts?type=book`);
                 
                 if(response.ok){
                     const data = await response.json();

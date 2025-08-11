@@ -3,6 +3,7 @@ import Card from "../../components/common/Card";
 import { useEffect, useState } from "react";
 import type { CinemaPost } from "../../types";
 import Loader from "../../components/common/Loader";
+import config from "../../config";
 
 const Cinema = () => {
     const [loading, setLoading] = useState<boolean>(true);
@@ -14,7 +15,7 @@ const Cinema = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch(`${import.meta.env.VITE_API_URI}/api/posts?type=cinema`);
+                const response = await fetch(`${config.apiUri}/api/posts?type=cinema`);
                 
                 if(response.ok){
                     const data = await response.json();
