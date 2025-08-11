@@ -109,7 +109,7 @@ const Search = () => {
                                 {
                                     filteredPosts.filter((post : any) => post.type === 'cinema').map((post : GamePost)=>{
                                         return (
-                                            <Link to={`/games/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
+                                            <Link to={`/cinema/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
                                                 <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light"></div>
                                                 <p className="text-lg leading-none group-hover:text-nier-text-light">{post.title}</p>
                                             </Link>
@@ -133,7 +133,7 @@ const Search = () => {
                                 {
                                     filteredPosts.filter((post : any) => post.type === 'book').map((post : GamePost)=>{
                                         return (
-                                            <Link to={`/games/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
+                                            <Link to={`/books/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
                                                 <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light"></div>
                                                 <p className="text-lg leading-none group-hover:text-nier-text-light">{post.title}</p>
                                             </Link>
