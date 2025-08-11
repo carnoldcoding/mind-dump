@@ -68,16 +68,16 @@ const Search = () => {
     return (
         <>
             <PageHeader name="SEARCH" />
-            <article className="md:w-5xl md:h-134 bg-nier-100 mt-5 relative">
+            <article className={`md:w-5xl ${filteredPosts.length > 0 ? 'h-auto' : 'h-30'} bg-nier-100 mt-5 relative`}>
                 <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
                 </div>
 
                 <div className="p-4 flex flex-col gap-5">
                     <div className="border-2 border-nier-150 flex">
-                        <input type="text" onKeyUp={handleTyping} className="focus:outline focus:border-nier-dark w-full p-2 px-4"/>
+                        <input type="text" onKeyUp={handleTyping} autoFocus className="focus:outline focus:border-nier-dark w-full p-2 px-4"/>
                     </div>
 
-                    <div className="flex flex-col gap-10 overflow-y-scroll h-100">
+                    <div className="flex flex-col gap-10 overflow-y-scroll max-h-100">
                         
                         {/* Game Results */}
                             <div>

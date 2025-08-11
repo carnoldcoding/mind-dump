@@ -65,7 +65,7 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
                 })}
             </nav>
             <div className="nier-dot-pattern fixed w-screen bg-nier-50 z-30"></div>
-            <div className="h-20"></div>
+            <div className="h-2"></div>
 
         </>
     )
