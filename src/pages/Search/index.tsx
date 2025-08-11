@@ -16,7 +16,8 @@ const Search = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch(`${config.apiUri}/api/posts`);
+                const url = new URL('/api/posts', config.apiUri);
+                const response = await fetch(url.toString());
                 
                 if(response.ok){
                     const data = await response.json();

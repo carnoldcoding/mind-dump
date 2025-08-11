@@ -15,7 +15,9 @@ const Books = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch(`${config.apiUri}/api/posts?type=book`);
+                const url = new URL('/api/posts', config.apiUri);
+                url.searchParams.set('type', 'book');
+                const response = await fetch(url.toString());
                 
                 if(response.ok){
                     const data = await response.json();

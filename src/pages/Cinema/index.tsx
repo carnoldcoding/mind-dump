@@ -15,7 +15,9 @@ const Cinema = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch(`${config.apiUri}/api/posts?type=cinema`);
+                const url = new URL('/api/posts', config.apiUri);
+                url.searchParams.set('type', 'cinema');
+                const response = await fetch(url.toString());
                 
                 if(response.ok){
                     const data = await response.json();
