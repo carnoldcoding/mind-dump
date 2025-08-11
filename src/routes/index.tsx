@@ -3,6 +3,10 @@ import Layout from "../components/layout/Layout";
 import Search from "../pages/Search";
 import Games from "../pages/Games";
 import GameDetail from "../pages/Games/GameDetail";
+import Books from "../pages/Books";
+import BookDetail from "../pages/Books/BookDetail";
+import Cinema from "../pages/Cinema";
+import CinemaDetail from "../pages/Cinema/CinemaDetail";
 
 export const router = createBrowserRouter([
     {
@@ -22,12 +26,20 @@ export const router = createBrowserRouter([
           element: <GameDetail />
         },
         {
-          path: 'cinema',
-          element: <></>
+          path: 'books',
+          element: <Books />
         },
         {
-          path: 'books',
-          element: <></>
+          path: 'books/:id',
+          element: <BookDetail />
+        },
+        {
+          path: 'cinema',
+          element: <Cinema />
+        },
+        {
+          path: 'cinema/:id',
+          element: <CinemaDetail />
         },
         {
           path: 'system',

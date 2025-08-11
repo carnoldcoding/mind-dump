@@ -1,10 +1,9 @@
 import { useNavigate } from "react-router";
-import type { GamePost } from "../../types";
 
-const Card = (post:GamePost)=> {
+const Card = (post: any)=> {
     const navigate = useNavigate();
 
-    const handleClick = () => navigate(`/games/${post.slug}`);
+    const handleClick = () => navigate(`/${post.type === 'cinema' ? post.type : post.type + 's'}/${post.slug}`);
     
     return (
         <article onClick={handleClick} key={post._id} className="flex flex-col items-center w-40 md:w-50 relative cursor-pointer group">

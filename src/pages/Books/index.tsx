@@ -1,20 +1,20 @@
 import PageHeader from "../../components/common/PageHeader";
 import Card from "../../components/common/Card";
 import { useEffect, useState } from "react";
-import type { GamePost } from "../../types";
+import type { BookPost } from "../../types";
 import Loader from "../../components/common/Loader";
 
-const Games = () => {
+const Books = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [posts, setPosts] = useState<GamePost[]>([]);
+    const [posts, setPosts] = useState<BookPost[]>([]);
 
     useEffect(()=> {
-        const fetchGamePosts = async () => {
+        const fetchBookPosts = async () => {
             try {
                 setLoading(true);
                 setError(null);
-                const response = await fetch(`${import.meta.env.VITE_API_URI}/api/posts?type=game`);
+                const response = await fetch(`${import.meta.env.VITE_API_URI}/api/posts?type=book`);
                 
                 if(response.ok){
                     const data = await response.json();
@@ -29,7 +29,7 @@ const Games = () => {
             }
         };
 
-        fetchGamePosts();
+        fetchBookPosts();
     },[])
 
     const renderContent = () => {
@@ -41,7 +41,7 @@ const Games = () => {
         
         return (
           <section className="flex flex-wrap gap-5 md:gap-10 justify-center mt-10">
-            {posts.map((post: GamePost) => (
+            {posts.map((post: BookPost) => (
                 <Card {...post} />
             ))}
           </section>
@@ -50,10 +50,10 @@ const Games = () => {
 
     return (
     <>
-        <PageHeader name="games" />
+        <PageHeader name="books" />
         {renderContent()}
     </>
     )
 }
 
-export default Games;
+export default Books;
