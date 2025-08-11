@@ -2,7 +2,7 @@
 @layer utilities {
     .nier-dot-pattern {
       position: relative;
-      padding: 1.25rem;
+      padding-bottom: 1.25rem;
       border-bottom: 1.75px solid var(--color-nier-dark);
       @media screen and (max-width: 1024px) {
         height: 4rem;
