@@ -93,7 +93,7 @@ const CinemaDetail = () => {
                             <div className="flex flex-col gap-3">
                                 {Object.entries(data.review).map(([key, value]) => {
                                     return (
-                                        <TextDropdown  label={key} content={value}/>
+                                        <TextDropdown  label={reviewPropMap[key as keyof typeof reviewPropMap]} content={value}/>
                                     );
                                 })}
                             </div>

@@ -41,20 +41,24 @@ const Search = () => {
         if (query !== "") {
           const lowerQuery = query.toLowerCase();
       
-          const startsWithMatches = posts.filter((post: any) =>
+          const startsWithMatches : any[] = posts.filter((post: any) =>
             post.title.toLowerCase().startsWith(lowerQuery)
           );
       
-          const containsMatches = posts.filter((post: any) =>
+          const containsMatches : any[] = posts.filter((post: any) =>
             post.title.toLowerCase().includes(lowerQuery) &&
             !startsWithMatches.includes(post)
           );
       
+          //@ts-ignore
           setFilteredPosts([...startsWithMatches, ...containsMatches]);
         } else {
           setFilteredPosts([]);
         }
       };
+
+    if(loading) return <>Loading..</>
+    if(error) return <>Error</>
     
     return (
         <>
@@ -107,7 +111,7 @@ const Search = () => {
 
                             <div className="ml-10 mt-3 flex flex-col gap-2">
                                 {
-                                    filteredPosts.filter((post : any) => post.type === 'cinema').map((post : GamePost)=>{
+                                    filteredPosts.filter((post : any) => post.type === 'cinema').map((post : CinemaPost)=>{
                                         return (
                                             <Link to={`/cinema/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
                                                 <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light"></div>
@@ -131,7 +135,7 @@ const Search = () => {
 
                             <div className="ml-10 mt-3 flex flex-col gap-2">
                                 {
-                                    filteredPosts.filter((post : any) => post.type === 'book').map((post : GamePost)=>{
+                                    filteredPosts.filter((post : any) => post.type === 'book').map((post : BookPost)=>{
                                         return (
                                             <Link to={`/books/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
                                                 <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light"></div>
