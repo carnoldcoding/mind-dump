@@ -1,22 +1,27 @@
 import PageHeader from "../../components/common/PageHeader";
 import Card from "../../components/common/Card";
 import { useEffect, useState } from "react";
-import type { CinemaPost } from "../../types";
 import Loader from "../../components/common/Loader";
 import config from "../../config";
+import { useParams } from "react-router";
 
-const Cinema = () => {
+const Review = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-    const [posts, setPosts] = useState<CinemaPost[]>([]);
+    const [posts, setPosts] = useState<any>([]);
+    const { category } = useParams<{category: string}>();
+
+    if(!category) return;
 
     useEffect(()=> {
-        const fetchCinemaPosts = async () => {
+        const fetchPosts = async () => {
+            const type = category.toString().endsWith('s') ? category.slice(0,-1) : category;
+
             try {
                 setLoading(true);
                 setError(null);
                 const url = new URL('/api/posts', config.apiUri);
-                url.searchParams.set('type', 'cinema');
+                url.searchParams.set('type', type);
                 const response = await fetch(url.toString());
                 
                 if(response.ok){
@@ -32,8 +37,8 @@ const Cinema = () => {
             }
         };
 
-        fetchCinemaPosts();
-    },[])
+        fetchPosts();
+    },[category])
 
     const renderContent = () => {
         if (loading) return (
@@ -44,7 +49,7 @@ const Cinema = () => {
         
         return (
           <section className="flex flex-wrap gap-5 md:gap-10 justify-center mt-10">
-            {posts.map((post: CinemaPost) => (
+            {posts.map((post: any) => (
                 <Card {...post} />
             ))}
           </section>
@@ -53,10 +58,10 @@ const Cinema = () => {
 
     return (
     <>
-        <PageHeader name="cinema" />
+        <PageHeader name={category} />
         {renderContent()}
     </>
     )
 }
 
-export default Cinema;
+export default Review;

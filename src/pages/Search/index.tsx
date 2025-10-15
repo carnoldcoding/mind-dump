@@ -6,6 +6,7 @@ import config from "../../config";
 import gameLight from "../../assets/game-light.svg";
 import monitorLight from "../../assets/monitor-light.svg";
 import bookLight from "../../assets/book-light.svg";
+import Loader from "../../components/common/Loader";
 
 
 const Search = () => {
@@ -62,7 +63,7 @@ const Search = () => {
         }
       };
 
-    if(loading) return <>Loading..</>
+    if(loading) return <Loader />
     if(error) return <>Error</>
     
     return (
@@ -80,7 +81,7 @@ const Search = () => {
                     <div className="flex flex-col gap-10 overflow-y-scroll max-h-100">
                         
                         {/* Game Results */}
-                            <div>
+                        <div>
                             {
                                 filteredPosts.filter((post:any) => post.type==='game').length > 0 && 
                                 <div className="flex items-center justify-start gap-2">
