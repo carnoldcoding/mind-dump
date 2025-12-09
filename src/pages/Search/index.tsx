@@ -69,7 +69,7 @@ const Search = () => {
     return (
         <>
             <PageHeader name="SEARCH" />
-            <article className={`md:w-5xl ${filteredPosts.length > 0 ? 'h-auto' : 'h-30'} bg-nier-100 mt-5 relative`}>
+            <article className={`md:w-full ${filteredPosts.length > 0 ? 'h-auto' : 'h-30'} bg-nier-100 mt-5 relative`}>
                 <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
                 </div>
 

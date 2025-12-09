@@ -43,7 +43,7 @@ const Review = () => {
     const renderContent = () => {
         if (loading) return (
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2">
-                <Loader size={64}/>
+                <Loader/>
             </div>)
         if (error) return <div>Error: {error}</div>;
         

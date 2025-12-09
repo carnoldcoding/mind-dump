@@ -78,4 +78,19 @@
     scrollbar-width: thin;
     scrollbar-color: var(--color-nier-dark) var(--color-nier-50);
   }
+
+  /* Input Field Styles */
+  input[class='.custom-input']{
+    color: orange;
+    +label{
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    &:focus{
+      +label{
+        
+      }
+    }
+  }
 }

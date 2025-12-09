@@ -61,7 +61,7 @@ const ReviewDetail = () => {
         if (!category) return;
 
         return (
-            <article className="md:w-5xl md:h-134 bg-nier-100 mt-5 relative">
+            <article className=" md:h-134 bg-nier-100 mt-5 relative">
                 
                 <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
                     <h3 className="text-nier-text-dark text-xl">{data.title}</h3>
@@ -104,7 +104,7 @@ const ReviewDetail = () => {
                             </div>
                         </div>
                         <div>
-                            <p >{data.description}</p>
+                            <p>{data.description}</p>
                         </div>
 
                         <div>
