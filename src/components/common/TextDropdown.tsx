@@ -10,7 +10,7 @@ const TextDropdown = ({ label, content } : {label: string, content:string | null
                 <h3 className="capitalize">{label}</h3>
                 <div className={`${isOpen ? 'rotate-180' : ''} transition-all duration 75`}>v</div>
             </div>
-            <div className={`overflow-y-scroll ${isOpen ? 'h-30 border-1 pt-2' : 'h-0'} px-3 transition-all duration 75 border-nier-150 -mt-3`}>
+            <div className={`overflow-y-scroll ${isOpen ? 'h-30 border-1 pt-2' : 'h-0'} px-3 transition-all duration 75 border-nier-150 bg-nier-100-lighter -mt-3`}>
                 {content}
             </div>
         </>
