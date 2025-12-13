@@ -19,7 +19,7 @@ export const ImageTextField = ({ label, value, onChange }: ImageTextFieldProps) 
                     {label}
                 </label>
             </div>
-            <div className="border border-nier-150 w-15 cursor-pointer bg-cover bg-no-repeat" style={{
+            <div className="border border-nier-150 w-15 cursor-pointer bg-cover bg-no-repeat bg-center" style={{
                 backgroundImage: `url(${value})`
             }}>
             </div>

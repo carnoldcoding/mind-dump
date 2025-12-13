@@ -77,7 +77,7 @@ const ReviewDetail = () => {
                          {data.release_date} - { data.creator }
                     </div>
 
-                    <div className="px-5 flex flex-col gap-5 overflow-y-scroll h-112">
+                    <div className="px-5 flex flex-col gap-5 overflow-y-scroll h-112 w-full">
                         <div className="flex items-start gap-3 md:gap-0 w-full justify-between">
                             <div className="h-50 basis-1/2 md:hidden bg-cover bg-center" style={{backgroundImage:`url(${data.image_path})`}}></div>
                             

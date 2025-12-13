@@ -46,7 +46,8 @@ interface BookReviewDetails {
 
 interface Arguments{
     isOpen: boolean,
-    setIsOpen: any
+    setIsOpen: any,
+    onReviewAdded: any
 }
 
 interface GameReview extends BaseReview<'game', GameReviewDetails> {}
@@ -55,7 +56,7 @@ interface BookReview extends BaseReview<'book', BookReviewDetails> {}
 
 type Review = GameReview | CinemaReview | BookReview;
 
-export const ReviewModal = ({isOpen, setIsOpen} : Arguments) => {
+export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded} : Arguments) => {
     const [type, setType] = useState<'game' | 'cinema' | 'book'>('game');
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -146,6 +147,7 @@ export const ReviewModal = ({isOpen, setIsOpen} : Arguments) => {
                 const data = await response.json();
                 console.log('Review created:', data);
                 handleCancel();
+                onReviewAdded();
             } else {
                 const errorText = await response.text();
                 console.error('Error response:', errorText);
