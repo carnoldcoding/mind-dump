@@ -10,8 +10,8 @@ export const NumTextField = ({ label, value, onChange }: NumTextFieldProps) => {
       <input 
         type="text" 
         value={value}
-        inputmode="numeric"
-        maxlength="3"
+        inputMode="numeric"
+        maxLength= {3}
         onChange={(e) => onChange(e.target.value)}
         pattern="^\d+(\.\d+)?$"
         placeholder=" " 

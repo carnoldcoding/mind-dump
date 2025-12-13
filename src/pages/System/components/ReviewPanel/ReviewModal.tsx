@@ -62,6 +62,27 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
+    const genres = [
+        "action",
+        "rpg",
+        "action-rpg",
+        "souls-like",
+        "shooter",
+        "first-person",
+        "third-person",
+        "strategy",
+        "simulation",
+        "open-world",
+        "metroidvania",
+        "roguelike",
+        "survival",
+        "horror",
+        "puzzle",
+        "platformer",
+        "story-rich",
+        "multiplayer"
+    ]
+
     const [review, setReview] = useState<Partial<Review>>({
         title: '',
         slug: '',
@@ -244,7 +265,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
             <div className="w-full flex gap-4 flex-col md:flex-row">
                 <MutliSelectField 
                     label="Genres" 
-                    options={["rpg", "third-person", "first-person", "story-rich"]}
+                    options={genres}
                     value={review.genres || []}
                     onChange={(value) => handleFieldChange('genres', value)}
                 />

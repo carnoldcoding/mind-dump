@@ -1,5 +1,4 @@
 import { ReviewPreview } from "./ReviewPreview"
-import fakeReviews from "./data"
 import { ReviewModal } from "./ReviewModal"
 import { useState, useEffect } from "react"
 import config from "../../../../config"
@@ -10,6 +9,12 @@ export const ReviewList = () => {
     const [error, setError] = useState<string | null>(null);
     const [posts, setPosts] = useState<any>([]);
     const [editMode, setEditMode] = useState<any>(null);
+    const [sortState, setSortState] = useState({
+        title: true,
+        type: true,
+        rating: true,
+        date: true,
+    })
 
     const handleAdd = () => {
         setEditMode(null);
@@ -20,6 +25,32 @@ export const ReviewList = () => {
         setEditMode(review);
         setIsOpen(true);
     }
+
+    const sortPosts = (metric: 'title' | 'type' | 'rating') => {
+        const sortedPosts = [...posts]; // Create copy
+        
+        if(metric === 'rating'){
+            sortedPosts.sort((a, b) => 
+                sortState.rating ? a.rating - b.rating : b.rating - a.rating
+            );
+        } else if(metric === 'title'){
+            sortedPosts.sort((a, b) => {
+                const comparison = a.title.toUpperCase().localeCompare(b.title.toUpperCase());
+                return sortState.title ? comparison : -comparison;
+            });
+        } else if(metric === 'type'){
+            sortedPosts.sort((a, b) => {
+                const comparison = a.type.toUpperCase().localeCompare(b.type.toUpperCase());
+                return sortState.type ? comparison : -comparison;
+            });
+        }
+        
+        setPosts(sortedPosts);
+        setSortState(prev => ({
+            ...prev,
+            [metric]: !prev[metric]
+        }));
+}
 
     const deletePost = async (slug: string) => {
         try {
@@ -96,12 +127,25 @@ export const ReviewList = () => {
             />
             <div className="overflow-auto">
                 <div className="min-w-[48rem]">
-                    <div className="grid grid-cols-6 bg-nier-150 text-center [&>p]:text-lg h-15 px-4 py-4 border-b border-b-nier-dark/50">
-                        <p className="col-span-2">Title</p>
-                        <p>Type</p>
-                        <p>Rating</p>
+                    <div className="grid grid-cols-6 bg-nier-150 text-center [&>div>p]:text-lg h-15 px-4 py-4 border-b border-b-nier-dark/50">
+                    <div className="col-span-2 flex gap-2 items-center justify-center">
+                        <p className="select-none inline-block cursor-pointer" onClick={()=> {sortPosts('title')}}>Title</p>
+                        {sortState.title ? <ion-icon name="caret-down-sharp"></ion-icon> : <ion-icon name="caret-up-sharp"></ion-icon>}
+                    </div>
+                    <div className="flex gap-2 items-center justify-center">
+                        <p className="select-none inline-block cursor-pointer" onClick={()=> {sortPosts('type')}}>Type</p>
+                        {sortState.type ? <ion-icon name="caret-down-sharp"></ion-icon> : <ion-icon name="caret-up-sharp"></ion-icon>}
+                    </div>
+                    <div className="flex gap-2 items-center justify-center">
+                        <p className="select-none inline-block cursor-pointer" onClick={()=> {sortPosts('rating')}}>Rating</p>
+                        {sortState.rating ? <ion-icon name="caret-down-sharp"></ion-icon> : <ion-icon name="caret-up-sharp"></ion-icon>}
+                    </div>
+                    <div>
                         <p>Date</p>
+                    </div>
+                    <div>
                         <p>Actions</p>
+                    </div>
                     </div>
                     <ul className="h-100 overflow-y-scroll">
                         {posts.map((post : any)=> <ReviewPreview 
