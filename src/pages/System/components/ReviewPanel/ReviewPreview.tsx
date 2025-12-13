@@ -19,7 +19,7 @@ export const ReviewPreview = (review : any) => {
             <div>
                 <p className="">{review.release_date}</p>
             </div>
-            <div className="flex gap-2 [&>button>ion-icon]:w-7 [&>button>ion-icon]:h-7
+            <div className="flex gap-2 [&>button>ion-icon]:w-6 [&>button>ion-icon]:h-6
             [&>button]:cursor-pointer justify-center">
                 <button><ion-icon name="pencil-sharp"></ion-icon></button>
                 <button><ion-icon name="trash-sharp"></ion-icon></button>

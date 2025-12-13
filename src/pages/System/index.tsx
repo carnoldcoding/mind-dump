@@ -3,8 +3,39 @@ import LoginForm from "./LoginForm";
 import { PieChart } from "./components/pieChart";
 import { BarChart } from "./components/barChart";
 import { ReviewPanel } from "./components/ReviewPanel";
+import { useEffect, useState } from "react";
+import config from "../../config";
+
 const System = () => {
     const isLoggedIn = true;
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string | null>(null);
+    const [posts, setPosts] = useState<any>([]);
+
+    useEffect(()=> {
+        const fetchPosts = async () => {
+
+            try {
+                setLoading(true);
+                setError(null);
+                const url = new URL('/api/posts', config.apiUri);
+                const response = await fetch(url.toString());
+                
+                if(response.ok){
+                    const data = await response.json();
+                    setPosts(data);
+                } else{
+                    setError('Failed to fetch posts');
+                }
+            } catch (error) {
+                setError('Network error');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchPosts();
+    },[])
     return (
         <>
             <PageHeader name="SYSTEM" />
@@ -17,8 +48,8 @@ const System = () => {
                     <div className="p-4 flex flex-col gap-4">
                         {/*Data Row */} 
                         <div className="flex gap-4 relative z-1 flex-col md:flex-row">
-                            <PieChart />
-                            <BarChart />
+                            <PieChart data={posts}/>
+                            <BarChart data={posts}/>
                         </div>
                         {/* Review Section */}
                         <ReviewPanel />

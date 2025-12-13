@@ -8,17 +8,55 @@ import {
   Legend,
 } from 'chart.js';
 
-export const BarChart = () => {
+export const BarChart = ({ data }: { data: any[] }) => {
   ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip, Legend);
 
+  function getRatingDistribution(reviews: any[]) {
+    return reviews.reduce(
+      (acc, review) => {
+        if (review.rating == null) return acc;
+
+        // Normalize rating (string, decimals, whitespace-safe)
+        const rating = Math.floor(Number(review.rating));
+
+        if (rating >= 1 && rating <= 5) {
+          acc[rating]++;
+        }
+
+        return acc;
+      },
+      { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+    );
+  }
+
+  const ratingCounts = getRatingDistribution(data);
+
   const barData = {
-    labels: ['5', '4', '3'],
+    labels: ['5', '4', '3', '2', '1'],
     datasets: [
       {
-        label: 'Rating Data',
-        data: [5, 10, 8],
-        backgroundColor: ['#48483D', '#6D6858', '#BDB7A8'],
-        hoverBackgroundColor: ['#5A5A4D', '#7F7A69', '#D6D0C1'],
+        label: 'Rating Distribution',
+        data: [
+          ratingCounts[5],
+          ratingCounts[4],
+          ratingCounts[3],
+          ratingCounts[2],
+          ratingCounts[1],
+        ],
+        backgroundColor: [
+          '#48483D',
+          '#6D6858',
+          '#8A8473',
+          '#A8A28F',
+          '#BDB7A8',
+        ],
+        hoverBackgroundColor: [
+          '#5A5A4D',
+          '#7F7A69',
+          '#9A9484',
+          '#BDB7A8',
+          '#D6D0C1',
+        ],
         borderWidth: 0,
       },
     ],
@@ -37,6 +75,10 @@ export const BarChart = () => {
       },
       y: {
         beginAtZero: true,
+        ticks: {
+          stepSize: 1,
+          precision: 0,
+        },
       },
     },
   };

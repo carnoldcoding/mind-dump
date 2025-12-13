@@ -1,20 +1,31 @@
 import { Pie } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 
-export const PieChart = () => {
+export const PieChart = ({data} : {data : any}) => {
     ChartJS.register(ArcElement, Tooltip, Legend);
     
-    const pieData = {
-        labels: ['Cinema', 'Books', 'Games'],
-        datasets: [
-            {
-            data: [30, 60, 10],
-            backgroundColor: ['#48483D', '#6D6858', '#BDB7A8'],
-            hoverBackgroundColor: ['#5A5A4D', '#7F7A69', '#D6D0C1'],
-            borderWidth: 0,
-            },
-        ],
-    }
+    function getReviewCounts(reviews : any) {
+            return {
+                cinema: reviews.filter(r => r.type === 'cinema').length,
+                books: reviews.filter(r => r.type === 'book').length,
+                games: reviews.filter(r => r.type === 'game').length,
+            };
+        }
+        
+        const { cinema, books, games } = getReviewCounts(data);
+
+        const pieData = {
+            labels: ['Cinema', 'Books', 'Games'],
+            datasets: [
+                    {
+                    data: [cinema, books, games],
+                    backgroundColor: ['#48483D', '#6D6858', '#BDB7A8'],
+                    hoverBackgroundColor: ['#5A5A4D', '#7F7A69', '#D6D0C1'],
+                    borderWidth: 0,
+                    },
+                ],
+        };
+
 
     const pieOptions = {
         responsive: true,
