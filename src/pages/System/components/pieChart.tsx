@@ -6,9 +6,9 @@ export const PieChart = ({data} : {data : any}) => {
     
     function getReviewCounts(reviews : any) {
             return {
-                cinema: reviews.filter(r => r.type === 'cinema').length,
-                books: reviews.filter(r => r.type === 'book').length,
-                games: reviews.filter(r => r.type === 'game').length,
+                cinema: reviews.filter((r: any) => r.type === 'cinema').length,
+                books: reviews.filter((r: any) => r.type === 'book').length,
+                games: reviews.filter((r: any) => r.type === 'game').length,
             };
         }
         

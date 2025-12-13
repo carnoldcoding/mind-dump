@@ -73,14 +73,8 @@ const ReviewDetail = () => {
                     <div className="md:min-w-80 md:h-112 bg-cover bg-center" style={{backgroundImage:`url(${data.image_path})`}}></div>
                     <div className="absolute bottom-6 h-[1px] md:w-[calc(100%-35px)] w-[calc(100%-40px)] ml-5 md:ml-0 bg-nier-150"></div>
                     <div className="absolute top-12 h-[1px] md:w-[calc(100%-35px)] w-[calc(100%-40px)] ml-5 md:ml-0 bg-nier-150"></div>
-                    <div className="md:ml-0 ml-5 absolute bottom-0 text-nier-text-dark text-sm md:text-base italic">
-                         {data.release_date} - {
-                            category === "games"
-                            ? data.developers?.join(', ')
-                            : category === "books"
-                                ? data.author
-                                : data.director
-                        }
+                    <div className="md:ml-0 ml-5 absolute bottom-0 text-nier-text-dark text-sm md:text-base italic capitalize">
+                         {data.release_date} - { data.creator }
                     </div>
 
                     <div className="px-5 flex flex-col gap-5 overflow-y-scroll h-112">
