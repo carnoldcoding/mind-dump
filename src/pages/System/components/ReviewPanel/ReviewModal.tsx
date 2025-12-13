@@ -4,7 +4,7 @@ import { DateField } from "../../../../components/common/DateField"
 import { MutliSelectField } from "../../../../components/common/MultiSelectField"
 import { BigTextField } from "../../../../components/common/BigTextField"
 import { ImageTextField } from "../../../../components/common/ImageTextField"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "../../../../components/common/Button"
 import config from "../../../../config"
 import { NumTextField } from "../../../../components/common/NumTextField"
@@ -47,7 +47,8 @@ interface BookReviewDetails {
 interface Arguments{
     isOpen: boolean,
     setIsOpen: any,
-    onReviewAdded: any
+    onReviewAdded: any,
+    editingReview?: any
 }
 
 interface GameReview extends BaseReview<'game', GameReviewDetails> {}
@@ -56,7 +57,7 @@ interface BookReview extends BaseReview<'book', BookReviewDetails> {}
 
 type Review = GameReview | CinemaReview | BookReview;
 
-export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded} : Arguments) => {
+export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : Arguments) => {
     const [type, setType] = useState<'game' | 'cinema' | 'book'>('game');
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -72,6 +73,23 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded} : Arguments) => {
         rating: 0,
         imagePath: '',
     });
+
+    useEffect(() => {
+        if (editingReview) {
+            setReview({
+                title: editingReview.title || '',
+                slug: editingReview.slug || '',
+                description: editingReview.description || '',
+                releaseDate: editingReview.release_date || '',
+                creator: editingReview.creator || editingReview.developers?.[0] || editingReview.director || editingReview.author || '',
+                genres: editingReview.genres || [],
+                review: editingReview.review || {} as any,
+                rating: editingReview.rating || 0,
+                imagePath: editingReview.image_path || '',
+            });
+            setType(editingReview.type || 'game');
+        }
+    }, [editingReview]);
     
     const bigTextFieldMap: Record<'game' | 'cinema' | 'book', string[]> = {
         'game': ['story', 'gameplay', 'graphics', 'sound'],
@@ -118,16 +136,16 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded} : Arguments) => {
         }
     }
     
-    const handleApply = async () => {
+       const handleApply = async () => {
         const parsedReview = transformKeysToSnakeCase(review);
+        const isEditMode = !!editingReview;
+        
         try {
             setLoading(true);
             setError(null);
             
-            console.log('config.apiUri:', config.apiUri);
-            const url = new URL('/api/posts/add_post', config.apiUri);
-            console.log('Constructed URL:', url.toString());
-            console.log('URL href:', url.href);
+            const endpoint = isEditMode ? '/api/posts/update_post' : '/api/posts/add_post';
+            const url = new URL(endpoint, config.apiUri);
             
             const response = await fetch(url.toString(), {
                 method: 'POST',
@@ -140,18 +158,15 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded} : Arguments) => {
                 }),
             });
             
-            console.log('Response status:', response.status);
-            console.log('Response ok:', response.ok);
-            
             if (response.ok) {
                 const data = await response.json();
-                console.log('Review created:', data);
+                console.log(isEditMode ? 'Review updated:' : 'Review created:', data);
                 handleCancel();
                 onReviewAdded();
             } else {
                 const errorText = await response.text();
                 console.error('Error response:', errorText);
-                setError('Failed to create review');
+                setError(`Failed to ${isEditMode ? 'update' : 'create'} review`);
             }
         } catch (error : any) {
             console.error('Network error:', error);
@@ -251,7 +266,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded} : Arguments) => {
             </div>
             <div className="flex gap-4">
                 <Button handleClick={handleCancel} label="cancel" />
-                <Button handleClick={handleApply} label="apply" />
+                <Button handleClick={handleApply} label={editingReview ? "update" : "apply"} />
             </div>
         </article>
     )

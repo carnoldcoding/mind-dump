@@ -9,8 +9,17 @@ export const ReviewList = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [posts, setPosts] = useState<any>([]);
+    const [editMode, setEditMode] = useState<any>(null);
 
-    const handleClick = () => {setIsOpen(true)}
+    const handleAdd = () => {
+        setEditMode(null);
+        setIsOpen(true)
+    }
+
+    const handleEdit = (review: any) => {
+        setEditMode(review);
+        setIsOpen(true);
+    }
 
     const deletePost = async (slug: string) => {
         try {
@@ -77,9 +86,14 @@ export const ReviewList = () => {
             <header className="flex justify-between items-center px-4 py-4 border-b border-b-nier-dark/50">
                 <h2 className="capitalize text-xl">all reviews</h2>
                 <button className="capitalize px-4 py-2 border border-b-gray-950 rounded-sm cursor-pointer flex items-center
-                hover:bg-nier-text-dark hover:text-nier-100-lighter" onClick={handleClick}>add review</button>
+                hover:bg-nier-text-dark hover:text-nier-100-lighter" onClick={handleAdd}>add review</button>
             </header>
-            <ReviewModal isOpen={isOpen} setIsOpen={setIsOpen} onReviewAdded={fetchPosts}/>
+            <ReviewModal 
+                isOpen={isOpen} 
+                setIsOpen={setIsOpen} 
+                onReviewAdded={fetchPosts}
+                editingReview={editMode}
+            />
             <div className="overflow-auto">
                 <div className="min-w-[48rem]">
                     <div className="grid grid-cols-6 bg-nier-150 text-center [&>p]:text-lg h-15 px-4 py-4 border-b border-b-nier-dark/50">
@@ -90,7 +104,12 @@ export const ReviewList = () => {
                         <p>Actions</p>
                     </div>
                     <ul className="h-100 overflow-y-scroll">
-                        {posts.map((post : any)=> <ReviewPreview review={post} deletePost={deletePost} onDelete={fetchPosts}/>)}
+                        {posts.map((post : any)=> <ReviewPreview 
+                        review={post} 
+                        deletePost={deletePost} 
+                        onDelete={fetchPosts}
+                        onEdit={handleEdit}
+                        />)}
                     </ul>
                 </div>
             </div>

@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Button } from "../../../../components/common/Button";
 
-export const ReviewPreview = ({review, deletePost, onDelete} :{review: any, deletePost: any, onDelete: any}) => {
+export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: any, deletePost: any, onDelete: any, onEdit:any}) => {
     const [isOpen, setIsOpen] = useState(false);
 
+    const handleEdit = () => {
+        onEdit(review);
+    }
     const typeIconMap = {
         'book': 'book-sharp',
         'game': 'game-controller-sharp',
@@ -46,7 +49,7 @@ export const ReviewPreview = ({review, deletePost, onDelete} :{review: any, dele
             </div>
             <div className="flex gap-2 [&>button>ion-icon]:w-6 [&>button>ion-icon]:h-6
             [&>button]:cursor-pointer justify-center">
-                <button><ion-icon name="pencil-sharp"></ion-icon></button>
+                <button onClick={handleEdit}><ion-icon name="pencil-sharp"></ion-icon></button>
                 <button onClick={handleOpen}><ion-icon name="trash-sharp"></ion-icon></button>
             </div>
 
