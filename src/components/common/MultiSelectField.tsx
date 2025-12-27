@@ -11,7 +11,6 @@ export const MutliSelectField = ({ label, options, value = [], onChange }: Multi
   const [choices, setChoices] = useState<string[]>([]);
   const [chosen, setChosen] = useState<string[]>(value);
 
-  // Update internal state when value prop changes
   useEffect(() => {
     setChosen(value);
     setChoices(options.filter(option => !value.includes(option)));
@@ -23,7 +22,7 @@ export const MutliSelectField = ({ label, options, value = [], onChange }: Multi
       const newChosen = [...chosen, selectedValue];
       setChosen(newChosen);
       setChoices(choices.filter(choice => choice !== selectedValue));
-      onChange(newChosen); // Notify parent
+      onChange(newChosen);
       e.target.value = "";
     }
   }
@@ -32,7 +31,7 @@ export const MutliSelectField = ({ label, options, value = [], onChange }: Multi
     const newChosen = chosen.filter(c => c !== itemToRemove);
     setChosen(newChosen);
     setChoices([...choices, itemToRemove]);
-    onChange(newChosen); // Notify parent
+    onChange(newChosen);
   }
 
   return (
@@ -52,11 +51,11 @@ export const MutliSelectField = ({ label, options, value = [], onChange }: Multi
       <div className="absolute top-2 left-4 flex gap-2 overflow-x-scroll pointer-events-auto">
         {chosen.map((choice, index) => (
           <div 
-            className="rounded-md bg-nier-dark text-nier-100-lighter px-2 py-1 flex gap-2 cursor-pointer" 
+            className="rounded-md bg-nier-dark px-2 py-1 flex gap-2 cursor-pointer" 
             key={index}
             onClick={() => handleRemove(choice)}
           >
-            <p className="text-sm">{choice}</p>
+            <p className="text-sm text-nier-100-lighter">{choice}</p>
           </div>
         ))}
       </div>

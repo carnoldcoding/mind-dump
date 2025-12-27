@@ -11,6 +11,12 @@
     --color-nier-150: #A9A38B;
     --color-nier-shadow: #98977B;
     --color-nier-dark: #48483D;
-    --color-nier-text-dark: #48483D;
+    --color-nier-text-dark: #3a3a31;
     --color-nier-text-light: #C4BEAC;
+}
+
+@layer base {
+  p, h1, h2, h3, h4, ion-icon {
+    color: var(--color-nier-text-dark);
+  }
 }

@@ -56,7 +56,7 @@ const System = () => {
                         <h3 className="text-nier-text-dark text-xl">Control Panel</h3>
                         <button 
                             onClick={logout}
-                            className="capitalize px-4 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter"
+                            className="capitalize text-sm px-4 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter"
                         >
                             Logout
                         </button>

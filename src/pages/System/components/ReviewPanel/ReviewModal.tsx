@@ -236,7 +236,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
                     onChange={handleTypeChange} 
                     options={["game", "cinema", "book"]}
                 />
-                
+
                 <DateField 
                     label="Release Date"
                     value={review.releaseDate || ''}
@@ -249,13 +249,13 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
                     value={review.description || ''}
                     onChange={(value) => handleFieldChange('description', value)}
                 />
-                
+
                 <TextField
                     label="Creator"
                     value={review.creator || ''}
                     onChange={(value) => handleFieldChange('creator', value)}
                 />
-                
+
                 <NumTextField
                     label="Rating"
                     value={review.rating || ''}

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/common/Button';
+import { TextField } from '../../components/common/TextField';
 
 const LoginForm = () => {
   const [password, setPassword] = useState('');
@@ -30,18 +31,10 @@ const LoginForm = () => {
       </div>
       <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
         <div>
-          <label className="block mb-2">Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-2 border border-nier-150 focus:outline-none focus:border-nier-dark"
-            placeholder="Enter admin password"
-            disabled={loading}
-          />
+          <TextField label={"Admin Password"} type="password" onChange={setPassword} value={password} disabled={loading} altBg={true}/>
         </div>
         {error && (
-          <div className="text-red-600 text-sm">{error}</div>
+          <div className="text-red-800 text-sm">{error}</div>
         )}
         <Button
           handleClick={handleSubmit}

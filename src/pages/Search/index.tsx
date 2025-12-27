@@ -81,39 +81,35 @@ const Search = () => {
                     <div className="flex flex-col gap-10 overflow-y-scroll max-h-100">
                         
                         {/* Game Results */}
-                        <div>
-                            {
-                                filteredPosts.filter((post:any) => post.type==='game').length > 0 && 
+                        {filteredPosts.filter((post:any) => post.type==='game').length > 0 && 
+                            <div>
                                 <div className="flex items-center justify-start gap-2">
                                     <img src={gameLight} className="bg-nier-dark p-1" alt=""/>
                                     <h2 className="text-2xl">GAMES</h2>
                                 </div>
-                            }
 
-                            <div className="ml-10 mt-3 flex flex-col gap-2">
-                                {
-                                    filteredPosts.filter((post : any) => post.type === 'game').map((post : GamePost)=>{
-                                        return (
-                                            <Link to={`/games/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
-                                                <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light"></div>
-                                                <p className="text-lg leading-none group-hover:text-nier-text-light">{post.title}</p>
-                                            </Link>
-                                        )
-                                    })
-                                }
-                            </div>
-                        </div>
+                                <div className="ml-10 mt-3 flex flex-col gap-2">
+                                    {
+                                        filteredPosts.filter((post : any) => post.type === 'game').map((post : GamePost)=>{
+                                            return (
+                                                <Link to={`/games/${post.slug}`} className="flex gap-2 cursor-pointer items-center bg-nier-150/60 p-2 group hover:bg-nier-dark">
+                                                    <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light"></div>
+                                                    <p className="text-lg leading-none group-hover:text-nier-text-light">{post.title}</p>
+                                                </Link>
+                                            )
+                                        })
+                                    }
+                                </div>
+                            </div>}
                         
 
                         {/* Cinema Results */}
+                        {filteredPosts.filter((post:any) => post.type==='cinema').length > 0 && 
                         <div>
-                            {
-                                filteredPosts.filter((post:any) => post.type==='cinema').length > 0 && 
-                                <div className="flex items-center justify-start gap-2">
-                                    <img src={monitorLight} className="bg-nier-dark p-1" alt=""/>
-                                    <h2 className="text-2xl">CINEMA</h2>
-                                </div>
-                            }
+                            <div className="flex items-center justify-start gap-2">
+                                <img src={monitorLight} className="bg-nier-dark p-1" alt=""/>
+                                <h2 className="text-2xl">CINEMA</h2>
+                            </div>
 
                             <div className="ml-10 mt-3 flex flex-col gap-2">
                                 {
@@ -127,17 +123,15 @@ const Search = () => {
                                     })
                                 }
                             </div>
-                        </div>
+                        </div>}
                         
                         {/* Book Results */}
+                        {filteredPosts.filter((post:any) => post.type==='book').length > 0 && 
                         <div>
-                            {
-                                filteredPosts.filter((post:any) => post.type==='book').length > 0 && 
-                                <div className="flex items-center justify-start gap-2">
-                                    <img src={bookLight} className="bg-nier-dark p-1" alt=""/>
-                                    <h2 className="text-2xl">BOOK</h2>
-                                </div>
-                            }
+                            <div className="flex items-center justify-start gap-2">
+                                <img src={bookLight} className="bg-nier-dark p-1" alt=""/>
+                                <h2 className="text-2xl">BOOK</h2>
+                            </div>
 
                             <div className="ml-10 mt-3 flex flex-col gap-2">
                                 {
@@ -151,10 +145,7 @@ const Search = () => {
                                     })
                                 }
                             </div>
-                        </div>
-                        
-                        {/* Journal Results */}
-                        
+                        </div>}
                     </div>
                 </div>
                 

@@ -2,19 +2,32 @@ import { ReviewPreview } from "./ReviewPreview"
 import { ReviewModal } from "./ReviewModal"
 import { useState, useEffect } from "react"
 import config from "../../../../config"
+import { TextField } from "../../../../components/common/TextField"
 
 export const ReviewList = () => {
     const [isOpen, setIsOpen] = useState<boolean>(false);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [posts, setPosts] = useState<any>([]);
+    const [filteredPosts, setFilteredPosts] = useState<any>([]);
     const [editMode, setEditMode] = useState<any>(null);
+    const [query, setQuery] = useState<string>('');
     const [sortState, setSortState] = useState({
         title: true,
         type: true,
         rating: true,
         date: true,
+        status: true
     })
+
+
+    useEffect(()=>{
+        const postCopy = [...posts];
+        const firstPass = postCopy.filter((post) => post.title.toLowerCase().startsWith(query.toLowerCase()));
+        const secondPass = postCopy.filter((post) => post.title.toLowerCase().includes(query.toLowerCase()) && !firstPass.includes(post));
+
+        setFilteredPosts([...firstPass, ...secondPass])
+    }, [query])
 
     const handleAdd = () => {
         setEditMode(null);
@@ -26,8 +39,14 @@ export const ReviewList = () => {
         setIsOpen(true);
     }
 
-    const sortPosts = (metric: 'title' | 'type' | 'rating') => {
-        const sortedPosts = [...posts]; // Create copy
+    const sortPosts = (metric: 'title' | 'type' | 'rating' | 'status') => {
+        const sortedPosts = [...posts]; 
+
+        const statusPriority = {
+            TODO: 1,
+            ACTIVE: 2,
+            DONE: 3
+        } as any;
         
         if(metric === 'rating'){
             sortedPosts.sort((a, b) => 
@@ -43,14 +62,31 @@ export const ReviewList = () => {
                 const comparison = a.type.toUpperCase().localeCompare(b.type.toUpperCase());
                 return sortState.type ? comparison : -comparison;
             });
+        } else if(metric === 'status'){
+            sortedPosts.sort((a, b) => {
+                const aPriority = statusPriority[a.status.toUpperCase()] ?? 999;
+                const bPriority = statusPriority[b.status.toUpperCase()] ?? 999;
+
+                return sortState.status
+                ? aPriority - bPriority
+                : bPriority - aPriority;
+            });
         }
         
-        setPosts(sortedPosts);
-        setSortState(prev => ({
-            ...prev,
-            [metric]: !prev[metric]
-        }));
-}
+        setFilteredPosts(sortedPosts);
+        setSortState(prev => {
+            const reset = Object.keys(prev).reduce((acc, key) => {
+            acc[key as keyof typeof prev] = true;
+                return acc;
+            }, {} as typeof prev);
+
+            return {
+            ...reset,
+            [metric]: !prev[metric],
+        };
+});
+
+    }
 
     const deletePost = async (slug: string) => {
         try {
@@ -98,6 +134,7 @@ export const ReviewList = () => {
             if(response.ok){
                 const data = await response.json();
                 setPosts(data);
+                setFilteredPosts(data);
             } else{
                 setError('Failed to fetch posts');
             }
@@ -112,43 +149,55 @@ export const ReviewList = () => {
         fetchPosts();
     },[])
 
+    const columnTitle = (label: 'title' | 'type' | 'rating' | 'status') => {
+        return (
+            <div onClick={()=> {sortPosts(label)}} className="cursor-pointer flex gap-2 items-center">
+                <p className="select-none inline-block cursor-pointer text-lg capitalize" >{label}</p>
+                {sortState[label] ? <ion-icon name="caret-down-sharp"></ion-icon> : <ion-icon name="caret-up-sharp"></ion-icon>}
+            </div>
+        )
+    }
+
     return (
          <article>
-            <header className="flex justify-between items-center px-4 py-4 border-b border-b-nier-dark/50">
-                <h2 className="capitalize text-xl">all reviews</h2>
-                <button className="capitalize px-4 py-2 border border-b-gray-950 rounded-sm cursor-pointer flex items-center
-                hover:bg-nier-text-dark hover:text-nier-100-lighter" onClick={handleAdd}>add review</button>
+            <header className="flex gap-4 justify-between items-center px-4 py-4 border-b border-b-nier-dark/50">
+                <TextField label="Search" value={query} onChange={setQuery}/>
+                <button className="capitalize rounded-sm cursor-pointer flex items-center justify-center h-12 w-36
+               bg-nier-text-dark text-nier-100-lighter" onClick={handleAdd}><p className="text-nier-100-lighter flex whitespace-nowrap md:text-lg text-sm">Add Review</p></button>
             </header>
+                
             <ReviewModal 
                 isOpen={isOpen} 
                 setIsOpen={setIsOpen} 
                 onReviewAdded={fetchPosts}
                 editingReview={editMode}
             />
+
             <div className="overflow-auto">
                 <div className="min-w-[48rem]">
                     <div className="grid grid-cols-6 bg-nier-150 text-center [&>div>p]:text-lg h-15 px-4 py-4 border-b border-b-nier-dark/50">
-                    <div className="col-span-2 flex gap-2 items-center justify-center">
-                        <p className="select-none inline-block cursor-pointer" onClick={()=> {sortPosts('title')}}>Title</p>
-                        {sortState.title ? <ion-icon name="caret-down-sharp"></ion-icon> : <ion-icon name="caret-up-sharp"></ion-icon>}
+                    <div className="col-span-2 flex gap-2 items-center justify-center" >
+                        {columnTitle('title')}
                     </div>
-                    <div className="flex gap-2 items-center justify-center">
-                        <p className="select-none inline-block cursor-pointer" onClick={()=> {sortPosts('type')}}>Type</p>
-                        {sortState.type ? <ion-icon name="caret-down-sharp"></ion-icon> : <ion-icon name="caret-up-sharp"></ion-icon>}
+
+                    <div className="col-span-1 flex gap-2 items-center justify-center" >
+                        {columnTitle('type')}
                     </div>
-                    <div className="flex gap-2 items-center justify-center">
-                        <p className="select-none inline-block cursor-pointer" onClick={()=> {sortPosts('rating')}}>Rating</p>
-                        {sortState.rating ? <ion-icon name="caret-down-sharp"></ion-icon> : <ion-icon name="caret-up-sharp"></ion-icon>}
+
+                    <div className="col-span-1 flex gap-2 items-center justify-center" >
+                        {columnTitle('rating')}
                     </div>
-                    <div>
-                        <p>Date</p>
+
+                    <div className="col-span-1 flex gap-2 items-center justify-center" >
+                        {columnTitle('status')}
                     </div>
+
                     <div>
                         <p>Actions</p>
                     </div>
                     </div>
                     <ul className="h-100 overflow-y-scroll">
-                        {posts.map((post : any)=> <ReviewPreview 
+                        {filteredPosts.map((post : any)=> <ReviewPreview 
                         review={post} 
                         deletePost={deletePost} 
                         onDelete={fetchPosts}

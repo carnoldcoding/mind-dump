@@ -12,6 +12,13 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: a
         'game': 'game-controller-sharp',
         'cinema': 'videocam-sharp'
     }
+
+    const statusIconMap = {
+        'todo': 'close-circle-outline',
+        'active': 'timer-outline',
+        'done': 'checkmark-circle-outline'
+    }
+
     const handleOpen = () => {
         document.body.style.overflow = "hidden";
         setIsOpen(true);
@@ -36,7 +43,7 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: a
         data-slug={review.slug} className="grid grid-cols-6 [&>p]:text-lg [&>div>p:text-center] h-15 px-4 border-b border-b-nier-dark/50 items-center">
             <p className="col-span-2">{review.title}</p>
             <div className="flex items-center justify-center">
-                <div className="flex gap-2 rounded-md border px-2 py-1 min-w-30 max-w-30 items-center justify-around">
+                 <div className="grid grid-cols-2 rounded-md px-2 py-1 min-w-30 max-w-30 ">
                     <ion-icon className="h-7 w-7" name={typeIconMap[review.type]}></ion-icon>
                     <p className="capitalize flex items-center">{review.type}</p>
                 </div>
@@ -44,9 +51,14 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: a
             <div className="flex justify-center">
                 <p className="">{review.rating}</p>
             </div>
-            <div>
-                <p className="">{review.release_date}</p>
+            
+            <div className="flex items-center justify-center">
+                <div className="grid grid-cols-2 rounded-md px-2 py-1 min-w-30 max-w-30 place-items-center">
+                    <ion-icon className="h-7 w-7" name={statusIconMap[review.status]}></ion-icon>
+                    <p className="capitalize flex items-center">{review.status}</p>
+                </div>
             </div>
+
             <div className="flex gap-2 [&>button>ion-icon]:w-6 [&>button>ion-icon]:h-6
             [&>button]:cursor-pointer justify-center">
                 <button onClick={handleEdit}><ion-icon name="pencil-sharp"></ion-icon></button>

@@ -49,7 +49,7 @@ const Review = () => {
         
         return (
           <section className="flex flex-wrap gap-5 md:gap-10 justify-center mt-10">
-            {posts.map((post: any) => (
+            {posts.filter((post : any) => post.status === "done").map((post: any) => (
                 <Card {...post} />
             ))}
           </section>
