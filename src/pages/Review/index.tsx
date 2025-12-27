@@ -48,10 +48,21 @@ const Review = () => {
         if (error) return <div>Error: {error}</div>;
         
         return (
-          <section className="flex flex-wrap gap-5 md:gap-10 justify-center mt-10">
-            {posts.filter((post : any) => post.status === "done").map((post: any) => (
-                <Card {...post} />
-            ))}
+          <section className="mt-5">
+            <article className="bg-nier-100 mt-5 relative">
+                    <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
+                        <h3 className="text-nier-text-dark text-xl capitalize">{category} View Panel</h3>
+                    </div>
+                    <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1"></aside>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 place-items-stretch">
+                        {posts.filter((post: any) => post.status === "done").map((post: any) => (
+                            <div className="w-full">
+                                <Card key={post._id} {...post} />
+                            </div>
+                        ))}
+                    </div>
+                </article>
           </section>
         );
       };

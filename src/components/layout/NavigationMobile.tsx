@@ -10,16 +10,21 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     const location = useLocation();
     return (
         <>
-        {isOpen && (
-            <div 
-                className="fixed inset-0 bg-black/5 z-1"
+        <button
                 onClick={onClose}
-            />
-        )}
+                className="fixed top-4 right-4 z-101 text-nier-text-dark p-1 h-8 w-8 text-4xl flex items-center justify-center"
+            >
+            {isOpen ? '×' : '☰'}
+        </button>
+        <div className="fixed top-0 right-0 w-full z-99">
+            <div className="nier-dot-pattern fixed top-0 w-screen bg-nier-50 z-"></div>
+        </div>
+        <div className="h-16"></div>
         
+
         <nav className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-screen p
             transition-all ease-in-out duration-300 overflow-hidden
-            shadow-[-3px_5px_0_0] shadow-nier-shadow pt-15 z-40 ${isOpen ? 'w-60 p-5' : 'w-0 p0'}`}>
+            shadow-[-3px_5px_0_0] shadow-nier-shadow pt-15 z-100 ${isOpen ? 'w-60 p-5' : 'w-0 p0'}`}>
             {navItems.map(item => {
                 const isActive =
                 location.pathname === item.path ||
@@ -64,9 +69,6 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
                 )
                 })}
             </nav>
-            <div className="nier-dot-pattern fixed w-screen bg-nier-50 z-30"></div>
-            <div className="h-2"></div>
-
         </>
     )
 }

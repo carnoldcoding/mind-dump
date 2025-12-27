@@ -50,7 +50,7 @@ const System = () => {
     return (
         <>
             <PageHeader name="SYSTEM" />
-            {isLoggedIn ? 
+        {isLoggedIn ? 
                 <article className="bg-nier-100 mt-5 relative">
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
                         <h3 className="text-nier-text-dark text-xl">Control Panel</h3>
