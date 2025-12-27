@@ -31,7 +31,7 @@ export const ReviewList = () => {
 
     const handleAdd = () => {
         setEditMode(null);
-        setIsOpen(true)
+        setIsOpen(true);
     }
 
     const handleEdit = (review: any) => {

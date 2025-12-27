@@ -21,6 +21,7 @@ interface BaseReview<TType extends string, TReview> {
     review: TReview;
     rating: number;
     imagePath: string;
+    status: string;
 }
 
 interface GameReviewDetails {
@@ -93,6 +94,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
         review: {} as any,
         rating: 0,
         imagePath: '',
+        status: '',
     });
 
     useEffect(() => {
@@ -107,6 +109,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
                 review: editingReview.review || {} as any,
                 rating: editingReview.rating || 0,
                 imagePath: editingReview.image_path || '',
+                status: editingReview.status || ''
             });
             setType(editingReview.type || 'game');
         }
@@ -208,6 +211,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
             review: {} as any,
             rating: 0,
             imagePath: '',
+            status: ''
         });
         setType('game');
         setIsOpen(false);
@@ -263,6 +267,14 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
                 />
             </div>
             <div className="w-full flex gap-4 flex-col md:flex-row">
+                
+                <SelectField 
+                    label="Status" 
+                    value={review.status}
+                    onChange={(value) => handleFieldChange('status', value)} 
+                    options={["todo", "active", "done"]}
+                />
+
                 <MutliSelectField 
                     label="Genres" 
                     options={genres}
