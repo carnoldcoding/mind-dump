@@ -214,7 +214,11 @@ const Review = () => {
                                 </div>
                             </div>
                             <div className="p-4 flex flex-col gap-4">
+<<<<<<< HEAD
                                 <div className="flex gap-4">
+=======
+                                <div className="flex gap-4 flex-col md:flex-row">
+>>>>>>> dev
                                     <NumTextField 
                                         label="Min Rating" 
                                         onChange={(value) => handleNestedFieldChange('ratingRange', 'min', value)} 
@@ -236,7 +240,11 @@ const Review = () => {
                                         value={filters.dateReleasedRange.end}
                                     />
                                 </div>
+<<<<<<< HEAD
                                 <div className="flex gap-4">
+=======
+                                <div className="flex gap-4 flex-col md:flex-row">
+>>>>>>> dev
                                     <MutliSelectField 
                                         label="Genres" 
                                         options={genres}
