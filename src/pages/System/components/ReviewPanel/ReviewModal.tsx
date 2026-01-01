@@ -17,6 +17,7 @@ interface BaseReview<TType extends string, TReview> {
     creator: string;
     description: string;
     releaseDate: string;
+    dateCompleted: string;
     genres: string[];
     review: TReview;
     rating: number;
@@ -89,6 +90,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
         slug: '',
         description: '',
         releaseDate: '',
+        dateCompleted: '',
         creator: '',
         genres: [],
         review: {} as any,
@@ -123,6 +125,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
 
     const handleFieldChange = (field: string, value: any) => {
         const reviewFields = bigTextFieldMap[type];
+        const previousStatus = review.status;
 
         if(reviewFields?.includes(field)){
             setReview(prev => ({
@@ -138,7 +141,18 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
                 [field]: value
             }))
         }
-        
+
+        //Alter DateCompleted if Status is changed to "Done"
+        if(field === 'status' && value === 'done' && previousStatus !== "done"){
+            setReview(prev => ({
+                ...prev,
+                dateCompleted: new Date().toLocaleDateString("en-US", {
+                    month: "2-digit",
+                    day: "2-digit",
+                    year: "numeric",
+                })
+            }))
+        }
     }
 
     const handleTypeChange = (newType: 'game' | 'cinema' | 'book') => {
