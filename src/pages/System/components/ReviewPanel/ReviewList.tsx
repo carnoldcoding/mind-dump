@@ -114,7 +114,7 @@ export const ReviewList = () => {
             } else {
                 const errorText = await response.text();
                 console.error('Error response:', errorText);
-                setError('Failed to create review');
+                setError('Failed to delete review');
             }
         } catch (error : any) {
             console.error('Network error:', error);
