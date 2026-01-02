@@ -191,7 +191,7 @@ const Review = () => {
                         <TextField label="Search" value={query} onChange={setQuery} altBg={true}/>
                         <button 
                             className="capitalize rounded-sm cursor-pointer flex items-center justify-center gap-2 h-12 w-36
-                            bg-nier-text-dark text-nier-100-lighter" 
+                            bg-nier-text-dark text-nier-100-lighter hover:bg-nier-text-dark/95" 
                             onClick={() => setShowFilters(!showFilters)}
                         >
                             <ion-icon className="text-nier-100-lighter h-5 w-5" name="funnel-outline"></ion-icon>

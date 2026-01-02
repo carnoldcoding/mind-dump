@@ -293,7 +293,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
             </div>
             <div className="flex gap-4">
                 <Button handleClick={handleCancel} label="cancel" />
-                <Button handleClick={handleApply} label={editingReview ? "update" : "apply"} />
+                <Button handleClick={handleApply} type="primary" label={editingReview ? "update" : "apply"} />
             </div>
         </article>
     )

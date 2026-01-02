@@ -97,7 +97,7 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: a
                         </div>
                         <div className="flex gap-4">
                             <Button label="cancel" handleClick={handleClose}></Button>
-                            <Button label="confirm" handleClick={authenticateDeletion}></Button>
+                            <Button label="confirm" type="primary" handleClick={authenticateDeletion}></Button>
                         </div>
                     </div>
                     <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1">
