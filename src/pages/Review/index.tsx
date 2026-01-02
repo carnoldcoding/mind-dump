@@ -9,8 +9,15 @@ import { NumTextField } from "../../components/common/NumTextField";
 import { DateField } from "../../components/common/DateField";
 import { Button } from "../../components/common/Button";
 import { MutliSelectField } from "../../components/common/MultiSelectField";
+import { genres } from "../../utils/helpers";
+import { useLocation } from "react-router";
 
 const Review = () => {
+    const location = useLocation();
+
+    const searchParams = new URLSearchParams(location.search);
+    const genreParam = searchParams.get('genre');
+
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [posts, setPosts] = useState<any>([]);
@@ -18,31 +25,12 @@ const Review = () => {
     const [filteredPosts, setFilteredPosts] = useState<any>([]);
     const [showFilters, setShowFilters] = useState<boolean>(false);
     const [filters, setFilters] = useState({
-        dateReleasedRange: { start: '', end: '' },
-        dateCompletedRange: { start: '', end: '' },
-        ratingRange: { min: '', max: '' },
-        genres: []
+        dateReleasedRange: { active: false, start: '', end: '' },
+        dateCompletedRange: { active: false, start: '', end: '' },
+        ratingRange: { active: false, min: '', max: '' },
+        genres: genreParam ? [genreParam] : []
     });
-    const genres = [
-        "action",
-        "rpg",
-        "action-rpg",
-        "souls-like",
-        "shooter",
-        "first-person",
-        "third-person",
-        "strategy",
-        "simulation",
-        "open-world",
-        "metroidvania",
-        "roguelike",
-        "survival",
-        "horror",
-        "puzzle",
-        "platformer",
-        "story-rich",
-        "multiplayer"
-    ]
+
     const { category } = useParams<{category: string}>();
 
     const handleFieldChange = (field: string, value: any) => {
@@ -74,13 +62,11 @@ const Review = () => {
     };
 
 
-    const filterReviews = () => {
-        console.log(JSON.stringify(filteredPosts[0]))
-        let result = filteredPosts.filter((review: any) => {
+    const filterReviews = (posts : any) => {
+        return posts.filter((review: any) => {
             // Date released filter
             if (filters.dateReleasedRange.start) {
                 const releaseDate = convertToISODate(review.release_date);
-                console.log(releaseDate);
                 if (releaseDate && new Date(releaseDate) < new Date(filters.dateReleasedRange.start)) {
                     return false;
                 }
@@ -125,27 +111,17 @@ const Review = () => {
 
             return true;
         });
-
-        setFilteredPosts(result);
     }
 
     const clearFilters = () => {
         setFilters({
-            dateReleasedRange: { start: '', end: '' },
-            dateCompletedRange: { start: '', end: '' },
-            ratingRange: { min: '', max: '' },
+            dateReleasedRange: { active: false, start: '', end: '' },
+            dateCompletedRange: { active: false,  start: '', end: '' },
+            ratingRange: { active: false,  min: '', max: '' },
             genres: []
         });
         setFilteredPosts(posts);
     }
-
-    useEffect(() => {
-        const postCopy = [...posts];
-        const firstPass = postCopy.filter((post) => post.title.toLowerCase().startsWith(query.toLowerCase()));
-        const secondPass = postCopy.filter((post) => post.title.toLowerCase().includes(query.toLowerCase()) && !firstPass.includes(post));
-        const result = [...firstPass, ...secondPass];
-        setFilteredPosts(result)
-    }, [query, posts])
 
     if (!category) return null;
 
@@ -176,6 +152,25 @@ const Review = () => {
 
         fetchPosts();
     }, [category])
+
+    useEffect(() => {
+        let result = [...posts];
+
+        if (query) {
+            const q = query.toLowerCase();
+            const starts = result.filter(p => p.title.toLowerCase().startsWith(q));
+            const includes = result.filter(
+                p => p.title.toLowerCase().includes(q) && !starts.includes(p)
+            );
+            result = [...starts, ...includes];
+        }
+
+        result = filterReviews(result);
+
+        setFilteredPosts(result);
+    }, [posts, query, filters]);
+
+
 
     const renderContent = () => {
         if (loading) return (
@@ -256,7 +251,6 @@ const Review = () => {
                                 </div>
                                 <div className="flex gap-4">
                                     <Button handleClick={clearFilters} label="Clear"/>
-                                    <Button handleClick={filterReviews} label="Apply"/>
                                 </div>
                             </div>
                         </div>
