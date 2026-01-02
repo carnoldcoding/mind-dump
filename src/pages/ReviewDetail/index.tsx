@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useLocation } from "react-router";
 import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
 import TextDropdown from "../../components/common/TextDropdown";
@@ -7,14 +7,17 @@ import config from "../../config";
 import Loader from "../../components/common/Loader";
 
 const ReviewDetail = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [data, setData] = useState<any>(null);
+    const [parent, setParent] = useState(location.pathname.split('/')[1]);
     const {slug, category} = useParams<{category: string, slug: string}>();
 
-    const navigate = useNavigate();
 
-    const handleClose = () => navigate('/games');
+    const handleClose = () => navigate(`/${parent}`);
 
     const reviewPropMap = {
         "story": "Story Breakdown",
@@ -27,6 +30,8 @@ const ReviewDetail = () => {
         "cinematography": "Cinematography",
         "casting": "Casting",
     } as const;
+
+    const filterByGenre = (e : any) => { navigate(`/${parent}?genre=${e.target.textContent}`); }
 
     useEffect(()=>{
         if(!slug) return;
@@ -43,7 +48,7 @@ const ReviewDetail = () => {
                     const data = await response.json();
                     setData(data[0]);
                 } else{
-                    setError('Failed to fetch posts');
+                    setError('Failed to fetch post');
                 }
             } catch (error) {
                 setError('Network error');
@@ -89,7 +94,7 @@ const ReviewDetail = () => {
                                 <div className="flex flex-wrap gap-2">
                                     {data.genres.map((genre : string)=>{
                                         return (
-                                            <div className="p-1 md:px-2 md:py-1 bg-nier-150/80 flex justify-center items-center">
+                                            <div className="p-1 md:px-2 md:py-1 bg-nier-150/80 flex justify-center items-center cursor-pointer hover:bg-nier-150" onClick={filterByGenre}>
                                                 <p className="text-xs md:text-sm">{genre}</p>
                                             </div>
                                         )
@@ -118,7 +123,7 @@ const ReviewDetail = () => {
     }
     return (
         <>
-            <PageHeader name="games"/>
+            <PageHeader name={parent}/>
             {renderContent()}
         </>
     )

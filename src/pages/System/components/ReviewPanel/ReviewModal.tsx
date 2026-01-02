@@ -9,6 +9,7 @@ import { Button } from "../../../../components/common/Button"
 import config from "../../../../config"
 import { NumTextField } from "../../../../components/common/NumTextField"
 import { transformKeysToSnakeCase } from "../../../../utils/helpers"
+import { genres } from "../../../../utils/helpers"
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -63,27 +64,6 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
     const [type, setType] = useState<'game' | 'cinema' | 'book'>('game');
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-
-    const genres = [
-        "action",
-        "rpg",
-        "action-rpg",
-        "souls-like",
-        "shooter",
-        "first-person",
-        "third-person",
-        "strategy",
-        "simulation",
-        "open-world",
-        "metroidvania",
-        "roguelike",
-        "survival",
-        "horror",
-        "puzzle",
-        "platformer",
-        "story-rich",
-        "multiplayer"
-    ]
 
     const [review, setReview] = useState<Partial<Review>>({
         title: '',

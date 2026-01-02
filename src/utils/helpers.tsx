@@ -16,5 +16,25 @@ function transformKeysToSnakeCase(obj: any): any {
 
   return obj;
 }
+  const genres = [
+      "action",
+      "rpg",
+      "action-rpg",
+      "souls-like",
+      "shooter",
+      "first-person",
+      "third-person",
+      "strategy",
+      "simulation",
+      "open-world",
+      "metroidvania",
+      "roguelike",
+      "survival",
+      "horror",
+      "puzzle",
+      "platformer",
+      "story-rich",
+      "multiplayer"
+  ]
 
-export {transformKeysToSnakeCase}
+export {transformKeysToSnakeCase, genres}
