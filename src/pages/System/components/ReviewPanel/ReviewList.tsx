@@ -3,6 +3,7 @@ import { ReviewModal } from "./ReviewModal"
 import { useState, useEffect } from "react"
 import config from "../../../../config"
 import { TextField } from "../../../../components/common/TextField"
+import { Button } from "../../../../components/common/Button"
 
 export const ReviewList = () => {
     const [isOpen, setIsOpen] = useState<boolean>(false);
@@ -162,8 +163,9 @@ export const ReviewList = () => {
          <article>
             <header className="flex gap-4 justify-between items-center px-4 py-4 border-b border-b-nier-dark/50">
                 <TextField label="Search" value={query} onChange={setQuery}/>
-                <button className="capitalize rounded-sm cursor-pointer flex items-center justify-center h-12 w-36
-               bg-nier-text-dark text-nier-100-lighter" onClick={handleAdd}><p className="text-nier-100-lighter flex whitespace-nowrap md:text-lg text-sm">Add Review</p></button>
+                <div className="h-12">
+                    <Button handleClick={handleAdd} label="Add Review" type="primary"/>
+                </div>
             </header>
                 
             <ReviewModal 
@@ -198,10 +200,10 @@ export const ReviewList = () => {
                     </div>
                     <ul className="h-100 overflow-y-scroll">
                         {filteredPosts.map((post : any)=> <ReviewPreview 
-                        review={post} 
-                        deletePost={deletePost} 
-                        onDelete={fetchPosts}
-                        onEdit={handleEdit}
+                            review={post} 
+                            deletePost={deletePost} 
+                            onDelete={fetchPosts}
+                            onEdit={handleEdit}
                         />)}
                     </ul>
                 </div>
