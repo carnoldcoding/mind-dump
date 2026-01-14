@@ -123,7 +123,6 @@ const ReviewDetail = () => {
     }
     return (
         <>
-            <PageHeader name={parent}/>
             {renderContent()}
         </>
     )
