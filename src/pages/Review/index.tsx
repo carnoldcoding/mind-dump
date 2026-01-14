@@ -276,18 +276,24 @@ const Review = () => {
 
                     {/* Review Preview Grid */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 place-items-stretch">
-                        {filteredPosts.length > 0 ? filteredPosts.filter((post: any) => post.status === "done").map((post: any) => (
-                            <div className="w-full" key={post._id}>
-                                <Card
-                                    {...post}
-                                    releaseDate={filters.dateReleasedRange.active}
-                                    completeDate={filters.dateCompletedRange.active}
-                                    ratingRange={filters.ratingRange.active}
-                                />
-                            </div>
-                        )) :
-                        <h3>No Matching Reviews</h3>
-                        }
+                        {filteredPosts.length > 0
+                            ? filteredPosts
+                                .filter((post: any) => post.status === "done")
+                                .sort((a: any, b: any) => {
+                                    return new Date(b.date_completed).getTime() - new Date(a.date_completed).getTime();
+                                })
+                                .map((post: any) => (
+                                    <div className="w-full" key={post._id}>
+                                    <Card
+                                        {...post}
+                                        releaseDate={filters.dateReleasedRange.active}
+                                        completeDate={filters.dateCompletedRange.active}
+                                        ratingRange={filters.ratingRange.active}
+                                    />
+                                    </div>
+                                ))
+                            : <h3>No Matching Reviews</h3>
+                            }
                     </div>
                 </article>
           </section>
