@@ -82,7 +82,6 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
 
     useEffect(() => {
         if (editingReview) {
-            console.log(editingReview.type);
             setReview({
                 title: editingReview.title || '',
                 slug: editingReview.slug || '',
