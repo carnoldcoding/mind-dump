@@ -94,7 +94,7 @@ const ReviewDetail = () => {
                                 <div className="flex flex-wrap gap-2">
                                     {data.genres.map((genre : string)=>{
                                         return (
-                                            <div className="p-1 md:px-2 md:py-1 bg-nier-150/80 flex justify-center items-center cursor-pointer hover:bg-nier-150" onClick={filterByGenre}>
+                                            <div key={genre} className="p-1 md:px-2 md:py-1 bg-nier-150/80 flex justify-center items-center cursor-pointer hover:bg-nier-150" onClick={filterByGenre}>
                                                 <p className="text-xs md:text-sm">{genre}</p>
                                             </div>
                                         )
@@ -108,9 +108,9 @@ const ReviewDetail = () => {
 
                         <div>
                             <div className="flex flex-col gap-3">
-                                {Object.entries(data.review).map(([key, value]) => {
+                                {Object.entries(data.review).sort().map(([key, value]) => {
                                     return (
-                                        <TextDropdown label={reviewPropMap[key as keyof typeof reviewPropMap]} content={value}/>
+                                        <TextDropdown key={key} label={reviewPropMap[key as keyof typeof reviewPropMap]} content={value}/>
                                     );
                                 })}
                             </div>

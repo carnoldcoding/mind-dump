@@ -9,7 +9,7 @@ import { Button } from "../../../../components/common/Button"
 import config from "../../../../config"
 import { NumTextField } from "../../../../components/common/NumTextField"
 import { transformKeysToSnakeCase } from "../../../../utils/helpers"
-import { genres } from "../../../../utils/helpers"
+import { movieGenres, gameGenres, bookGenres } from "../../../../utils/helpers"
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -64,6 +64,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
     const [type, setType] = useState<'game' | 'cinema' | 'book'>('game');
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+    const [genreOptions, setGenreOptions] = useState<string[]>([]);
 
     const [review, setReview] = useState<Partial<Review>>({
         title: '',
@@ -94,7 +95,15 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
                 status: editingReview.status || ''
             });
             setType(editingReview.type || 'game');
+            let tempGenres : string[] = [];
+                
+            if(editingReview.type === "game") tempGenres = gameGenres;
+            if(editingReview.type === "cinema") tempGenres = movieGenres;
+            if(editingReview.type === "book") tempGenres = bookGenres;
+            setGenreOptions(tempGenres);
         }
+
+        
     }, [editingReview]);
     
     const bigTextFieldMap: Record<'game' | 'cinema' | 'book', string[]> = {
@@ -271,7 +280,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
 
                 <MutliSelectField 
                     label="Genres" 
-                    options={genres}
+                    options={genreOptions}
                     value={review.genres || []}
                     onChange={(value) => handleFieldChange('genres', value)}
                 />
