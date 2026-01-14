@@ -16,7 +16,7 @@ function transformKeysToSnakeCase(obj: any): any {
 
   return obj;
 }
-  const genres = [
+  const gameGenres = [
       "action",
       "rpg",
       "action-rpg",
@@ -37,4 +37,47 @@ function transformKeysToSnakeCase(obj: any): any {
       "multiplayer"
   ]
 
-export {transformKeysToSnakeCase, genres}
+  const movieGenres = [
+  "action",
+  "adventure",
+  "drama",
+  "comedy",
+  "thriller",
+  "horror",
+  "sci-fi",
+  "fantasy",
+  "documentary",
+  "animation",
+  "romance",
+  "crime",
+  "mystery",
+  "family",
+  "biographical",
+  "musical",
+  "war",
+  "western"
+];
+
+const bookGenres = [
+  "fiction",
+  "fantasy",
+  "science-fiction",
+  "mystery",
+  "thriller",
+  "romance",
+  "historical",
+  "non-fiction",
+  "biography",
+  "self-help",
+  "philosophy",
+  "horror",
+  "poetry",
+  "young-adult",
+  "classic",
+  "graphic-novel",
+  "memoir",
+  "short-stories"
+];
+
+
+export {transformKeysToSnakeCase, gameGenres, movieGenres, bookGenres}

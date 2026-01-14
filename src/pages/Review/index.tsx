@@ -9,7 +9,7 @@ import { NumTextField } from "../../components/common/NumTextField";
 import { DateField } from "../../components/common/DateField";
 import { Button } from "../../components/common/Button";
 import { MutliSelectField } from "../../components/common/MultiSelectField";
-import { genres } from "../../utils/helpers";
+import { gameGenres, movieGenres, bookGenres } from "../../utils/helpers";
 import { useLocation } from "react-router";
 
 const Review = () => {
@@ -22,6 +22,7 @@ const Review = () => {
     const [error, setError] = useState<string | null>(null);
     const [posts, setPosts] = useState<any>([]);
     const [query, setQuery] = useState<string>('');
+    const [genreOptions, setGenreOptions] = useState<string[]>([]);
     const [filteredPosts, setFilteredPosts] = useState<any>([]);
     const [showFilters, setShowFilters] = useState<boolean>(false);
     const [filters, setFilters] = useState({
@@ -30,7 +31,7 @@ const Review = () => {
         ratingRange: { active: false, min: '', max: '' },
         genres: genreParam ? [genreParam] : []
     });
-
+ 
     const { category } = useParams<{category: string}>();
 
     const handleFieldChange = (field: string, value: any) => {
@@ -124,6 +125,23 @@ const Review = () => {
     }
 
     if (!category) return null;
+
+    
+    useEffect(()=>{
+        clearFilters();
+        setFilters((prev) => ({
+            ...prev,
+            genres: genreParam ? [genreParam] : []
+        }))
+        let tempGenres : string[] = [];
+        
+        if(location.pathname.includes('/games')) tempGenres = gameGenres;
+        if(location.pathname.includes('/cinema')) tempGenres = movieGenres;
+        if(location.pathname.includes('/books')) tempGenres = bookGenres;
+        
+        setGenreOptions(tempGenres);
+
+    },[location.pathname])
 
     useEffect(() => {
         const fetchPosts = async () => {
@@ -234,7 +252,7 @@ const Review = () => {
                                 <div className="flex gap-4 flex-col md:flex-row">
                                     <MutliSelectField 
                                         label="Genres" 
-                                        options={genres}
+                                        options={genreOptions}
                                         value={filters.genres}
                                         onChange={(value) => handleFieldChange('genres', value)}
                                     />
