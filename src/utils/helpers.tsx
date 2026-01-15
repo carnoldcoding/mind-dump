@@ -16,6 +16,7 @@ function transformKeysToSnakeCase(obj: any): any {
 
   return obj;
 }
+
   const gameGenres = [
       "action",
       "rpg",

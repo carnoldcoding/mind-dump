@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, ScrollRestoration } from 'react-router-dom';
 import Navigation from './Navigation';
 import NavigationMobile from './NavigationMobile';
 import { useState, useEffect } from 'react';
@@ -49,6 +49,7 @@ const Layout = () => {
           <Navigation /> }
 
             <main className="max-w-7xl mx-auto px-2 py-8 ">
+                <ScrollRestoration />
                 <Outlet />
             </main>
         </div>
