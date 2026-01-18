@@ -108,7 +108,7 @@ const ReviewDetail = () => {
 
                         <div>
                             <div className="flex flex-col gap-3">
-                                {Object.entries(data.review).sort().map(([key, value]) => {
+                                {Object.entries(data.review).filter(([key, value]) => value.length > 0).sort().map(([key, value]) => {
                                     return (
                                         <TextDropdown key={key} label={reviewPropMap[key as keyof typeof reviewPropMap]} content={value}/>
                                     );

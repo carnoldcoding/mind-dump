@@ -26,6 +26,7 @@ function transformKeysToSnakeCase(obj: any): any {
       "first-person",
       "third-person",
       "strategy",
+      "shooter",
       "simulation",
       "open-world",
       "metroidvania",
