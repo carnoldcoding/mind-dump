@@ -188,6 +188,29 @@ const Review = () => {
         setFilteredPosts(result);
     }, [posts, query, filters]);
 
+    useEffect(()=> {
+        //Handle Active Filter State
+        if(filters.ratingRange.min || filters.ratingRange.max) {
+            handleNestedFieldChange('ratingRange', 'active', true);
+        }else{
+            handleNestedFieldChange('ratingRange', 'active', false);
+        }
+    
+        if(filters.dateCompletedRange.start || filters.dateCompletedRange.end){
+            handleNestedFieldChange('dateCompletedRange', 'active', true);
+        }else{
+            handleNestedFieldChange('dateCompletedRange', 'active', false);
+        }
+
+        if(filters.dateReleasedRange.start || filters.dateReleasedRange.end){
+            handleNestedFieldChange('dateReleasedRange', 'active', true);
+        }else{
+            handleNestedFieldChange('dateReleasedRange', 'active', false);
+        }
+    },[filters.dateReleasedRange.start, filters.dateReleasedRange.end, 
+        filters.ratingRange.min, filters.ratingRange.max,
+        filters.dateCompletedRange.start, filters.dateReleasedRange.end])
+
 
 
     const renderContent = () => {
