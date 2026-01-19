@@ -7,12 +7,14 @@ interface CardParams{
     rating: string,
     _id: string,
     title: string,
+    release_date: string,
+    date_completed: string,
     releaseDate?: boolean,
     completeDate?: boolean,
     ratingRange?: boolean
 }
 
-const Card = ({type, slug, image_path, _id, title, rating, releaseDate, completeDate, ratingRange} : CardParams)=> {
+const Card = ({type, slug, image_path, _id, release_date, date_completed, title, rating, releaseDate, completeDate, ratingRange} : CardParams)=> {
     const navigate = useNavigate();
 
     const handleClick = () => navigate(`/${type === 'cinema' ? type : type + 's'}/${slug}`);
@@ -26,10 +28,10 @@ const Card = ({type, slug, image_path, _id, title, rating, releaseDate, complete
                 <div className="p-2 w-full h-full">
                     <div className="w-full h-full bg-cover bg-center" style={{backgroundImage: `url(${image_path})`}}></div>
                 </div>
-                <div>
-                    {ratingRange && <p>{rating}</p> }
-                    {releaseDate && <></> }
-                    {completeDate && <></> }
+                <div className="flex items-center justify-around w-full">
+                    {ratingRange && <div className="flex items-center"><p className="text-sm">{rating}</p> &#9733;</div> }
+                    {releaseDate && <div className="flex items-center"><ion-icon name="calendar-outline" className="mb-0.5"></ion-icon><p className="text-sm ml-1">{release_date}</p></div> }
+                    {completeDate && <div className="flex items-center"><ion-icon name="checkmark-outline"></ion-icon><p className="text-sm">{date_completed}</p></div> }
                 </div>
             </div>
             <div className="absolute h-full w-full bg-nier-shadow z-10 top-1 left-1"></div>
