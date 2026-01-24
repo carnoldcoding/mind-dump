@@ -6,6 +6,7 @@ import { ReviewPanel } from "./components/ReviewPanel";
 import { useEffect, useState } from "react";
 import config from "../../config";
 import { useAuth } from "../../context/AuthContext";
+import Loader from "../../components/common/Loader";
 
 const System = () => {
     const { isLoggedIn, logout, loading: authLoading } = useAuth();
@@ -42,7 +43,7 @@ const System = () => {
         return (
             <>
                 <PageHeader name="SYSTEM" />
-                <div className="text-center mt-10">Loading...</div>
+                <Loader />
             </>
         );
     }
@@ -76,4 +77,5 @@ const System = () => {
         </>
     )
 }
+
 export default System;
