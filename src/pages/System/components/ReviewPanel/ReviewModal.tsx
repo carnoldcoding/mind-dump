@@ -65,6 +65,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
     const [genreOptions, setGenreOptions] = useState<string[]>([]);
+    const [creatorList, setCreatorList] = useState<string[]>([]);
 
     const [review, setReview] = useState<Partial<Review>>({
         title: '',
@@ -95,15 +96,50 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
                 status: editingReview.status || ''
             });
             setType(editingReview.type || 'game');
-            let tempGenres : string[] = [];
-                
-            if(editingReview.type === "game") tempGenres = gameGenres;
-            if(editingReview.type === "cinema") tempGenres = movieGenres;
-            if(editingReview.type === "book") tempGenres = bookGenres;
-            setGenreOptions(tempGenres);
         }
 
-        
+        const fetchGenres = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const url = new URL('/api/posts/get_genres', config.apiUri);
+                url.searchParams.set('type', editingReview.type);
+                const response = await fetch(url.toString());
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    setGenreOptions(data);
+                } else {
+                    setError('Failed to fetch posts');
+                }
+            } catch (error) {
+                setError('Network error');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const fetchCreatorList = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                const url = new URL('/api/posts/get_creators', config.apiUri);
+                url.searchParams.set('type', editingReview.type);
+                const response = await fetch(url.toString());
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    setCreatorList(data);
+                } else {
+                    setError('Failed to fetch posts');
+                }
+            } catch (error) {
+                setError('Network error');
+            }
+        }
+
+        fetchGenres();
+        fetchCreatorList();
     }, [editingReview]);
     
     const bigTextFieldMap: Record<'game' | 'cinema' | 'book', string[]> = {
@@ -260,6 +296,7 @@ export const ReviewModal = ({isOpen, setIsOpen, onReviewAdded, editingReview} : 
                 <TextField
                     label="Creator"
                     value={review.creator || ''}
+                    autofillData={creatorList}
                     onChange={(value) => handleFieldChange('creator', value)}
                 />
 

@@ -41,12 +41,12 @@ export const navItems: NavItem[] = [
     label: "books",
     path: "/books"
   },
-  {
-    iconActive: bookIcon,
-    icon: bookLightIcon,
-    label: "journal",
-    path: "/journal"
-  },
+  // {
+  //   iconActive: bookIcon,
+  //   icon: bookLightIcon,
+  //   label: "journal",
+  //   path: "/journal"
+  // },
   {
     iconActive: powerIcon,
     icon: powerLightIcon,
