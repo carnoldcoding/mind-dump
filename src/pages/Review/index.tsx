@@ -5,8 +5,6 @@ import Loader from "../../components/common/Loader";
 import config from "../../config";
 import { useParams } from "react-router";
 import { TextField } from "../../components/common/TextField";
-import { NumTextField } from "../../components/common/NumTextField";
-import { DateField } from "../../components/common/DateField";
 import { Button } from "../../components/common/Button";
 import { MutliSelectField } from "../../components/common/MultiSelectField";
 import { gameGenres, movieGenres, bookGenres } from "../../utils/helpers";
@@ -228,72 +226,168 @@ const Review = () => {
                     </div>
                     <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1"></aside>
 
-                     <header className="flex gap-4 justify-between items-center px-4 pt-4">
+                    <header className="flex gap-3 justify-between items-center px-4 pt-4">
                         <TextField label="Search" value={query} onChange={setQuery} altBg={true}/>
-                        <button 
-                            className="capitalize rounded-sm cursor-pointer flex items-center justify-center gap-2 h-12 w-36
-                            bg-nier-text-dark text-nier-100-lighter hover:bg-nier-text-dark/95" 
+                        <button
                             onClick={() => setShowFilters(!showFilters)}
+                            className={`flex items-center gap-2 px-4 h-12 cursor-pointer transition-colors duration-150 flex-shrink-0 ${
+                                showFilters || filters.ratingRange.active || filters.dateReleasedRange.active || filters.dateCompletedRange.active || filters.genres.length > 0
+                                    ? 'bg-nier-dark'
+                                    : 'bg-nier-150 hover:bg-nier-150/60'
+                            }`}
                         >
-                            <ion-icon className="text-nier-100-lighter h-5 w-5" name="funnel-outline"></ion-icon>
-                            <p className="text-nier-100-lighter flex whitespace-nowrap md:text-lg text-sm">Filter</p>
+                            <ion-icon
+                                name="funnel-outline"
+                                style={{ color: showFilters || filters.ratingRange.active || filters.dateReleasedRange.active || filters.dateCompletedRange.active || filters.genres.length > 0 ? '#C4BEAC' : 'inherit' }}
+                            ></ion-icon>
+                            <p className={`text-sm whitespace-nowrap ${showFilters || filters.ratingRange.active || filters.dateReleasedRange.active || filters.dateCompletedRange.active || filters.genres.length > 0 ? 'text-nier-text-light' : ''}`}>
+                                Filter
+                            </p>
                         </button>
                     </header>
 
-                    {/* Filter Control Panel */}
+                    {/* Filter Panel */}
                     {showFilters && (
-                        <div className="bg-nier-100-lighter m-4">
-                            <div className="h-7 w-full bg-nier-150 flex items-center justify-between px-5">
-                                <h3 className="text-nier-text-dark text-base capitalize">Filter Panel</h3>
-                                <div className="cursor-pointer flex items-center justify-center" onClick={()=>{setShowFilters(!showFilters)}}>
-                                    <ion-icon className="text-nier-text-dark h-5 w-5" name="close-outline"></ion-icon>
-                                </div>
+                        <div className="mx-4 mt-4 bg-nier-100-lighter relative">
+                            <div className="h-8 bg-nier-150 flex items-center justify-between px-4">
+                                <p className="text-xs uppercase tracking-widest text-nier-text-dark/70">Filter Panel</p>
+                                <button
+                                    onClick={() => setShowFilters(false)}
+                                    className="text-xl leading-none cursor-pointer hover:opacity-60 transition-opacity"
+                                >×</button>
                             </div>
-                            <div className="p-4 flex flex-col gap-4">
-                                <div className="flex gap-4 flex-col md:flex-row">
-                                    <NumTextField 
-                                        label="Min Rating" 
-                                        onChange={(value) => handleNestedFieldChange('ratingRange', 'min', value)} 
-                                        value={filters.ratingRange.min}
-                                    />
-                                    <NumTextField 
-                                        label="Max Rating" 
-                                        onChange={(value) => handleNestedFieldChange('ratingRange', 'max', value)} 
-                                        value={filters.ratingRange.max}
-                                    />
-                                    <DateField 
-                                        label="From Release Date" 
-                                        onChange={(value) => handleNestedFieldChange('dateReleasedRange', 'start', value)} 
-                                        value={filters.dateReleasedRange.start}
-                                    />
-                                    <DateField 
-                                        label="To Release Date" 
-                                        onChange={(value) => handleNestedFieldChange('dateReleasedRange', 'end', value)} 
-                                        value={filters.dateReleasedRange.end}
-                                    />
+
+                            <div className="p-4 flex flex-col gap-5">
+
+                                {/* Rating · Released · Completed */}
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+
+                                    {/* Rating stepper */}
+                                    <div>
+                                        <p className="text-xs uppercase tracking-widest text-nier-text-dark/40 mb-3">Rating</p>
+                                        <div className="flex flex-col gap-2">
+                                            {(['min', 'max'] as const).map(bound => (
+                                                <div key={bound} className="flex items-center justify-between">
+                                                    <p className="text-xs uppercase text-nier-text-dark/50 w-6">{bound}</p>
+                                                    <div className="flex items-stretch h-8">
+                                                        <button
+                                                            onClick={() => {
+                                                                const cur = parseFloat(filters.ratingRange[bound] || '0');
+                                                                const next = Math.max(0, cur - 1);
+                                                                handleNestedFieldChange('ratingRange', bound, next.toString());
+                                                            }}
+                                                            className="w-8 bg-nier-150/60 hover:bg-nier-150 flex items-center justify-center cursor-pointer text-base leading-none transition-colors duration-150"
+                                                        >−</button>
+                                                        <div className="w-12 flex items-center justify-center bg-nier-100 border-y border-nier-150 text-sm select-none">
+                                                            {filters.ratingRange[bound] || '—'}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => {
+                                                                const cur = parseFloat(filters.ratingRange[bound] || '0');
+                                                                const next = Math.min(10, cur + 1);
+                                                                handleNestedFieldChange('ratingRange', bound, next.toString());
+                                                            }}
+                                                            className="w-8 bg-nier-150/60 hover:bg-nier-150 flex items-center justify-center cursor-pointer text-base leading-none transition-colors duration-150"
+                                                        >+</button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Released range */}
+                                    <div className="sm:pl-5 sm:border-l border-nier-150/40">
+                                        <p className="text-xs uppercase tracking-widest text-nier-text-dark/40 mb-3">Released</p>
+                                        <div className="flex flex-col gap-2">
+                                            {([['start', 'From'], ['end', 'To']] as [string, string][]).map(([field, label]) => (
+                                                <div key={field} className="flex items-center gap-3">
+                                                    <p className="text-xs uppercase text-nier-text-dark/50 w-7 flex-shrink-0">{label}</p>
+                                                    <input
+                                                        type="date"
+                                                        value={filters.dateReleasedRange[field as 'start' | 'end']}
+                                                        onChange={e => handleNestedFieldChange('dateReleasedRange', field, e.target.value)}
+                                                        className="flex-1 border border-nier-150 bg-nier-100 px-2 py-1 text-sm focus:outline focus:border-nier-dark"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Completed range */}
+                                    <div className="sm:pl-5 sm:border-l border-nier-150/40">
+                                        <p className="text-xs uppercase tracking-widest text-nier-text-dark/40 mb-3">Completed</p>
+                                        <div className="flex flex-col gap-2">
+                                            {([['start', 'From'], ['end', 'To']] as [string, string][]).map(([field, label]) => (
+                                                <div key={field} className="flex items-center gap-3">
+                                                    <p className="text-xs uppercase text-nier-text-dark/50 w-7 flex-shrink-0">{label}</p>
+                                                    <input
+                                                        type="date"
+                                                        value={filters.dateCompletedRange[field as 'start' | 'end']}
+                                                        onChange={e => handleNestedFieldChange('dateCompletedRange', field, e.target.value)}
+                                                        className="flex-1 border border-nier-150 bg-nier-100 px-2 py-1 text-sm focus:outline focus:border-nier-dark"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex gap-4 flex-col md:flex-row">
-                                    <MutliSelectField 
-                                        label="Genres" 
+
+                                {/* Genres */}
+                                <div>
+                                    <p className="text-xs uppercase tracking-widest text-nier-text-dark/40 mb-2">Genres</p>
+                                    <MutliSelectField
+                                        label="Genres"
                                         options={genreOptions}
                                         value={filters.genres}
-                                        onChange={(value) => handleFieldChange('genres', value)}
-                                    />
-                                    <DateField 
-                                        label="From Complete Date" 
-                                        onChange={(value) => handleNestedFieldChange('dateCompletedRange', 'start', value)} 
-                                        value={filters.dateCompletedRange.start}
-                                    />
-                                    <DateField 
-                                        label="To Complete Date" 
-                                        onChange={(value) => handleNestedFieldChange('dateCompletedRange', 'end', value)} 
-                                        value={filters.dateCompletedRange.end}
+                                        onChange={value => handleFieldChange('genres', value)}
                                     />
                                 </div>
-                                <div className="flex gap-4">
-                                    <Button handleClick={clearFilters} label="Clear"/>
+
+                                {/* Active filter summary + clear */}
+                                <div className="flex items-center justify-between gap-3 flex-wrap pt-4 border-t border-nier-150/40">
+                                    <div className="flex gap-1.5 flex-wrap">
+                                        {filters.ratingRange.active && (
+                                            <button
+                                                onClick={() => { handleNestedFieldChange('ratingRange', 'min', ''); handleNestedFieldChange('ratingRange', 'max', ''); }}
+                                                className="flex items-center gap-1.5 text-xs px-2 py-0.5 bg-nier-dark text-nier-text-light cursor-pointer hover:bg-nier-text-dark transition-colors duration-150"
+                                            >
+                                                Rating {filters.ratingRange.min}–{filters.ratingRange.max}
+                                                <span className="opacity-60">×</span>
+                                            </button>
+                                        )}
+                                        {filters.dateReleasedRange.active && (
+                                            <button
+                                                onClick={() => { handleNestedFieldChange('dateReleasedRange', 'start', ''); handleNestedFieldChange('dateReleasedRange', 'end', ''); }}
+                                                className="flex items-center gap-1.5 text-xs px-2 py-0.5 bg-nier-dark text-nier-text-light cursor-pointer hover:bg-nier-text-dark transition-colors duration-150"
+                                            >
+                                                Released {filters.dateReleasedRange.start} – {filters.dateReleasedRange.end}
+                                                <span className="opacity-60">×</span>
+                                            </button>
+                                        )}
+                                        {filters.dateCompletedRange.active && (
+                                            <button
+                                                onClick={() => { handleNestedFieldChange('dateCompletedRange', 'start', ''); handleNestedFieldChange('dateCompletedRange', 'end', ''); }}
+                                                className="flex items-center gap-1.5 text-xs px-2 py-0.5 bg-nier-dark text-nier-text-light cursor-pointer hover:bg-nier-text-dark transition-colors duration-150"
+                                            >
+                                                Completed {filters.dateCompletedRange.start} – {filters.dateCompletedRange.end}
+                                                <span className="opacity-60">×</span>
+                                            </button>
+                                        )}
+                                        {filters.genres.map(g => (
+                                            <button
+                                                key={g}
+                                                onClick={() => handleFieldChange('genres', filters.genres.filter(x => x !== g))}
+                                                className="flex items-center gap-1.5 text-xs px-2 py-0.5 bg-nier-150 capitalize cursor-pointer hover:bg-nier-dark hover:text-nier-text-light transition-colors duration-150"
+                                            >
+                                                {g} <span className="opacity-60">×</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <Button handleClick={clearFilters} label="Clear" type="secondary" />
                                 </div>
                             </div>
+
+                            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
                         </div>
                     )}
 
