@@ -46,12 +46,13 @@ const Search = () => {
     const filterPosts = (query: string) => {
         if (query !== "") {
           const lowerQuery = query.toLowerCase();
-      
-          const startsWithMatches : any[] = posts.filter((post: any) =>
+          const eligible: any[] = posts.filter((post: any) => post.status !== 'todo');
+
+          const startsWithMatches : any[] = eligible.filter((post: any) =>
             post.title.toLowerCase().startsWith(lowerQuery)
           );
-      
-          const containsMatches : any[] = posts.filter((post: any) =>
+
+          const containsMatches : any[] = eligible.filter((post: any) =>
             post.title.toLowerCase().includes(lowerQuery) &&
             !startsWithMatches.includes(post)
           );
