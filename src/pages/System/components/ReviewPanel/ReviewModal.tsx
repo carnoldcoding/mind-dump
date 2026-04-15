@@ -5,6 +5,7 @@ import { MutliSelectField } from "../../../../components/common/MultiSelectField
 import { BigTextField } from "../../../../components/common/BigTextField"
 import { ImageTextField } from "../../../../components/common/ImageTextField"
 import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Button } from "../../../../components/common/Button"
 import config from "../../../../config"
 import { NumTextField } from "../../../../components/common/NumTextField"
@@ -295,9 +296,10 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         return null;
     })();
 
-    return (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-            <article className="bg-nier-100-lighter relative w-full max-w-4xl max-h-[90vh] flex flex-col">
+    return createPortal(
+        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto flex flex-col">
+            <div className="flex flex-1 items-center justify-center p-4">
+            <article className="bg-nier-100-lighter relative w-full max-w-4xl max-h-[calc(100dvh-2rem)] flex flex-col">
 
                 {/* Header */}
                 <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
@@ -439,6 +441,8 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                 {/* Drop shadow */}
                 <div className="absolute w-full h-full bg-nier-dark top-1 left-1 -z-10" />
             </article>
-        </div>
+            </div>
+        </div>,
+        document.body
     );
 };
