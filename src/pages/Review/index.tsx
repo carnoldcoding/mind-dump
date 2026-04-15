@@ -220,13 +220,13 @@ const Review = () => {
         
         return (
           <section key={category} className="mt-5 nier-enter">
-            <article className="bg-nier-100 mt-5 relative">
-                    <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
+            <article className="bg-nier-100 mt-5 relative flex flex-col h-[42rem]">
+                    <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 className="text-nier-text-dark text-xl capitalize">{category} View Panel</h3>
                     </div>
                     <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1"></aside>
 
-                    <header className="flex gap-3 justify-between items-center px-4 pt-4">
+                    <header className="flex gap-3 justify-between items-center px-4 pt-4 pb-4 border-b border-nier-150/40 flex-shrink-0">
                         <TextField label="Search" value={query} onChange={setQuery} altBg={true}/>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
@@ -248,7 +248,7 @@ const Review = () => {
 
                     {/* Filter Panel */}
                     {showFilters && (
-                        <div className="mx-4 mt-4 bg-nier-100-lighter relative">
+                        <div className="mx-4 mt-4 bg-nier-100-lighter relative flex-shrink-0">
                             <div className="h-8 bg-nier-150 flex items-center justify-between px-4">
                                 <p className="text-xs uppercase tracking-widest text-nier-text-dark/70">Filter Panel</p>
                                 <button
@@ -392,7 +392,7 @@ const Review = () => {
                     )}
 
                     {/* Review Preview Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 place-items-stretch">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 overflow-y-auto flex-1 items-start content-start">
                         {filteredPosts.length > 0
                             ? filteredPosts
                                 .filter((post: any) => post.status === "done")

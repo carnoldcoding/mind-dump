@@ -111,4 +111,22 @@
       .nier-enter {
         animation: nier-enter 220ms ease-out forwards;
       }
+
+      @keyframes nier-backdrop-enter {
+        0%   { opacity: 0; }
+        100% { opacity: 1; }
+      }
+
+      .nier-backdrop-enter {
+        animation: nier-backdrop-enter 180ms ease-out forwards;
+      }
+
+      @keyframes nier-modal-enter {
+        0%   { opacity: 0; transform: translateX(-16px); }
+        100% { opacity: 1; transform: translateX(0); }
+      }
+
+      .nier-modal-enter {
+        animation: nier-modal-enter 240ms ease-out forwards;
+      }
   }

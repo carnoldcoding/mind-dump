@@ -297,9 +297,11 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     })();
 
     return createPortal(
-        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto flex flex-col">
+        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto flex flex-col nier-backdrop-enter">
             <div className="flex flex-1 items-center justify-center p-4">
-            <article className="bg-nier-100-lighter relative w-full max-w-4xl max-h-[calc(100dvh-2rem)] flex flex-col">
+            <div className="relative w-full max-w-4xl nier-modal-enter">
+                <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
+            <article className="bg-nier-100-lighter relative w-full max-h-[calc(100dvh-2rem)] flex flex-col">
 
                 {/* Header */}
                 <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
@@ -438,9 +440,8 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                     )}
                 </div>
 
-                {/* Drop shadow */}
-                <div className="absolute w-full h-full bg-nier-dark top-1 left-1 -z-10" />
             </article>
+            </div>
             </div>
         </div>,
         document.body
