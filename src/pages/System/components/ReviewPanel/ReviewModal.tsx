@@ -64,6 +64,9 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const [creatorList, setCreatorList] = useState<string[]>([]);
     const [saveStatus, setSaveStatus]   = useState<SaveStatus>('idle');
     const [slugManual, setSlugManual]   = useState(false);
+    const [deleteStage, setDeleteStage] = useState<'idle' | 'confirm'>('idle');
+    const [deleteInput, setDeleteInput] = useState('');
+    const [deleteError, setDeleteError] = useState('');
 
     // Refs for values needed inside timer callbacks (avoids stale closures)
     const reviewRef        = useRef(review);
@@ -184,7 +187,29 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         setSlugManual(false);
         isNewlySaved.current = false;
         setSaveStatus('idle');
+        setDeleteStage('idle');
+        setDeleteInput('');
+        setDeleteError('');
         setIsOpen(false);
+    };
+
+    const handleDelete = async () => {
+        if (deleteInput !== editingReview?.slug) {
+            setDeleteError('Incorrect keyword');
+            return;
+        }
+        try {
+            const url = new URL('/api/posts/remove_post', config.apiUri);
+            await fetch(url.toString(), {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ slug: editingReview.slug }),
+            });
+            onReviewAdded();
+            resetAndClose();
+        } catch {
+            setDeleteError('Delete failed');
+        }
     };
 
     // Close: flush unsaved changes first
@@ -375,17 +400,40 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between px-5 py-3 border-t border-nier-150 flex-shrink-0">
-                    <p className={`text-sm italic transition-opacity duration-200 ${
-                        saveLabel ? 'opacity-100' : 'opacity-0'
-                    } ${saveStatus === 'error' ? 'text-red-700' : 'text-nier-text-dark/60'}`}>
-                        {saveLabel ?? '—'}
-                    </p>
-                    <Button
-                        handleClick={handleSave}
-                        type="primary"
-                        label={editingReview ? 'Update' : 'Save'}
-                    />
+                <div className="flex items-center justify-between px-5 py-3 border-t border-nier-150 flex-shrink-0 min-h-[56px]">
+                    {deleteStage === 'confirm' ? (
+                        <div className="flex flex-col gap-1.5 w-full">
+                            <p className="text-xs text-nier-text-dark/60">
+                                Type to confirm: <span className="italic">{editingReview?.slug}</span>
+                            </p>
+                            <div className="flex gap-2 items-center">
+                                <input
+                                    autoFocus
+                                    className="focus:outline focus:border-nier-dark border border-nier-150 flex-1 px-2 py-2 text-sm bg-nier-100-lighter"
+                                    type="text"
+                                    value={deleteInput}
+                                    onChange={(e) => { setDeleteInput(e.target.value); setDeleteError(''); }}
+                                />
+                                <Button type="secondary" label="Cancel" handleClick={() => { setDeleteStage('idle'); setDeleteInput(''); setDeleteError(''); }} />
+                                <Button type="primary" label="Confirm Delete" handleClick={handleDelete} />
+                            </div>
+                            {deleteError && <p className="text-red-700 text-xs">{deleteError}</p>}
+                        </div>
+                    ) : (
+                        <>
+                            <p className={`text-sm italic transition-opacity duration-200 ${
+                                saveLabel ? 'opacity-100' : 'opacity-0'
+                            } ${saveStatus === 'error' ? 'text-red-700' : 'text-nier-text-dark/60'}`}>
+                                {saveLabel ?? '—'}
+                            </p>
+                            <div className="flex gap-2">
+                                {editingReview && (
+                                    <Button type="secondary" label="Delete" handleClick={() => setDeleteStage('confirm')} />
+                                )}
+                                <Button type="primary" label={editingReview ? 'Update' : 'Save'} handleClick={handleSave} />
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 {/* Drop shadow */}

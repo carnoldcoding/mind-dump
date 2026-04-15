@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Button } from "../../../../components/common/Button";
 
-export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: any, deletePost: any, onDelete: any, onEdit:any}) => {
+const STATUSES = ['todo', 'active', 'done'];
+
+export const ReviewPreview = ({review, deletePost, onDelete, onEdit, onStatusUpdate} :{review: any, deletePost: any, onDelete: any, onEdit:any, onStatusUpdate?: (slug: string, status: string) => void}) => {
     const [isOpen, setIsOpen] = useState(false);
     const [deleteInput, setDeleteInput] = useState('');
     const [error, setError] = useState('');
@@ -9,17 +11,24 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: a
     const handleEdit = () => {
         onEdit(review);
     }
-    const typeIconMap = {
+    const typeIconMap: Record<string, string> = {
         'book': 'book-sharp',
         'game': 'game-controller-sharp',
         'cinema': 'videocam-sharp'
     }
 
-    const statusIconMap = {
+    const statusIconMap: Record<string, string> = {
         'todo': 'close-circle-outline',
         'active': 'timer-outline',
         'done': 'checkmark-circle-outline'
     }
+
+    const handleStatusCycle = () => {
+        if (!onStatusUpdate) return;
+        const idx  = STATUSES.indexOf(review.status);
+        const next = STATUSES[(idx + 1) % STATUSES.length];
+        onStatusUpdate(review.slug, next);
+    };
 
     const handleOpen = () => {
         document.body.style.overflow = "hidden";
@@ -63,7 +72,7 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: a
             </div>
             
             <div className="flex items-center justify-center">
-                <div className="grid grid-cols-2 rounded-md px-2 py-1 min-w-30 max-w-30 place-items-center">
+                <div className="grid grid-cols-2 px-2 py-1 min-w-30 max-w-30 place-items-center">
                     <ion-icon className="h-7 w-7" name={statusIconMap[review.status]}></ion-icon>
                     <p className="capitalize flex items-center">{review.status}</p>
                 </div>
