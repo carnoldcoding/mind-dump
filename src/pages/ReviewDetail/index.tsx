@@ -2,40 +2,43 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
-import TextDropdown from "../../components/common/TextDropdown";
 import config from "../../config";
 import Loader from "../../components/common/Loader";
 
+const TYPE_ICON: Record<string, string> = {
+    game:   'game-controller-sharp',
+    cinema: 'videocam-sharp',
+    book:   'book-sharp',
+};
+
+const reviewPropMap = {
+    story:          'Story',
+    gameplay:       'Gameplay',
+    graphics:       'Graphics',
+    sound:          'Sound',
+    world:          'World',
+    characters:     'Characters',
+    writing:        'Writing',
+    cinematography: 'Cinematography',
+    casting:        'Casting',
+} as const;
+
 const ReviewDetail = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
+    const navigate  = useNavigate();
+    const location  = useLocation();
 
-    const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
-    const [data, setData] = useState<any>(null);
-    const [parent, setParent] = useState(location.pathname.split('/')[1]);
-    const {slug, category} = useParams<{category: string, slug: string}>();
+    const [loading,   setLoading]   = useState<boolean>(false);
+    const [error,     setError]     = useState<string | null>(null);
+    const [data,      setData]      = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<string>('');
+    const [parent]                  = useState(location.pathname.split('/')[1]);
+    const { slug }                  = useParams<{ category: string; slug: string }>();
 
+    const handleClose   = () => navigate(`/${parent}`);
+    const filterByGenre = (genre: string) => navigate(`/${parent}?genre=${genre}`);
 
-    const handleClose = () => navigate(`/${parent}`);
-
-    const reviewPropMap = {
-        "story": "Story Breakdown",
-        "gameplay": "Gameplay System",
-        "graphics": "Graphical Design",
-        "sound": "Sound Design",
-        "world": "World Building",
-        "characters": "Characters",
-        "writing": "Writing Style",
-        "cinematography": "Cinematography",
-        "casting": "Casting",
-    } as const;
-
-    const filterByGenre = (e : any) => { navigate(`/${parent}?genre=${e.target.textContent}`); }
-
-    useEffect(()=>{
-        if(!slug) return;
-
+    useEffect(() => {
+        if (!slug) return;
         const fetchPost = async () => {
             try {
                 setLoading(true);
@@ -43,89 +46,131 @@ const ReviewDetail = () => {
                 const url = new URL('/api/posts', config.apiUri);
                 url.searchParams.set('slug', slug);
                 const response = await fetch(url.toString());
-                
-                if(response.ok){
-                    const data = await response.json();
-                    setData(data[0]);
-                } else{
+                if (response.ok) {
+                    const d = await response.json();
+                    setData(d[0]);
+                } else {
                     setError('Failed to fetch post');
                 }
-            } catch (error) {
+            } catch {
                 setError('Network error');
             } finally {
                 setLoading(false);
             }
         };
         fetchPost();
-    },[])
+    }, []);
 
-    const renderContent = () => {
-        if (loading) return <Loader />
-        if (error) return <div>Error: {error}</div>;
-        if (!data) return <div>Post not found</div>; 
-        if (!category) return;
+    // Set initial tab once data loads
+    useEffect(() => {
+        if (!data) return;
+        const entries = Object.entries(data.review ?? {}).filter(([, v]) => (v as string).length > 0);
+        if (entries.length > 0) setActiveTab(entries[0][0]);
+    }, [data]);
 
-        return (
-            <article className=" md:h-134 bg-nier-100 mt-5 relative">
-                
-                <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
-                    <h3 className="text-nier-text-dark text-xl">{data.title}</h3>
-                    <div onClick={handleClose} className="text-3xl relative cursor-pointer">×</div>
-                </div>
-                
-                <div className="py-4 pb-8 md:p-4 flex-col flex md:flex-row">
-                    {/* Absolute Stuff, Horizontal Lines/Metadata */}
-                    <div className="md:min-w-80 md:h-112 bg-cover bg-center" style={{backgroundImage:`url(${data.image_path})`}}></div>
-                    <div className="absolute bottom-6 h-[1px] md:w-[calc(100%-35px)] w-[calc(100%-40px)] ml-5 md:ml-0 bg-nier-150"></div>
-                    <div className="absolute top-12 h-[1px] md:w-[calc(100%-35px)] w-[calc(100%-40px)] ml-5 md:ml-0 bg-nier-150"></div>
-                    <div className="md:ml-0 ml-5 absolute bottom-0 text-nier-text-dark text-sm md:text-base italic capitalize">
-                         {data.release_date} - { data.creator }
-                    </div>
+    if (loading) return <Loader />;
+    if (error)   return <div className="mt-5">Error: {error}</div>;
+    if (!data)   return null;
 
-                    <div className="px-5 flex flex-col gap-5 overflow-y-scroll h-112 w-full">
-                        <div className="flex items-start gap-3 md:gap-0 w-full justify-between">
-                            <div className="h-50 basis-1/2 md:hidden bg-cover bg-center" style={{backgroundImage:`url(${data.image_path})`}}></div>
-                            
-                            <div className="flex gap-2 md:gap-0 flex-col items-start md:flex-row md:justify-between w-full basis-1/2 md:basis-auto">
-                                <div className="flex items-center justify-center bg-nier-dark h-14 w-14">
-                                    <p className="text-nier-text-light text-2xl leading-none">{data.rating.toString()}</p>
-                                </div>
+    const creator = data.creator || data.director || data.author || data.developers?.[0] || '—';
+    const reviewEntries = Object.entries(data.review ?? {})
+        .filter(([, v]) => (v as string).length > 0)
+        .sort() as [string, string][];
 
-                                <div className="flex flex-wrap gap-2">
-                                    {data.genres.map((genre : string)=>{
-                                        return (
-                                            <div key={genre} className="p-1 md:px-2 md:py-1 bg-nier-150/80 flex justify-center items-center cursor-pointer hover:bg-nier-150" onClick={filterByGenre}>
-                                                <p className="text-xs md:text-sm">{genre}</p>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-                        <div>
-                            <p>{data.description}</p>
-                        </div>
+    const activeContent = reviewEntries.find(([k]) => k === activeTab)?.[1] ?? '';
 
-                        <div>
-                            <div className="flex flex-col gap-3">
-                                {Object.entries(data.review).filter(([key, value]) => value.length > 0).sort().map(([key, value]) => {
-                                    return (
-                                        <TextDropdown key={key} label={reviewPropMap[key as keyof typeof reviewPropMap]} content={value}/>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div className="absolute w-full h-full bg-nier-shadow top-1 left-1 -z-10"></div>
-            </article>
-        )
-    }
     return (
         <>
-            {renderContent()}
+            <PageHeader name={data.title} />
+
+            <div className="mt-5 relative nier-enter">
+                <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
+
+                <article className="bg-nier-100 relative flex flex-col md:h-[34rem]">
+
+                    {/* ── Header bar ─────────────────────────────────── */}
+                    <div className="h-10 bg-nier-150 flex items-stretch flex-shrink-0">
+                        <div className="flex items-center gap-2 px-4 flex-1 min-w-0">
+                            <ion-icon name={TYPE_ICON[data.type]} style={{ flexShrink: 0 }}></ion-icon>
+                            <h3 className="text-nier-text-dark text-lg truncate uppercase tracking-wide">
+                                {data.title}
+                            </h3>
+                        </div>
+                        <div className="bg-nier-dark flex items-center justify-center px-4 flex-shrink-0">
+                            <p className="text-nier-text-light text-lg leading-none font-medium">{data.rating}</p>
+                        </div>
+                        <button
+                            onClick={handleClose}
+                            className="px-4 text-2xl leading-none cursor-pointer flex items-center hover:bg-nier-dark hover:text-nier-text-light transition-colors duration-150"
+                        >×</button>
+                    </div>
+
+                    {/* ── Body ───────────────────────────────────────── */}
+                    <div className="p-4 flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+
+                        {/* Cover image */}
+                        <div
+                            className="h-56 md:h-full md:w-72 bg-cover bg-center bg-nier-150 flex-shrink-0"
+                            style={data.image_path ? { backgroundImage: `url(${data.image_path})` } : {}}
+                        />
+
+                        {/* Right column */}
+                        <div className="flex-1 flex flex-col gap-3 min-h-0">
+
+                            {/* Genres */}
+                            <div className="flex flex-wrap gap-1.5 flex-shrink-0">
+                                {data.genres?.map((genre: string) => (
+                                    <button
+                                        key={genre}
+                                        onClick={() => filterByGenre(genre)}
+                                        className="px-2 py-0.5 bg-nier-150/60 text-xs cursor-pointer hover:bg-nier-150 transition-colors duration-150"
+                                    >
+                                        {genre}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Description */}
+                            <p className="text-sm leading-relaxed flex-shrink-0">{data.description}</p>
+
+                            {/* Analysis tabs */}
+                            {reviewEntries.length > 0 && (
+                                <div className="flex flex-col flex-1 min-h-0 gap-0">
+                                    <div className="flex flex-wrap gap-px flex-shrink-0">
+                                        {reviewEntries.map(([key]) => (
+                                            <button
+                                                key={key}
+                                                onClick={() => setActiveTab(key)}
+                                                className={`px-3 py-1 text-xs cursor-pointer transition-colors duration-150 ${
+                                                    activeTab === key
+                                                        ? 'bg-nier-dark text-nier-text-light'
+                                                        : 'bg-nier-150/60 hover:bg-nier-150'
+                                                }`}
+                                            >
+                                                {reviewPropMap[key as keyof typeof reviewPropMap] ?? key}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto bg-nier-100-lighter p-3 min-h-0">
+                                        <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeContent}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* ── Footer ─────────────────────────────────────── */}
+                    <div className="h-px bg-nier-150 mx-4 flex-shrink-0" />
+                    <div className="px-4 py-2 flex-shrink-0">
+                        <p className="text-sm italic text-nier-text-dark/60">
+                            {data.release_date} — {creator}
+                        </p>
+                    </div>
+
+                </article>
+            </div>
         </>
-    )
-}
+    );
+};
 
 export default ReviewDetail;

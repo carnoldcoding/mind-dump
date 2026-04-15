@@ -181,14 +181,14 @@ export const ReviewList = () => {
     return (
         <article>
             {/* Toolbar */}
-            <header className="flex gap-4 justify-between items-center px-4 py-4 border-b border-b-nier-dark/50 flex-wrap">
+            <header className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between px-4 py-4 border-b border-b-nier-dark/50">
                 <TextField label="Search" value={query} onChange={setQuery} />
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-center flex-shrink-0">
                     {/* View toggle */}
-                    <div className="flex h-12">
+                    <div className="flex h-10">
                         <button
                             onClick={() => setViewMode('grid')}
-                            className={`flex items-center gap-2 px-4 cursor-pointer transition-colors duration-150 ${
+                            className={`flex items-center gap-2 px-3 cursor-pointer transition-colors duration-150 ${
                                 viewMode === 'grid' ? 'bg-nier-dark' : 'bg-nier-150 hover:bg-nier-150/60'
                             }`}
                         >
@@ -197,7 +197,7 @@ export const ReviewList = () => {
                         </button>
                         <button
                             onClick={() => setViewMode('list')}
-                            className={`flex items-center gap-2 px-4 cursor-pointer transition-colors duration-150 ${
+                            className={`flex items-center gap-2 px-3 cursor-pointer transition-colors duration-150 ${
                                 viewMode === 'list' ? 'bg-nier-dark' : 'bg-nier-150 hover:bg-nier-150/60'
                             }`}
                         >
@@ -205,16 +205,16 @@ export const ReviewList = () => {
                             <p className={`text-sm ${viewMode === 'list' ? 'text-nier-text-light' : ''}`}>List</p>
                         </button>
                     </div>
-                    <div className="h-12">
+                    <div className="h-10">
                         <Button handleClick={handleAdd} label="Add Review" type="primary" />
                     </div>
                 </div>
             </header>
 
             {/* Type filter · Sort · Entry count */}
-            <div className="flex items-center justify-between gap-4 px-4 py-2 border-b border-b-nier-dark/20">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-2 border-b border-b-nier-dark/20">
                 {/* Type tabs */}
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                     {TYPE_FILTERS.map(({ key, label, icon }) => (
                         <button
                             key={key ?? 'all'}
@@ -236,8 +236,8 @@ export const ReviewList = () => {
                     ))}
                 </div>
 
-                {/* Sort buttons */}
-                <div className="flex items-center gap-1.5">
+                {/* Sort + entry count */}
+                <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-xs text-nier-text-dark/40 uppercase tracking-wide mr-0.5">Sort</p>
                     {(['title', 'type', 'rating', 'status'] as const).map(metric => (
                         <button
@@ -252,10 +252,8 @@ export const ReviewList = () => {
                             ></ion-icon>
                         </button>
                     ))}
+                    <p className="text-xs text-nier-text-dark/50 italic whitespace-nowrap ml-2">{displayPosts.length} entries</p>
                 </div>
-
-                {/* Entry count */}
-                <p className="text-xs text-nier-text-dark/50 italic whitespace-nowrap">{displayPosts.length} entries</p>
             </div>
 
             <ReviewModal
