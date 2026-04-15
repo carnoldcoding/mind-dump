@@ -70,7 +70,9 @@ const Search = () => {
     return (
         <>
             <PageHeader name="SEARCH" />
-            <article className={`md:w-full ${filteredPosts.length > 0 ? 'h-auto' : 'h-30'} bg-nier-100 mt-5 relative`}>
+            <div className="mt-5 relative nier-enter">
+            <div className="absolute w-full h-full bg-nier-shadow top-1 left-1"></div>
+            <article className={`md:w-full ${filteredPosts.length > 0 ? 'h-auto' : 'h-30'} bg-nier-100 relative`}>
                 <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
                 </div>
 
@@ -150,8 +152,8 @@ const Search = () => {
                     </div>
                 </div>
                 
-                <div className="absolute w-full h-full bg-nier-shadow top-1 left-1 -z-10"></div>
             </article>
+            </div>
         </>
     )
 }

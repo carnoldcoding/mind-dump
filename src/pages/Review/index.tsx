@@ -221,7 +221,7 @@ const Review = () => {
         if (error) return <div>Error: {error}</div>;
         
         return (
-          <section className="mt-5">
+          <section key={category} className="mt-5 nier-enter">
             <article className="bg-nier-100 mt-5 relative">
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
                         <h3 className="text-nier-text-dark text-xl capitalize">{category} View Panel</h3>

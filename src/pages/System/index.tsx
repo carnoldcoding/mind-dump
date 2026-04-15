@@ -51,26 +51,28 @@ const System = () => {
     return (
         <>
             <PageHeader name="SYSTEM" />
-        {isLoggedIn ? 
-                <article className="bg-nier-100 mt-5 relative">
-                    <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
-                        <h3 className="text-nier-text-dark text-xl">Control Panel</h3>
-                        <button 
-                            onClick={logout}
-                            className="capitalize text-sm px-4 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter"
-                        >
-                            Logout
-                        </button>
-                    </div>
-                    <div className="p-4 flex flex-col gap-4">
-                        <div className="flex gap-4 relative z-1 flex-col md:flex-row">
-                            <PieChart data={posts}/>
-                            <BarChart data={posts}/>
+        {isLoggedIn ?
+                <div className="mt-5 relative nier-enter">
+                    <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1"></aside>
+                    <article className="bg-nier-100 relative">
+                        <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
+                            <h3 className="text-nier-text-dark text-xl">Control Panel</h3>
+                            <button
+                                onClick={logout}
+                                className="capitalize text-sm px-4 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter"
+                            >
+                                Logout
+                            </button>
                         </div>
-                        <ReviewPanel />
-                    </div>
-                    <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1"></aside>
-                </article>
+                        <div className="p-4 flex flex-col gap-4">
+                            <div className="flex gap-4 relative z-1 flex-col md:flex-row">
+                                <PieChart data={posts}/>
+                                <BarChart data={posts}/>
+                            </div>
+                            <ReviewPanel />
+                        </div>
+                    </article>
+                </div>
                 :
                 <LoginForm />
             }

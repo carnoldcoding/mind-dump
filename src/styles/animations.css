@@ -99,4 +99,16 @@
           stroke-dashoffset: 880;
         }
       }
+
+      /*
+        Nier page transition — sharp left-to-right data-write reveal with glitch flicker
+      */
+      @keyframes nier-enter {
+        0%   { opacity: 0; transform: translateX(-12px); }
+        100% { opacity: 1; transform: translateX(0); }
+      }
+
+      .nier-enter {
+        animation: nier-enter 220ms ease-out forwards;
+      }
   }
