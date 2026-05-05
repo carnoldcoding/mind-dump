@@ -1,5 +1,5 @@
 import PageHeader from "../../components/common/PageHeader";
-import LoginForm from "./LoginForm";
+import Desktop from "./Desktop";
 import { PieChart } from "./components/pieChart";
 import { BarChart } from "./components/barChart";
 import { ReviewPanel } from "./components/ReviewPanel";
@@ -10,35 +10,31 @@ import Loader from "../../components/common/Loader";
 
 const System = () => {
     const { isLoggedIn, logout, loading: authLoading } = useAuth();
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
     const [posts, setPosts] = useState<any>([]);
-    
-    useEffect(()=> {
-        if (isLoggedIn) {
+    const [activeApp, setActiveApp] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (isLoggedIn && activeApp === "reviews") {
             const fetchPosts = async () => {
                 try {
-                    setLoading(true);
-                    setError(null);
-                    const url = new URL('/api/posts', config.apiUri);
+                    const url = new URL("/api/posts", config.apiUri);
                     const response = await fetch(url.toString());
-                    
-                    if(response.ok){
+                    if (response.ok) {
                         const data = await response.json();
                         setPosts(data);
-                    } else{
-                        setError('Failed to fetch posts');
                     }
-                } catch (error) {
-                    setError('Network error');
-                } finally {
-                    setLoading(false);
+                } catch {
+                    // network error — posts stay empty
                 }
             };
             fetchPosts();
         }
-    }, [isLoggedIn])
-    
+    }, [isLoggedIn, activeApp]);
+
+    useEffect(() => {
+        if (!isLoggedIn) setActiveApp(null);
+    }, [isLoggedIn]);
+
     if (authLoading) {
         return (
             <>
@@ -47,16 +43,24 @@ const System = () => {
             </>
         );
     }
-    
-    return (
-        <>
-            <PageHeader name="SYSTEM" />
-        {isLoggedIn ?
+
+    if (activeApp === "reviews") {
+        return (
+            <>
+                <PageHeader name="SYSTEM" />
                 <div className="mt-5 relative nier-enter">
-                    <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1"></aside>
+                    <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
                     <article className="bg-nier-100 relative">
                         <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
-                            <h3 className="text-nier-text-dark text-xl">Control Panel</h3>
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setActiveApp(null)}
+                                    className="text-sm px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter"
+                                >
+                                    ← Desktop
+                                </button>
+                                <h3 className="text-nier-text-dark text-xl">Reviews</h3>
+                            </div>
                             <button
                                 onClick={logout}
                                 className="capitalize text-sm px-4 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter"
@@ -66,18 +70,23 @@ const System = () => {
                         </div>
                         <div className="p-4 flex flex-col gap-4">
                             <div className="flex gap-4 relative z-1 flex-col md:flex-row">
-                                <PieChart data={posts}/>
-                                <BarChart data={posts}/>
+                                <PieChart data={posts} />
+                                <BarChart data={posts} />
                             </div>
                             <ReviewPanel />
                         </div>
                     </article>
                 </div>
-                :
-                <LoginForm />
-            }
+            </>
+        );
+    }
+
+    return (
+        <>
+            <PageHeader name="SYSTEM" />
+            <Desktop onOpen={setActiveApp} />
         </>
-    )
-}
+    );
+};
 
 export default System;
