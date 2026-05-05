@@ -1,0 +1,342 @@
+import { useEffect, useMemo, useState, useCallback } from "react";
+import config from "../../../../config";
+import WorkoutGrid from "./WorkoutGrid";
+import MovementChart from "./MovementChart";
+import WorkoutModal from "./WorkoutModal";
+import MovementEditModal from "./MovementEditModal";
+import type { ModalMode } from "./WorkoutModal";
+import type { MovementMeta } from "./MovementEditModal";
+
+type RawEntry = {
+    id?: string;
+    _id?: string;
+    workoutName: string;
+    weightUsed?: number;
+    weightGoal?: number;
+    repGoal?: number;
+    setGoal?: number;
+    repsCompleted?: number;
+    setsCompleted?: number;
+    datetime: string;
+    _meta?: boolean;
+    displayName?: string;
+    tag?: "upper" | "lower" | null;
+    notes?: string;
+    order?: number;
+};
+
+type TagFilter = "all" | "upper" | "lower";
+type ActiveTab = "chart" | "notes";
+
+type Props = { onClose: () => void };
+
+const BodyWindow = ({ onClose }: Props) => {
+    const [entries, setEntries]                   = useState<RawEntry[]>([]);
+    const [selectedMovement, setSelectedMovement] = useState<string | null>(null);
+    const [modal, setModal]                       = useState<ModalMode | null>(null);
+    const [editingMovement, setEditingMovement]   = useState<string | null>(null);
+    const [tagFilter, setTagFilter]               = useState<TagFilter>("all");
+    const [activeTab, setActiveTab]               = useState<ActiveTab>("chart");
+    const [dragIndex, setDragIndex]               = useState<number | null>(null);
+    const [dragOverIndex, setDragOverIndex]       = useState<number | null>(null);
+
+    const fetchEntries = useCallback(async () => {
+        try {
+            const url = new URL("/api/body", config.apiUri);
+            const res = await fetch(url.toString());
+            if (res.ok) setEntries(await res.json());
+        } catch { /* network error */ }
+    }, []);
+
+    useEffect(() => { fetchEntries(); }, [fetchEntries]);
+
+    // ── Derived data ────────────────────────────────────────────────
+    const metaMap = useMemo(() => {
+        const map = new Map<string, MovementMeta>();
+        entries
+            .filter(e => e._meta)
+            .forEach(e => {
+                map.set(e.workoutName, {
+                    id:          e.id ?? e._id,
+                    workoutName: e.workoutName,
+                    displayName: e.displayName || e.workoutName,
+                    tag:         e.tag ?? null,
+                    notes:       e.notes || "",
+                    order:       e.order ?? 9999,
+                });
+            });
+        return map;
+    }, [entries]);
+
+    const movements = useMemo(() => {
+        const names = [...new Set(entries.filter(e => !e._meta).map(e => e.workoutName))];
+        return names.sort((a, b) => (metaMap.get(a)?.order ?? 9999) - (metaMap.get(b)?.order ?? 9999));
+    }, [entries, metaMap]);
+
+    const filteredMovements = useMemo(() => {
+        if (tagFilter === "all") return movements;
+        return movements.filter(n => metaMap.get(n)?.tag === tagFilter);
+    }, [movements, metaMap, tagFilter]);
+
+    useEffect(() => {
+        if (movements.length > 0 && selectedMovement === null) setSelectedMovement(movements[0]);
+    }, [movements, selectedMovement]);
+
+    const workoutEntries = useMemo(() => entries.filter(e => !e._meta), [entries]);
+
+    const selectedEntries = useMemo(
+        () => workoutEntries.filter(e => e.workoutName === selectedMovement),
+        [workoutEntries, selectedMovement]
+    );
+
+    const editingMeta = useMemo((): MovementMeta | null => {
+        if (!editingMovement) return null;
+        return metaMap.get(editingMovement) ?? {
+            workoutName: editingMovement,
+            displayName: editingMovement,
+            tag:  null,
+            notes: "",
+            order: movements.indexOf(editingMovement),
+        };
+    }, [editingMovement, metaMap, movements]);
+
+    // ── Delete movement ─────────────────────────────────────────────
+    const handleDeleteMovement = useCallback(async (workoutName: string) => {
+        const toDelete = entries.filter(e => e.workoutName === workoutName);
+        await Promise.all(toDelete.map(e => {
+            const id = e.id ?? e._id;
+            if (!id) return Promise.resolve();
+            const url = new URL("/api/body/remove_entry", config.apiUri);
+            return fetch(url.toString(), {
+                method:  "POST",
+                headers: { "Content-Type": "application/json" },
+                body:    JSON.stringify({ id }),
+            });
+        }));
+        if (selectedMovement === workoutName) setSelectedMovement(null);
+        setEditingMovement(null);
+        fetchEntries();
+    }, [entries, selectedMovement, fetchEntries]);
+
+    // ── Drag to reorder ─────────────────────────────────────────────
+    const handleReorder = useCallback(async (from: number, to: number) => {
+        if (from === to) return;
+        const reordered = [...movements];
+        const [item] = reordered.splice(from, 1);
+        reordered.splice(to, 0, item);
+
+        await Promise.all(reordered.map(async (name, idx) => {
+            const meta = metaMap.get(name);
+            if (meta?.id) {
+                const url = new URL("/api/body/update_entry", config.apiUri);
+                return fetch(url.toString(), {
+                    method:  "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body:    JSON.stringify({ id: meta.id, order: idx }),
+                });
+            } else {
+                const url = new URL("/api/body/add_entry", config.apiUri);
+                return fetch(url.toString(), {
+                    method:  "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body:    JSON.stringify({
+                        workoutName: name, _meta: true,
+                        displayName: name, tag: null, notes: "", order: idx,
+                        datetime: new Date().toISOString(),
+                    }),
+                });
+            }
+        }));
+        fetchEntries();
+    }, [movements, metaMap, fetchEntries]);
+
+    // ── Styles ──────────────────────────────────────────────────────
+    const ctrlBtn = "text-[10px] uppercase tracking-wide px-2 py-0.5 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors";
+    const tabBtn  = (active: boolean) =>
+        `text-xs uppercase tracking-wide px-3 py-1 border-b-2 transition-colors cursor-pointer ${
+            active ? "border-nier-dark text-nier-text-dark" : "border-transparent text-nier-text-dark/40 hover:text-nier-text-dark"
+        }`;
+
+    return (
+        <>
+            <div className="relative nier-enter">
+                <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
+                <div className="relative bg-nier-100 border border-nier-150">
+
+                    {/* Window title bar */}
+                    <div className="h-10 bg-nier-150 flex items-center justify-between px-5">
+                        <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Body</h3>
+                        <button onClick={onClose} className="text-sm px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none">
+                            ✕
+                        </button>
+                    </div>
+
+                    <div className="p-4 flex flex-col gap-4">
+                        <WorkoutGrid entries={workoutEntries} />
+
+                        <div className="flex gap-4 flex-col md:flex-row">
+
+                            {/* ── Movement list ── */}
+                            <div className="relative shrink-0 w-full md:w-48 bg-nier-100-lighter flex flex-col">
+                                <div className="h-7 bg-nier-150 flex items-center px-3">
+                                    <span className="text-nier-text-dark text-sm">Movements</span>
+                                </div>
+                                <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
+
+                                {/* Tag filter */}
+                                <div className="flex gap-1 px-3 py-1.5 border-b border-nier-150/40">
+                                    {(["all", "upper", "lower"] as const).map(f => (
+                                        <button
+                                            key={f}
+                                            onClick={() => setTagFilter(f)}
+                                            className={`text-[10px] uppercase tracking-wide px-2 py-0.5 cursor-pointer transition-colors ${
+                                                tagFilter === f
+                                                    ? "bg-nier-text-dark text-nier-100-lighter"
+                                                    : "text-nier-text-dark/50 hover:text-nier-text-dark"
+                                            }`}
+                                        >
+                                            {f}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Draggable movement list */}
+                                <div className="flex flex-col overflow-y-auto flex-1 min-h-0">
+                                    {filteredMovements.length === 0 ? (
+                                        <span className="text-nier-text-dark/40 text-xs uppercase px-3 py-3">
+                                            {movements.length === 0 ? "No movements yet" : "None in this category"}
+                                        </span>
+                                    ) : filteredMovements.map((name, idx) => {
+                                        const meta = metaMap.get(name);
+                                        const isSelected = selectedMovement === name;
+                                        const isDraggingOver = dragOverIndex === idx && dragIndex !== idx;
+                                        return (
+                                            <div
+                                                key={name}
+                                                data-movement-index={idx}
+                                                draggable
+                                                onDragStart={e => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(idx)); setDragIndex(idx); }}
+                                                onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverIndex(idx); }}
+                                                onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData("text/plain")); if (!isNaN(from)) handleReorder(from, idx); setDragIndex(null); setDragOverIndex(null); }}
+                                                onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
+                                                className={`flex items-center gap-1.5 border-b border-nier-150/40 last:border-0 group transition-colors ${
+                                                    isSelected ? "bg-nier-text-dark" : isDraggingOver ? "bg-nier-150/60" : "hover:bg-nier-150/30"
+                                                } ${dragIndex === idx ? "opacity-40" : ""}`}
+                                            >
+                                                {/* Drag handle */}
+                                                <span className={`pl-2 text-sm select-none cursor-grab active:cursor-grabbing shrink-0 ${isSelected ? "text-nier-100-lighter/40" : "text-nier-text-dark/25"}`}>
+                                                    ≡
+                                                </span>
+
+                                                {/* Name — click to select */}
+                                                <button
+                                                    onClick={() => setSelectedMovement(name)}
+                                                    className={`flex-1 text-left text-xs uppercase tracking-wide py-2 ${isSelected ? "text-nier-100-lighter" : "text-nier-text-dark"}`}
+                                                >
+                                                    {meta?.displayName || name}
+                                                </button>
+
+                                                {/* Tag badge */}
+                                                {meta?.tag && (
+                                                    <span className={`text-[9px] uppercase shrink-0 ${isSelected ? "text-nier-100-lighter/50" : "text-nier-text-dark/40"}`}>
+                                                        {meta.tag}
+                                                    </span>
+                                                )}
+
+                                                {/* Edit button */}
+                                                <button
+                                                    onClick={e => { e.stopPropagation(); setEditingMovement(name); }}
+                                                    className={`pr-2 text-sm opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity shrink-0 ${isSelected ? "text-nier-100-lighter/60" : "text-nier-text-dark/40"}`}
+                                                >
+                                                    ✎
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Footer */}
+                                <div className="border-t border-nier-150/40 px-3 py-2">
+                                    <button className={ctrlBtn} onClick={() => setModal("create")}>
+                                        + New
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* ── Chart / Notes panel ── */}
+                            <div className="flex-1 min-w-0 flex flex-col gap-2">
+                                {selectedMovement && (
+                                    <div className="flex items-center justify-between">
+                                        {/* Tabs */}
+                                        <div className="flex">
+                                            <button className={tabBtn(activeTab === "chart")} onClick={() => setActiveTab("chart")}>Chart</button>
+                                            <button className={tabBtn(activeTab === "notes")} onClick={() => setActiveTab("notes")}>Notes</button>
+                                        </div>
+                                        {/* Actions */}
+                                        <div className="flex gap-2">
+                                            <button className={ctrlBtn} onClick={() => setModal("log")}>Log Workout</button>
+                                            <button className={ctrlBtn} onClick={() => setModal("goals")}>Set Goals</button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {selectedMovement ? (
+                                    activeTab === "chart" ? (
+                                        <MovementChart
+                                            name={metaMap.get(selectedMovement)?.displayName || selectedMovement}
+                                            entries={selectedEntries}
+                                        />
+                                    ) : (
+                                        <div className="h-64 bg-nier-100-lighter border border-nier-150 relative">
+                                            <div className="h-7 bg-nier-150 flex items-center px-3">
+                                                <span className="text-nier-text-dark text-sm uppercase tracking-wide">
+                                                    {metaMap.get(selectedMovement)?.displayName || selectedMovement}
+                                                </span>
+                                            </div>
+                                            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
+                                            <div className="p-4 h-[calc(100%-1.75rem)] overflow-y-auto">
+                                                {metaMap.get(selectedMovement)?.notes ? (
+                                                    <p className="text-sm text-nier-text-dark leading-relaxed whitespace-pre-wrap">
+                                                        {metaMap.get(selectedMovement)!.notes}
+                                                    </p>
+                                                ) : (
+                                                    <p className="text-xs text-nier-text-dark/35 uppercase tracking-widest">
+                                                        No notes — use ✎ to add some.
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )
+                                ) : (
+                                    <div className="h-64 bg-nier-100-lighter border border-nier-150 flex items-center justify-center">
+                                        <span className="text-nier-text-dark/40 text-xs uppercase tracking-widest">Select a movement</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {modal && (
+                <WorkoutModal
+                    mode={modal}
+                    movement={modal !== "create" ? selectedMovement ?? undefined : undefined}
+                    onClose={() => setModal(null)}
+                    onSaved={fetchEntries}
+                />
+            )}
+
+            {editingMeta && (
+                <MovementEditModal
+                    meta={editingMeta}
+                    onClose={() => setEditingMovement(null)}
+                    onSaved={fetchEntries}
+                    onDelete={handleDeleteMovement}
+                />
+            )}
+        </>
+    );
+};
+
+export default BodyWindow;

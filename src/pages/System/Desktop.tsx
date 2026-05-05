@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { TextField } from "../../components/common/TextField";
 import { Button } from "../../components/common/Button";
 import ReviewsWindow from "./components/ReviewsWindow";
+import BodyWindow from "./components/Body";
 
 const FolderIcon = ({ selected }: { selected: boolean }) => (
     <svg viewBox="0 0 56 46" width="56" height="46" xmlns="http://www.w3.org/2000/svg">
@@ -93,30 +94,39 @@ const Desktop = () => {
                     <div className="relative p-4">
                         {/* Icons — own stacking context, sit beneath any open window */}
                         <div className="absolute top-4 left-4 flex gap-4 z-0">
-                            <button
-                                onClick={() => handleFolderClick("reviews")}
-                                className="flex flex-col items-center gap-2 cursor-pointer group"
-                            >
-                                <div className={`p-3 transition-colors ${openApp === "reviews" ? "bg-nier-dark/15" : "hover:bg-nier-150/20"}`}>
-                                    <FolderIcon selected={openApp === "reviews"} />
-                                </div>
-                                <span className={`text-xs uppercase tracking-widest font-semibold px-1.5 py-0.5 transition-colors ${
-                                    openApp === "reviews"
-                                        ? "bg-nier-text-dark text-nier-100-lighter"
-                                        : "text-nier-text-dark group-hover:bg-nier-150/40"
-                                }`}>
-                                    Reviews
-                                </span>
-                            </button>
+                            {(["reviews", "body"] as const).map(app => (
+                                <button
+                                    key={app}
+                                    onClick={() => handleFolderClick(app)}
+                                    className="flex flex-col items-center gap-2 cursor-pointer group"
+                                >
+                                    <div className={`p-3 transition-colors ${openApp === app ? "bg-nier-dark/15" : "hover:bg-nier-150/20"}`}>
+                                        <FolderIcon selected={openApp === app} />
+                                    </div>
+                                    <span className={`text-xs uppercase tracking-widest font-semibold px-1.5 py-0.5 transition-colors ${
+                                        openApp === app
+                                            ? "bg-nier-text-dark text-nier-100-lighter"
+                                            : "text-nier-text-dark group-hover:bg-nier-150/40"
+                                    }`}>
+                                        {app}
+                                    </span>
+                                </button>
+                            ))}
                         </div>
 
-                        {/* Open window — higher stacking context, covers icons */}
-                        {openApp === "reviews" ? (
+                        {/* Spacer keeps desktop area tall when no window is open */}
+                        {!openApp && <div className="h-48" />}
+
+                        {/* Open window — higher stacking context, only mounted when needed */}
+                        {openApp === "reviews" && (
                             <div className="relative z-10">
                                 <ReviewsWindow onClose={() => setOpenApp(null)} />
                             </div>
-                        ) : (
-                            <div className="h-48" />
+                        )}
+                        {openApp === "body" && (
+                            <div className="relative z-10">
+                                <BodyWindow onClose={() => setOpenApp(null)} />
+                            </div>
                         )}
                     </div>
                 ) : (
