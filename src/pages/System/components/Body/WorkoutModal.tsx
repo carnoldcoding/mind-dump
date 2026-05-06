@@ -8,14 +8,24 @@ import config from "../../../../config";
 
 export type ModalMode = "create" | "goals" | "log";
 
+type LastEntry = {
+    weightUsed?: number;
+    repsCompleted?: number;
+    setsCompleted?: number;
+};
+
 type Props = {
     mode: ModalMode;
-    movement?: string; // pre-selected for goals / log modes
+    movement?: string;
+    lastEntry?: LastEntry;
     onClose: () => void;
     onSaved: () => void;
 };
 
-const todayStr = () => new Date().toISOString().split("T")[0];
+const todayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 const TITLES: Record<ModalMode, string> = {
     create: "New Movement",
@@ -23,15 +33,15 @@ const TITLES: Record<ModalMode, string> = {
     log:    "Log Workout",
 };
 
-const WorkoutModal = ({ mode, movement, onClose, onSaved }: Props) => {
+const WorkoutModal = ({ mode, movement, lastEntry, onClose, onSaved }: Props) => {
     const [name, setName]                 = useState("");
     const [date, setDate]                 = useState(todayStr());
     const [weightGoal, setWeightGoal]     = useState("");
     const [repGoal, setRepGoal]           = useState("");
     const [setGoal, setSetGoal]           = useState("");
-    const [weightUsed, setWeightUsed]     = useState("");
-    const [repsCompleted, setRepsCompleted] = useState("");
-    const [setsCompleted, setSetsCompleted] = useState("");
+    const [weightUsed, setWeightUsed]     = useState(lastEntry?.weightUsed != null ? String(lastEntry.weightUsed) : "");
+    const [repsCompleted, setRepsCompleted] = useState(lastEntry?.repsCompleted != null ? String(lastEntry.repsCompleted) : "");
+    const [setsCompleted, setSetsCompleted] = useState(lastEntry?.setsCompleted != null ? String(lastEntry.setsCompleted) : "");
     const [createTag, setCreateTag]       = useState<"upper" | "lower" | null>(null);
     const [saving, setSaving]             = useState(false);
     const [error, setError]               = useState("");
@@ -162,16 +172,16 @@ const WorkoutModal = ({ mode, movement, onClose, onSaved }: Props) => {
                         {mode === "goals" && (
                             <div className="flex gap-3">
                                 <NumTextField label="Weight Goal" value={weightGoal} onChange={setWeightGoal} />
-                                <NumTextField label="Rep Goal"    value={repGoal}    onChange={setRepGoal} />
                                 <NumTextField label="Set Goal"    value={setGoal}    onChange={setSetGoal} />
+                                <NumTextField label="Rep Goal"    value={repGoal}    onChange={setRepGoal} />
                             </div>
                         )}
 
                         {mode === "log" && (
                             <div className="flex gap-3">
                                 <NumTextField label="Weight" value={weightUsed}    onChange={setWeightUsed} />
-                                <NumTextField label="Reps"   value={repsCompleted} onChange={setRepsCompleted} />
                                 <NumTextField label="Sets"   value={setsCompleted} onChange={setSetsCompleted} />
+                                <NumTextField label="Reps"   value={repsCompleted} onChange={setRepsCompleted} />
                             </div>
                         )}
 

@@ -9,10 +9,7 @@ type Props = {
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function getCellColor(count: number): string {
-    if (count === 0) return "#C6C2A5";
-    if (count === 1) return "#A9A38B";
-    if (count === 2) return "#6D6858";
-    return "#48483D";
+    return count === 0 ? "#C6C2A5" : "#48483D";
 }
 
 type Cell = { date: string; count: number } | null;

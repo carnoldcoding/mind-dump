@@ -4,8 +4,10 @@ import WorkoutGrid from "./WorkoutGrid";
 import MovementChart from "./MovementChart";
 import WorkoutModal from "./WorkoutModal";
 import MovementEditModal from "./MovementEditModal";
+import EntryEditModal from "./EntryEditModal";
 import type { ModalMode } from "./WorkoutModal";
 import type { MovementMeta } from "./MovementEditModal";
+import type { EntryToEdit } from "./EntryEditModal";
 
 type RawEntry = {
     id?: string;
@@ -26,7 +28,7 @@ type RawEntry = {
 };
 
 type TagFilter = "all" | "upper" | "lower";
-type ActiveTab = "chart" | "notes";
+type ActiveTab = "chart" | "notes" | "history";
 
 type Props = { onClose: () => void };
 
@@ -39,6 +41,7 @@ const BodyWindow = ({ onClose }: Props) => {
     const [activeTab, setActiveTab]               = useState<ActiveTab>("chart");
     const [dragIndex, setDragIndex]               = useState<number | null>(null);
     const [dragOverIndex, setDragOverIndex]       = useState<number | null>(null);
+    const [editingEntry, setEditingEntry]         = useState<EntryToEdit | null>(null);
 
     const fetchEntries = useCallback(async () => {
         try {
@@ -89,6 +92,13 @@ const BodyWindow = ({ onClose }: Props) => {
         [workoutEntries, selectedMovement]
     );
 
+    const lastLogEntry = useMemo(() => {
+        const logs = selectedEntries
+            .filter(e => e.weightUsed != null || e.repsCompleted != null || e.setsCompleted != null)
+            .sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
+        return logs[0] ?? null;
+    }, [selectedEntries]);
+
     const editingMeta = useMemo((): MovementMeta | null => {
         if (!editingMovement) return null;
         return metaMap.get(editingMovement) ?? {
@@ -117,6 +127,17 @@ const BodyWindow = ({ onClose }: Props) => {
         setEditingMovement(null);
         fetchEntries();
     }, [entries, selectedMovement, fetchEntries]);
+
+    // ── Delete single entry ─────────────────────────────────────────
+    const handleDeleteEntry = useCallback(async (id: string) => {
+        const url = new URL("/api/body/remove_entry", config.apiUri);
+        await fetch(url.toString(), {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ id }),
+        });
+        fetchEntries();
+    }, [fetchEntries]);
 
     // ── Drag to reorder ─────────────────────────────────────────────
     const handleReorder = useCallback(async (from: number, to: number) => {
@@ -269,8 +290,9 @@ const BodyWindow = ({ onClose }: Props) => {
                                     <div className="flex items-center justify-between">
                                         {/* Tabs */}
                                         <div className="flex">
-                                            <button className={tabBtn(activeTab === "chart")} onClick={() => setActiveTab("chart")}>Chart</button>
-                                            <button className={tabBtn(activeTab === "notes")} onClick={() => setActiveTab("notes")}>Notes</button>
+                                            <button className={tabBtn(activeTab === "chart")}   onClick={() => setActiveTab("chart")}>Chart</button>
+                                            <button className={tabBtn(activeTab === "notes")}   onClick={() => setActiveTab("notes")}>Notes</button>
+                                            <button className={tabBtn(activeTab === "history")} onClick={() => setActiveTab("history")}>History</button>
                                         </div>
                                         {/* Actions */}
                                         <div className="flex gap-2">
@@ -286,7 +308,7 @@ const BodyWindow = ({ onClose }: Props) => {
                                             name={metaMap.get(selectedMovement)?.displayName || selectedMovement}
                                             entries={selectedEntries}
                                         />
-                                    ) : (
+                                    ) : activeTab === "notes" ? (
                                         <div className="h-64 bg-nier-100-lighter border border-nier-150 relative">
                                             <div className="h-7 bg-nier-150 flex items-center px-3">
                                                 <span className="text-nier-text-dark text-sm uppercase tracking-wide">
@@ -306,6 +328,53 @@ const BodyWindow = ({ onClose }: Props) => {
                                                 )}
                                             </div>
                                         </div>
+                                    ) : (
+                                        <div className="h-64 bg-nier-100-lighter border border-nier-150 relative flex flex-col">
+                                            <div className="h-7 bg-nier-150 flex items-center px-3 shrink-0">
+                                                <span className="text-nier-text-dark text-sm uppercase tracking-wide">Entries</span>
+                                            </div>
+                                            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
+                                            <div className="overflow-y-auto flex-1">
+                                                {(() => {
+                                                    const logEntries = [...selectedEntries]
+                                                        .filter(e => e.weightUsed != null || e.repsCompleted != null || e.setsCompleted != null || e.weightGoal != null || e.repGoal != null || e.setGoal != null)
+                                                        .sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
+                                                    if (logEntries.length === 0) return (
+                                                        <p className="text-xs text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">No entries yet.</p>
+                                                    );
+                                                    return logEntries.map(e => {
+                                                        const id = e.id ?? e._id;
+                                                        const isGoal = e.weightGoal != null || e.repGoal != null || e.setGoal != null;
+                                                        const parts: string[] = [];
+                                                        if (!isGoal) {
+                                                            if (e.weightUsed    != null) parts.push(`${e.weightUsed} lbs`);
+                                                            if (e.setsCompleted != null) parts.push(`${e.setsCompleted} sets`);
+                                                            if (e.repsCompleted != null) parts.push(`${e.repsCompleted} reps`);
+                                                        } else {
+                                                            const goalParts: string[] = [];
+                                                            if (e.weightGoal != null) goalParts.push(`${e.weightGoal} lbs`);
+                                                            if (e.setGoal    != null) goalParts.push(`${e.setGoal} sets`);
+                                                            if (e.repGoal    != null) goalParts.push(`${e.repGoal} reps`);
+                                                            if (goalParts.length) parts.push(`Goal: ${goalParts.join(", ")}`);
+                                                        }
+                                                        return (
+                                                            <button
+                                                                key={id ?? e.datetime}
+                                                                onClick={() => id && setEditingEntry({ id, datetime: e.datetime, weightUsed: e.weightUsed, setsCompleted: e.setsCompleted, repsCompleted: e.repsCompleted, weightGoal: e.weightGoal, setGoal: e.setGoal, repGoal: e.repGoal })}
+                                                                className="w-full flex items-center justify-between px-3 py-1.5 border-b border-nier-150/30 last:border-0 hover:bg-nier-150/30 text-left cursor-pointer transition-colors"
+                                                            >
+                                                                <span className="text-[10px] text-nier-text-dark/50 uppercase tracking-wide shrink-0">
+                                                                    {new Date(e.datetime).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                                                                </span>
+                                                                <span className={`text-xs ${isGoal ? "text-nier-text-dark/50 italic" : "text-nier-text-dark"}`}>
+                                                                    {parts.join(" · ")}
+                                                                </span>
+                                                            </button>
+                                                        );
+                                                    });
+                                                })()}
+                                            </div>
+                                        </div>
                                     )
                                 ) : (
                                     <div className="h-64 bg-nier-100-lighter border border-nier-150 flex items-center justify-center">
@@ -322,6 +391,7 @@ const BodyWindow = ({ onClose }: Props) => {
                 <WorkoutModal
                     mode={modal}
                     movement={modal !== "create" ? selectedMovement ?? undefined : undefined}
+                    lastEntry={modal === "log" ? lastLogEntry ?? undefined : undefined}
                     onClose={() => setModal(null)}
                     onSaved={fetchEntries}
                 />
@@ -333,6 +403,16 @@ const BodyWindow = ({ onClose }: Props) => {
                     onClose={() => setEditingMovement(null)}
                     onSaved={fetchEntries}
                     onDelete={handleDeleteMovement}
+                />
+            )}
+
+            {editingEntry && selectedMovement && (
+                <EntryEditModal
+                    entry={editingEntry}
+                    movementName={metaMap.get(selectedMovement)?.displayName || selectedMovement}
+                    onClose={() => setEditingEntry(null)}
+                    onSaved={() => { fetchEntries(); setEditingEntry(null); }}
+                    onDelete={id => { handleDeleteEntry(id); setEditingEntry(null); }}
                 />
             )}
         </>
