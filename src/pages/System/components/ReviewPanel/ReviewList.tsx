@@ -66,9 +66,13 @@ export const ReviewList = () => {
     };
 
     // ── Sort (list view) ─────────────────────────────────────────────
-    const sortPosts = (metric: 'title' | 'type' | 'rating' | 'status') => {
+    const sortPosts = (metric: 'title' | 'type' | 'rating' | 'status' | 'date') => {
         const sortedPosts = [...filteredPosts];
         const statusPriority = { TODO: 1, ACTIVE: 2, DONE: 3 } as any;
+        const toTime = (p: any) => {
+            const d = p.date_completed || p.release_date;
+            return d ? new Date(d).getTime() : 0;
+        };
 
         if (metric === 'rating') {
             sortedPosts.sort((a, b) => sortState.rating ? a.rating - b.rating : b.rating - a.rating);
@@ -88,6 +92,9 @@ export const ReviewList = () => {
                 const bp = statusPriority[b.status?.toUpperCase()] ?? 999;
                 return sortState.status ? ap - bp : bp - ap;
             });
+        } else if (metric === 'date') {
+            // true = most recent first, false = oldest first
+            sortedPosts.sort((a, b) => sortState.date ? toTime(b) - toTime(a) : toTime(a) - toTime(b));
         }
 
         setFilteredPosts(sortedPosts);
@@ -119,8 +126,15 @@ export const ReviewList = () => {
             const response = await fetch(url.toString());
             if (response.ok) {
                 const data = await response.json();
-                setPosts(data);
-                setFilteredPosts(data);
+                const toTime = (p: any) => {
+                    const d = p.date_completed || p.release_date;
+                    return d ? new Date(d).getTime() : 0;
+                };
+                const sorted = [...data].sort((a, b) => toTime(b) - toTime(a));
+                setPosts(sorted);
+                // Only reset filteredPosts when no search is active; the
+                // [query, posts] effect handles re-filtering after posts update.
+                if (!query) setFilteredPosts(sorted);
             } else {
                 setError('Failed to fetch posts');
             }
@@ -239,7 +253,7 @@ export const ReviewList = () => {
                 {/* Sort + entry count */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-xs text-nier-text-dark/40 uppercase tracking-wide mr-0.5">Sort</p>
-                    {(['title', 'type', 'rating', 'status'] as const).map(metric => (
+                    {(['title', 'type', 'rating', 'status', 'date'] as const).map(metric => (
                         <button
                             key={metric}
                             onClick={() => sortPosts(metric)}
