@@ -10,6 +10,8 @@ import { Button } from "../../../../components/common/Button"
 import config from "../../../../config"
 import { NumTextField } from "../../../../components/common/NumTextField"
 import { transformKeysToSnakeCase } from "../../../../utils/helpers"
+import ModModal from "./ModModal"
+import type { Mod } from "./ModModal"
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -68,16 +70,20 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const [deleteStage, setDeleteStage] = useState<'idle' | 'confirm'>('idle');
     const [deleteInput, setDeleteInput] = useState('');
     const [deleteError, setDeleteError] = useState('');
+    const [mods, setMods]               = useState<Mod[]>([]);
+    const [modModal, setModModal]       = useState<{ mod?: Mod; index?: number } | null>(null);
 
     // Refs for values needed inside timer callbacks (avoids stale closures)
     const reviewRef        = useRef(review);
     const typeRef          = useRef(type);
+    const modsRef          = useRef(mods);
     const editingReviewRef = useRef(editingReview);
     const isNewlySaved     = useRef(false);
     const autosaveTimer    = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     reviewRef.current        = review;
     typeRef.current          = type;
+    modsRef.current          = mods;
     editingReviewRef.current = editingReview;
 
     // ── Body scroll lock ─────────────────────────────────────────────
@@ -105,10 +111,12 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                 status:        editingReview.status        || '',
             });
             setType(editingReview.type || 'game');
+            setMods(editingReview.mods ?? []);
             setSlugManual(true);     // existing slug — don't auto-override
         } else {
             setReview(EMPTY_REVIEW);
             setType('game');
+            setMods([]);
             setSlugManual(false);
             isNewlySaved.current = false;
         }
@@ -165,7 +173,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             const res = await fetch(url.toString(), {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ ...parsed, type: currentType }),
+                body:    JSON.stringify({ ...parsed, type: currentType, mods: modsRef.current }),
             });
 
             if (res.ok) {
@@ -185,6 +193,8 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const resetAndClose = () => {
         setReview(EMPTY_REVIEW);
         setType('game');
+        setMods([]);
+        setModModal(null);
         setSlugManual(false);
         isNewlySaved.current = false;
         setSaveStatus('idle');
@@ -401,6 +411,47 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                             />
                         ))}
                     </div>
+
+                    {/* Mods — game only */}
+                    {type === 'game' && (
+                        <div className="flex flex-col gap-2 border-t border-nier-150 pt-4">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">
+                                    Mods{mods.length > 0 ? ` (${mods.length})` : ''}
+                                </span>
+                                <button
+                                    onClick={() => setModModal({})}
+                                    className="text-[10px] uppercase tracking-wide px-2 py-0.5 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors"
+                                >
+                                    + Add
+                                </button>
+                            </div>
+                            {mods.length === 0 ? (
+                                <p className="text-xs text-nier-text-dark/35 italic">No mods added.</p>
+                            ) : (
+                                <ul className="flex flex-col divide-y divide-nier-150/30 border border-nier-150">
+                                    {mods.map((mod, i) => (
+                                        <li key={i} className="flex items-center justify-between gap-3 px-3 py-2 group hover:bg-nier-150/20 transition-colors">
+                                            <div className="flex flex-col gap-0.5 min-w-0">
+                                                <span className="text-sm text-nier-text-dark truncate">{mod.name}</span>
+                                                {mod.author && <span className="text-xs text-nier-text-dark/50">{mod.author}</span>}
+                                            </div>
+                                            <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                                <button
+                                                    onClick={() => setModModal({ mod, index: i })}
+                                                    className="text-sm text-nier-text-dark/40 hover:text-nier-text-dark cursor-pointer transition-colors"
+                                                >✎</button>
+                                                <button
+                                                    onClick={() => setMods(prev => prev.filter((_, idx) => idx !== i))}
+                                                    className="text-sm text-nier-text-dark/30 hover:text-red-800 cursor-pointer transition-colors"
+                                                >×</button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}
@@ -443,6 +494,22 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             </article>
             </div>
             </div>
+
+            {modModal && (
+                <ModModal
+                    mod={modModal.mod}
+                    onSave={mod => {
+                        setMods(prev => {
+                            const next = [...prev];
+                            if (modModal.index != null) next[modModal.index] = mod;
+                            else next.push(mod);
+                            return next;
+                        });
+                        setModModal(null);
+                    }}
+                    onClose={() => setModModal(null)}
+                />
+            )}
         </div>,
         document.body
     );
