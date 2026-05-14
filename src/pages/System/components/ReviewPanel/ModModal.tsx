@@ -40,7 +40,7 @@ const ModModal = ({ mod, onSave, onClose }: Props) => {
     };
 
     return createPortal(
-        <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4 nier-backdrop-enter">
+        <div className="fixed inset-0 bg-black/40 z-[120] flex items-center justify-center p-4 nier-backdrop-enter">
             <div className="relative w-full max-w-md nier-modal-enter">
                 <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
                 <article className="bg-nier-100-lighter relative">

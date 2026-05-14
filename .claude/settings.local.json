@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\carno\\\\work\\\\mind-dump\" -Force)",
+      "Bash(Select-Object Mode, Name)",
+      "Bash(xargs basename -a)"
+    ]
+  }
+}

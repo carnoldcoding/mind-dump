@@ -4,6 +4,7 @@ import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
 import config from "../../config";
 import Loader from "../../components/common/Loader";
+import type { AudioTrack } from "../../types";
 type Mod = { name: string; author?: string; url?: string; notes?: string };
 
 const TYPE_ICON: Record<string, string> = {
@@ -33,6 +34,7 @@ const ReviewDetail = () => {
     const [data,      setData]      = useState<any>(null);
     const [activeTab, setActiveTab] = useState<string>('');
     const [mods,      setMods]      = useState<Mod[]>([]);
+    const [tracks,    setTracks]    = useState<AudioTrack[]>([]);
     const [parent]                  = useState(location.pathname.split('/')[1]);
     const { slug }                  = useParams<{ category: string; slug: string }>();
 
@@ -63,7 +65,7 @@ const ReviewDetail = () => {
         fetchPost();
     }, []);
 
-    // Set initial tab and mods once data loads
+    // Set initial tab and mods once data loads, then fetch audio tracks
     useEffect(() => {
         if (!data) return;
         const entries = Object.entries(data.review ?? {}).filter(([, v]) => (v as string).length > 0);
@@ -71,6 +73,16 @@ const ReviewDetail = () => {
         setMods(loadedMods);
         if (entries.length > 0) setActiveTab(entries[0][0]);
         else if (loadedMods.length > 0) setActiveTab('mods');
+
+        const fetchTracks = async () => {
+            try {
+                const url = new URL("/api/audio", config.apiUri);
+                url.searchParams.set("post_id", data._id);
+                const res = await fetch(url.toString());
+                if (res.ok) setTracks(await res.json());
+            } catch { /* network error */ }
+        };
+        fetchTracks();
     }, [data]);
 
 
@@ -214,6 +226,29 @@ const ReviewDetail = () => {
                             )}
                         </div>
                     </div>
+
+                    {/* ── Soundtrack ─────────────────────────────────── */}
+                    {tracks.length > 0 && (
+                        <>
+                            <div className="h-px bg-nier-150 mx-4 flex-shrink-0" />
+                            <div className="px-4 py-3 flex-shrink-0 flex flex-col gap-2">
+                                <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">Soundtrack</span>
+                                <ul className="flex flex-col gap-1.5">
+                                    {tracks.map((track, i) => (
+                                        <li key={track._id} className="flex items-center gap-3">
+                                            <span className="text-xs text-nier-text-dark/40 font-mono shrink-0">
+                                                [{String(i + 1).padStart(2, '0')}]
+                                            </span>
+                                            <span className="text-xs uppercase tracking-wide text-nier-text-dark/70 flex-1 truncate">
+                                                {track.title}
+                                            </span>
+                                            <audio src={track.url} controls className="h-7 w-44 shrink-0" />
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </>
+                    )}
 
                     {/* ── Footer ─────────────────────────────────────── */}
                     <div className="h-px bg-nier-150 mx-4 flex-shrink-0" />

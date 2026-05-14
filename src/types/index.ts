@@ -57,3 +57,12 @@ export type BookPost = {
     release_date: string,
     image_path: string
 }
+
+export type AudioTrack = {
+    _id: string;
+    post_id: string;
+    title: string;
+    url: string;
+    duration?: number;
+    created_at?: string;
+}

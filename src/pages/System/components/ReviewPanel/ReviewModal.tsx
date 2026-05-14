@@ -12,6 +12,7 @@ import { NumTextField } from "../../../../components/common/NumTextField"
 import { transformKeysToSnakeCase } from "../../../../utils/helpers"
 import ModModal from "./ModModal"
 import type { Mod } from "./ModModal"
+import type { AudioTrack } from "../../../../types"
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -72,6 +73,12 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const [deleteError, setDeleteError] = useState('');
     const [mods, setMods]               = useState<Mod[]>([]);
     const [modModal, setModModal]       = useState<{ mod?: Mod; index?: number } | null>(null);
+    const [tracks, setTracks]           = useState<AudioTrack[]>([]);
+    const [uploadFile, setUploadFile]   = useState<File | null>(null);
+    const [uploadTitle, setUploadTitle] = useState('');
+    const [uploading, setUploading]     = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Refs for values needed inside timer callbacks (avoids stale closures)
     const reviewRef        = useRef(review);
@@ -113,10 +120,14 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             setType(editingReview.type || 'game');
             setMods(editingReview.mods ?? []);
             setSlugManual(true);     // existing slug — don't auto-override
+            fetchTracks(editingReview._id);
         } else {
             setReview(EMPTY_REVIEW);
             setType('game');
             setMods([]);
+            setTracks([]);
+            setUploadFile(null);
+            setUploadTitle('');
             setSlugManual(false);
             isNewlySaved.current = false;
         }
@@ -300,6 +311,58 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         } as Partial<Review>));
     };
 
+    // ── Audio track helpers ──────────────────────────────────────────
+    const fetchTracks = async (postId: string) => {
+        try {
+            const url = new URL('/api/audio', config.apiUri);
+            url.searchParams.set('post_id', postId);
+            const res = await fetch(url.toString());
+            if (res.ok) setTracks(await res.json());
+        } catch { /* network error */ }
+    };
+
+    const handleAudioUpload = () => {
+        if (!uploadFile || !editingReview) return;
+        setUploading(true);
+        setUploadProgress(0);
+
+        const token = localStorage.getItem('adminToken');
+        const form = new FormData();
+        form.append('file', uploadFile);
+        form.append('post_id', editingReview._id);
+        form.append('title', uploadTitle || uploadFile.name.replace(/\.[^.]+$/, ''));
+
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', e => {
+            if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
+        });
+        xhr.addEventListener('load', () => {
+            setUploading(false);
+            if (xhr.status >= 200 && xhr.status < 300) {
+                setUploadFile(null);
+                setUploadTitle('');
+                if (fileInputRef.current) fileInputRef.current.value = '';
+                fetchTracks(editingReview._id);
+            }
+        });
+        xhr.addEventListener('error', () => { setUploading(false); });
+        xhr.open('POST', new URL('/api/audio/upload', config.apiUri).toString());
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.send(form);
+    };
+
+    const handleAudioDelete = async (trackId: string) => {
+        const token = localStorage.getItem('adminToken');
+        try {
+            const url = new URL(`/api/audio/${trackId}`, config.apiUri);
+            await fetch(url.toString(), {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setTracks(prev => prev.filter(t => t._id !== trackId));
+        } catch { /* network error */ }
+    };
+
     if (!isOpen) return null;
 
     const saveLabel = (() => {
@@ -454,6 +517,78 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                     ))}
                                 </ul>
                             )}
+                        </div>
+                    )}
+
+                    {/* Soundtrack — only available when editing an existing review */}
+                    {editingReview && (
+                        <div className="flex flex-col gap-2 border-t border-nier-150 pt-4">
+                            <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">
+                                Soundtrack{tracks.length > 0 ? ` (${tracks.length})` : ''}
+                            </span>
+
+                            {tracks.length > 0 && (
+                                <ul className="flex flex-col divide-y divide-nier-150/30 border border-nier-150">
+                                    {tracks.map((track, i) => (
+                                        <li key={track._id} className="flex items-center gap-3 px-3 py-2 group hover:bg-nier-150/20 transition-colors">
+                                            <span className="text-xs text-nier-text-dark/40 font-mono shrink-0">
+                                                [{String(i + 1).padStart(2, '0')}]
+                                            </span>
+                                            <span className="text-sm text-nier-text-dark truncate flex-1">{track.title}</span>
+                                            <audio src={track.url} controls className="h-7 w-40 shrink-0" />
+                                            <button
+                                                onClick={() => handleAudioDelete(track._id)}
+                                                className="text-sm text-nier-text-dark/30 hover:text-red-800 cursor-pointer transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                                            >×</button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+
+                            <div className="flex flex-col gap-1.5">
+                                <div className="flex gap-2 items-center">
+                                    <div
+                                        className="flex-1 flex items-center gap-2 px-3 py-2 border border-dashed border-nier-150 cursor-pointer hover:bg-nier-150/20 transition-colors"
+                                        onClick={() => fileInputRef.current?.click()}
+                                    >
+                                        <span className="text-sm text-nier-text-dark/50 truncate flex-1">
+                                            {uploadFile ? uploadFile.name : 'Select MP3...'}
+                                        </span>
+                                        <span className="text-xs uppercase tracking-widest text-nier-text-dark/30 shrink-0">Browse</span>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Title"
+                                        value={uploadTitle}
+                                        onChange={e => setUploadTitle(e.target.value)}
+                                        className="w-36 px-3 py-2 bg-nier-50 border border-nier-150 text-sm outline-none"
+                                    />
+                                    <button
+                                        onClick={handleAudioUpload}
+                                        disabled={uploading || !uploadFile}
+                                        className="px-3 py-2 text-sm bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
+                                    >
+                                        {uploading ? `${uploadProgress}%` : 'Upload'}
+                                    </button>
+                                </div>
+                                {uploading && (
+                                    <div className="w-full bg-nier-150/30 h-1">
+                                        <div className="bg-nier-text-dark h-1 transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                                    </div>
+                                )}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="audio/mpeg,audio/mp3,.mp3"
+                                    className="hidden"
+                                    onChange={e => {
+                                        const f = e.target.files?.[0];
+                                        if (!f) return;
+                                        setUploadFile(f);
+                                        if (!uploadTitle) setUploadTitle(f.name.replace(/\.[^.]+$/, ''));
+                                    }}
+                                />
+                            </div>
                         </div>
                     )}
                 </div>
