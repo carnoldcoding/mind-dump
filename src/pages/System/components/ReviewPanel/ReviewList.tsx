@@ -1,7 +1,8 @@
 import { ReviewPreview } from "./ReviewPreview"
 import { ReviewModal } from "./ReviewModal"
 import { ReviewGridCard } from "./ReviewGridCard"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import config from "../../../../config"
 import { TextField } from "../../../../components/common/TextField"
 import { Button } from "../../../../components/common/Button"
@@ -27,13 +28,35 @@ export const ReviewList = () => {
     const [sortState,   setSortState]   = useState({
         title: true, type: true, rating: true, date: true, status: true,
     });
+    type SortMetric = 'title' | 'type' | 'rating' | 'status' | 'date';
+    const activeSortRef = useRef<{ metric: SortMetric; stateValue: boolean } | null>(null);
 
-    // Search filter
+    const applySort = (arr: any[], metric: string, stateValue: boolean): any[] => {
+        const result = [...arr];
+        const statusPriority = { TODO: 1, ACTIVE: 2, DONE: 3 } as any;
+        const toTime = (p: any) => { const d = p.date_completed || p.release_date; return d ? new Date(d).getTime() : 0; };
+        if (metric === 'rating') {
+            result.sort((a, b) => stateValue ? a.rating - b.rating : b.rating - a.rating);
+        } else if (metric === 'title') {
+            result.sort((a, b) => { const c = a.title.toUpperCase().localeCompare(b.title.toUpperCase()); return stateValue ? c : -c; });
+        } else if (metric === 'type') {
+            result.sort((a, b) => { const c = a.type.toUpperCase().localeCompare(b.type.toUpperCase()); return stateValue ? c : -c; });
+        } else if (metric === 'status') {
+            result.sort((a, b) => { const ap = statusPriority[a.status?.toUpperCase()] ?? 999; const bp = statusPriority[b.status?.toUpperCase()] ?? 999; return stateValue ? ap - bp : bp - ap; });
+        } else if (metric === 'date') {
+            result.sort((a, b) => stateValue ? toTime(b) - toTime(a) : toTime(a) - toTime(b));
+        }
+        return result;
+    };
+
+    // Search filter — re-applies active sort after filtering
     useEffect(() => {
         const postCopy = [...posts];
         const firstPass  = postCopy.filter(p => p.title.toLowerCase().startsWith(query.toLowerCase()));
         const secondPass = postCopy.filter(p => p.title.toLowerCase().includes(query.toLowerCase()) && !firstPass.includes(p));
-        setFilteredPosts([...firstPass, ...secondPass]);
+        const filtered = [...firstPass, ...secondPass];
+        const active = activeSortRef.current;
+        setFilteredPosts(active ? applySort(filtered, active.metric, active.stateValue) : filtered);
     }, [query, posts]);
 
     const handleAdd  = () => { setEditMode(null);   setIsOpen(true); };
@@ -66,38 +89,10 @@ export const ReviewList = () => {
     };
 
     // ── Sort (list view) ─────────────────────────────────────────────
-    const sortPosts = (metric: 'title' | 'type' | 'rating' | 'status' | 'date') => {
-        const sortedPosts = [...filteredPosts];
-        const statusPriority = { TODO: 1, ACTIVE: 2, DONE: 3 } as any;
-        const toTime = (p: any) => {
-            const d = p.date_completed || p.release_date;
-            return d ? new Date(d).getTime() : 0;
-        };
-
-        if (metric === 'rating') {
-            sortedPosts.sort((a, b) => sortState.rating ? a.rating - b.rating : b.rating - a.rating);
-        } else if (metric === 'title') {
-            sortedPosts.sort((a, b) => {
-                const c = a.title.toUpperCase().localeCompare(b.title.toUpperCase());
-                return sortState.title ? c : -c;
-            });
-        } else if (metric === 'type') {
-            sortedPosts.sort((a, b) => {
-                const c = a.type.toUpperCase().localeCompare(b.type.toUpperCase());
-                return sortState.type ? c : -c;
-            });
-        } else if (metric === 'status') {
-            sortedPosts.sort((a, b) => {
-                const ap = statusPriority[a.status?.toUpperCase()] ?? 999;
-                const bp = statusPriority[b.status?.toUpperCase()] ?? 999;
-                return sortState.status ? ap - bp : bp - ap;
-            });
-        } else if (metric === 'date') {
-            // true = most recent first, false = oldest first
-            sortedPosts.sort((a, b) => sortState.date ? toTime(b) - toTime(a) : toTime(a) - toTime(b));
-        }
-
-        setFilteredPosts(sortedPosts);
+    const sortPosts = (metric: SortMetric) => {
+        const stateValue = sortState[metric];
+        activeSortRef.current = { metric, stateValue };
+        setFilteredPosts(applySort(filteredPosts, metric, stateValue));
         setSortState(prev => ({
             ...Object.keys(prev).reduce((acc, k) => ({ ...acc, [k]: true }), {} as typeof prev),
             [metric]: !prev[metric as keyof typeof prev],
@@ -132,9 +127,6 @@ export const ReviewList = () => {
                 };
                 const sorted = [...data].sort((a, b) => toTime(b) - toTime(a));
                 setPosts(sorted);
-                // Only reset filteredPosts when no search is active; the
-                // [query, posts] effect handles re-filtering after posts update.
-                if (!query) setFilteredPosts(sorted);
             } else {
                 setError('Failed to fetch posts');
             }
@@ -193,6 +185,7 @@ export const ReviewList = () => {
     );
 
     return (
+        <>
         <article className="flex flex-col h-[40rem]">
             {/* Toolbar */}
             <header className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between px-4 py-4 border-b border-b-nier-dark/50 flex-shrink-0">
@@ -219,7 +212,7 @@ export const ReviewList = () => {
                             <p className={`text-sm ${viewMode === 'list' ? 'text-nier-text-light' : ''}`}>List</p>
                         </button>
                     </div>
-                    <div className="h-10">
+                    <div className="hidden sm:block h-10">
                         <Button handleClick={handleAdd} label="Add Review" type="primary" />
                     </div>
                 </div>
@@ -280,6 +273,17 @@ export const ReviewList = () => {
             {error && <p className="px-4 py-2 text-red-700 text-sm">{error}</p>}
 
             {viewMode === 'grid' ? renderGrid() : renderList()}
+
         </article>
+
+        {createPortal(
+            <button
+                onClick={handleAdd}
+                className="sm:hidden fixed bottom-6 right-6 z-40 w-12 h-12 bg-nier-dark text-nier-text-light text-2xl flex items-center justify-center shadow-[3px_3px_0_0] shadow-nier-shadow cursor-pointer hover:bg-nier-text-dark transition-colors duration-150"
+                aria-label="Add Review"
+            >+</button>,
+            document.body
+        )}
+        </>
     );
 };

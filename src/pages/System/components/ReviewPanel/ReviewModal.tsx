@@ -179,9 +179,12 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             if (res.ok) {
                 setSaveStatus('saved');
                 isNewlySaved.current = true;
-                onReviewAdded();
-                setTimeout(() => setSaveStatus(s => s === 'saved' ? 'idle' : s), 2500);
-                if (closeAfter) resetAndClose();
+                if (closeAfter) {
+                    onReviewAdded();
+                    resetAndClose();
+                } else {
+                    setTimeout(() => setSaveStatus(s => s === 'saved' ? 'idle' : s), 2500);
+                }
             } else {
                 setSaveStatus('error');
             }
@@ -223,7 +226,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         }
     };
 
-    // Close: flush unsaved changes first
+    // Close: flush unsaved changes first, then refresh list
     const handleClose = async () => {
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
 
@@ -232,6 +235,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             await performSave(review, type, isUpdate, false);
         }
 
+        onReviewAdded();
         resetAndClose();
     };
 
@@ -307,20 +311,20 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     })();
 
     return createPortal(
-        <div className="fixed inset-0 bg-black/40 z-50 overflow-y-auto flex flex-col nier-backdrop-enter">
-            <div className="flex flex-1 items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/40 z-[110] overflow-y-auto flex flex-col nier-backdrop-enter">
+            <div className="flex flex-1 items-start sm:items-center justify-center p-2 sm:p-4">
             <div className="relative w-full max-w-4xl nier-modal-enter">
                 <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
-            <article className="bg-nier-100-lighter relative w-full max-h-[calc(100dvh-2rem)] flex flex-col">
+            <article className="bg-nier-100-lighter relative w-full max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col">
 
                 {/* Header */}
-                <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                    <h3 className="text-nier-text-dark text-xl uppercase tracking-wide">
+                <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 gap-3 min-w-0">
+                    <h3 className="text-nier-text-dark text-xl uppercase tracking-wide truncate min-w-0">
                         {editingReview ? `Edit — ${editingReview.title}` : 'New Review'}
                     </h3>
                     <div
                         onClick={handleClose}
-                        className="text-3xl leading-none cursor-pointer hover:text-nier-dark transition-colors duration-150"
+                        className="text-3xl leading-none cursor-pointer hover:text-nier-dark transition-colors duration-150 flex-shrink-0"
                     >×</div>
                 </div>
 
