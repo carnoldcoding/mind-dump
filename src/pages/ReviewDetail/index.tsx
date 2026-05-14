@@ -5,6 +5,7 @@ import PageHeader from "../../components/common/PageHeader";
 import config from "../../config";
 import Loader from "../../components/common/Loader";
 import type { AudioTrack } from "../../types";
+import AudioPlayer from "./AudioPlayer";
 type Mod = { name: string; author?: string; url?: string; notes?: string };
 
 const TYPE_ICON: Record<string, string> = {
@@ -218,37 +219,26 @@ const ReviewDetail = () => {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="flex-1 overflow-y-auto bg-nier-100-lighter p-3 min-h-0">
+                                        <div className="flex-1 overflow-y-auto bg-nier-100-lighter p-3 min-h-0 flex flex-col gap-3">
                                             <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeContent}</p>
+                                            {activeTab === 'sound' && tracks.length > 0 && (
+                                                <ul className="flex flex-col border-t border-nier-150 pt-2">
+                                                    {tracks.map((track, i) => (
+                                                        <AudioPlayer
+                                                            key={track._id}
+                                                            src={track.url}
+                                                            title={track.title}
+                                                            index={i}
+                                                        />
+                                                    ))}
+                                                </ul>
+                                            )}
                                         </div>
                                     )}
                                 </div>
                             )}
                         </div>
                     </div>
-
-                    {/* ── Soundtrack ─────────────────────────────────── */}
-                    {tracks.length > 0 && (
-                        <>
-                            <div className="h-px bg-nier-150 mx-4 flex-shrink-0" />
-                            <div className="px-4 py-3 flex-shrink-0 flex flex-col gap-2">
-                                <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">Soundtrack</span>
-                                <ul className="flex flex-col gap-1.5">
-                                    {tracks.map((track, i) => (
-                                        <li key={track._id} className="flex items-center gap-3">
-                                            <span className="text-xs text-nier-text-dark/40 font-mono shrink-0">
-                                                [{String(i + 1).padStart(2, '0')}]
-                                            </span>
-                                            <span className="text-xs uppercase tracking-wide text-nier-text-dark/70 flex-1 truncate">
-                                                {track.title}
-                                            </span>
-                                            <audio src={track.url} controls className="h-7 w-44 shrink-0" />
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </>
-                    )}
 
                     {/* ── Footer ─────────────────────────────────────── */}
                     <div className="h-px bg-nier-150 mx-4 flex-shrink-0" />

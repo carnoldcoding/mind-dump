@@ -13,6 +13,7 @@ import { transformKeysToSnakeCase } from "../../../../utils/helpers"
 import ModModal from "./ModModal"
 import type { Mod } from "./ModModal"
 import type { AudioTrack } from "../../../../types"
+import AudioPlayer from "../../../ReviewDetail/AudioPlayer"
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -531,11 +532,11 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                 <ul className="flex flex-col divide-y divide-nier-150/30 border border-nier-150">
                                     {tracks.map((track, i) => (
                                         <li key={track._id} className="flex items-center gap-3 px-3 py-2 group hover:bg-nier-150/20 transition-colors">
-                                            <span className="text-xs text-nier-text-dark/40 font-mono shrink-0">
-                                                [{String(i + 1).padStart(2, '0')}]
+                                            <span className="text-[10px] text-nier-text-dark/40 font-mono shrink-0 tabular-nums">
+                                                {String(i + 1).padStart(2, '0')}
                                             </span>
-                                            <span className="text-sm text-nier-text-dark truncate flex-1">{track.title}</span>
-                                            <audio src={track.url} controls className="h-7 w-40 shrink-0" />
+                                            <span className="text-xs uppercase tracking-wide text-nier-text-dark w-32 truncate shrink-0">{track.title}</span>
+                                            <AudioPlayer compact src={track.url} title={track.title} index={i} />
                                             <button
                                                 onClick={() => handleAudioDelete(track._id)}
                                                 className="text-sm text-nier-text-dark/30 hover:text-red-800 cursor-pointer transition-colors opacity-0 group-hover:opacity-100 shrink-0"
@@ -548,25 +549,25 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                             <div className="flex flex-col gap-1.5">
                                 <div className="flex gap-2 items-center">
                                     <div
-                                        className="flex-1 flex items-center gap-2 px-3 py-2 border border-dashed border-nier-150 cursor-pointer hover:bg-nier-150/20 transition-colors"
+                                        className="flex-1 flex items-center gap-2 px-3 h-9 border border-dashed border-nier-150 cursor-pointer hover:bg-nier-150/20 transition-colors"
                                         onClick={() => fileInputRef.current?.click()}
                                     >
-                                        <span className="text-sm text-nier-text-dark/50 truncate flex-1">
+                                        <span className="text-sm text-nier-text-dark/80 truncate flex-1">
                                             {uploadFile ? uploadFile.name : 'Select MP3...'}
                                         </span>
-                                        <span className="text-xs uppercase tracking-widest text-nier-text-dark/30 shrink-0">Browse</span>
+                                        <span className="text-xs uppercase tracking-widest text-nier-text-dark/50 shrink-0">Browse</span>
                                     </div>
                                     <input
                                         type="text"
                                         placeholder="Title"
                                         value={uploadTitle}
                                         onChange={e => setUploadTitle(e.target.value)}
-                                        className="w-36 px-3 py-2 bg-nier-50 border border-nier-150 text-sm outline-none"
+                                        className="w-36 px-3 h-9 bg-nier-100-lighter border border-nier-150 text-sm outline-none"
                                     />
                                     <button
                                         onClick={handleAudioUpload}
                                         disabled={uploading || !uploadFile}
-                                        className="px-3 py-2 text-sm bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
+                                        className="px-3 h-9 text-sm bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
                                     >
                                         {uploading ? `${uploadProgress}%` : 'Upload'}
                                     </button>
