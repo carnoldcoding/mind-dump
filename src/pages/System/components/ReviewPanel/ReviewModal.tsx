@@ -10,6 +10,7 @@ import { Button } from "../../../../components/common/Button"
 import config from "../../../../config"
 import { NumTextField } from "../../../../components/common/NumTextField"
 import { transformKeysToSnakeCase } from "../../../../utils/helpers"
+import { gameGenres, movieGenres, bookGenres } from "../../../../utils/genres"
 import ModModal from "./ModModal"
 import type { Mod } from "./ModModal"
 import type { AudioTrack } from "../../../../types"
@@ -65,7 +66,6 @@ const generateSlug = (title: string) =>
 export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }: Arguments) => {
     const [type, setType]               = useState<'game' | 'cinema' | 'book'>('game');
     const [review, setReview]           = useState<Partial<Review>>(EMPTY_REVIEW);
-    const [genreOptions, setGenreOptions] = useState<string[]>([]);
     const [creatorList, setCreatorList] = useState<string[]>([]);
     const [saveStatus, setSaveStatus]   = useState<SaveStatus>('idle');
     const [slugManual, setSlugManual]   = useState(false);
@@ -136,19 +136,19 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         setSaveStatus('idle');
     }, [editingReview, isOpen]);
 
-    // ── Fetch genres + creators when type changes ────────────────────
+    const genreOptions = type === 'game' ? gameGenres : type === 'cinema' ? movieGenres : bookGenres;
+
+    // ── Fetch creators when type changes ─────────────────────────────
     useEffect(() => {
-        const load = async (endpoint: string, setter: (d: string[]) => void) => {
+        const load = async () => {
             try {
-                const url = new URL(endpoint, config.apiUri);
+                const url = new URL('/api/posts/get_creators', config.apiUri);
                 url.searchParams.set('type', type);
                 const res = await fetch(url.toString());
-                if (res.ok) setter(await res.json());
+                if (res.ok) setCreatorList(await res.json());
             } catch { /* silently ignore */ }
         };
-
-        load('/api/posts/get_genres',   setGenreOptions);
-        load('/api/posts/get_creators', setCreatorList);
+        load();
     }, [type]);
 
     // ── Autosave: 2.5s after last change ────────────────────────────
@@ -547,9 +547,9 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                             )}
 
                             <div className="flex flex-col gap-1.5">
-                                <div className="flex gap-2 items-center">
+                                <div className="flex flex-col sm:flex-row gap-2">
                                     <div
-                                        className="flex-1 flex items-center gap-2 px-3 h-9 border border-dashed border-nier-150 cursor-pointer hover:bg-nier-150/20 transition-colors"
+                                        className="sm:flex-1 flex items-center gap-2 px-3 h-9 border border-dashed border-nier-150 cursor-pointer hover:bg-nier-150/20 transition-colors"
                                         onClick={() => fileInputRef.current?.click()}
                                     >
                                         <span className="text-sm text-nier-text-dark/80 truncate flex-1">
@@ -557,20 +557,22 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                         </span>
                                         <span className="text-xs uppercase tracking-widest text-nier-text-dark/50 shrink-0">Browse</span>
                                     </div>
-                                    <input
-                                        type="text"
-                                        placeholder="Title"
-                                        value={uploadTitle}
-                                        onChange={e => setUploadTitle(e.target.value)}
-                                        className="w-36 px-3 h-9 bg-nier-100-lighter border border-nier-150 text-sm outline-none"
-                                    />
-                                    <button
-                                        onClick={handleAudioUpload}
-                                        disabled={uploading || !uploadFile}
-                                        className="px-3 h-9 text-sm bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
-                                    >
-                                        {uploading ? `${uploadProgress}%` : 'Upload'}
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Title"
+                                            value={uploadTitle}
+                                            onChange={e => setUploadTitle(e.target.value)}
+                                            className="flex-1 sm:w-36 sm:flex-none px-3 h-9 bg-nier-100-lighter border border-nier-150 text-sm outline-none"
+                                        />
+                                        <button
+                                            onClick={handleAudioUpload}
+                                            disabled={uploading || !uploadFile}
+                                            className="px-3 h-9 text-sm bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
+                                        >
+                                            {uploading ? `${uploadProgress}%` : 'Upload'}
+                                        </button>
+                                    </div>
                                 </div>
                                 {uploading && (
                                     <div className="w-full bg-nier-150/30 h-1">

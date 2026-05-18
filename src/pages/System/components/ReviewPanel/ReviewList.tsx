@@ -26,9 +26,9 @@ export const ReviewList = () => {
     const [editMode,    setEditMode]    = useState<any>(null);
     const [query,       setQuery]       = useState<string>('');
     const [sortState,   setSortState]   = useState({
-        title: true, type: true, rating: true, date: true, status: true,
+        rating: true, date: true, status: true,
     });
-    type SortMetric = 'title' | 'type' | 'rating' | 'status' | 'date';
+    type SortMetric = 'rating' | 'status' | 'date';
     const activeSortRef = useRef<{ metric: SortMetric; stateValue: boolean } | null>(null);
 
     const applySort = (arr: any[], metric: string, stateValue: boolean): any[] => {
@@ -192,7 +192,7 @@ export const ReviewList = () => {
                 <TextField label="Search" value={query} onChange={setQuery} />
                 <div className="flex gap-2 items-center flex-shrink-0">
                     {/* View toggle */}
-                    <div className="flex h-10">
+                    <div className="flex h-12">
                         <button
                             onClick={() => setViewMode('grid')}
                             className={`flex items-center gap-2 px-3 cursor-pointer transition-colors duration-150 ${
@@ -212,7 +212,7 @@ export const ReviewList = () => {
                             <p className={`text-sm ${viewMode === 'list' ? 'text-nier-text-light' : ''}`}>List</p>
                         </button>
                     </div>
-                    <div className="hidden sm:block h-10">
+                    <div className="hidden sm:block h-12">
                         <Button handleClick={handleAdd} label="Add Review" type="primary" />
                     </div>
                 </div>
@@ -246,7 +246,7 @@ export const ReviewList = () => {
                 {/* Sort + entry count */}
                 <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="text-xs text-nier-text-dark/40 uppercase tracking-wide mr-0.5">Sort</p>
-                    {(['title', 'type', 'rating', 'status', 'date'] as const).map(metric => (
+                    {(['status', 'date', 'rating'] as const).map(metric => (
                         <button
                             key={metric}
                             onClick={() => sortPosts(metric)}
