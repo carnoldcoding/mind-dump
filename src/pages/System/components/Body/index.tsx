@@ -99,6 +99,13 @@ const BodyWindow = ({ onClose }: Props) => {
         return logs[0] ?? null;
     }, [selectedEntries]);
 
+    const lastGoalEntry = useMemo(() => {
+        const goals = selectedEntries
+            .filter(e => e.setGoal != null || e.repGoal != null || e.weightGoal != null)
+            .sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
+        return goals[0] ?? null;
+    }, [selectedEntries]);
+
     const editingMeta = useMemo((): MovementMeta | null => {
         if (!editingMovement) return null;
         return metaMap.get(editingMovement) ?? {
@@ -316,16 +323,33 @@ const BodyWindow = ({ onClose }: Props) => {
                                                 </span>
                                             </div>
                                             <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
-                                            <div className="p-4 h-[calc(100%-1.75rem)] overflow-y-auto">
-                                                {metaMap.get(selectedMovement)?.notes ? (
-                                                    <p className="text-sm text-nier-text-dark leading-relaxed whitespace-pre-wrap">
-                                                        {metaMap.get(selectedMovement)!.notes}
-                                                    </p>
-                                                ) : (
-                                                    <p className="text-xs text-nier-text-dark/35 uppercase tracking-widest">
-                                                        No notes — use ✎ to add some.
-                                                    </p>
+                                            <div className="h-[calc(100%-1.75rem)] overflow-y-auto flex flex-col">
+                                                {lastGoalEntry && (
+                                                    <div className="px-4 py-3 border-b border-nier-150/40 flex items-center gap-6">
+                                                        <span className="text-[9px] uppercase tracking-widest text-nier-text-dark/60 shrink-0">Goal</span>
+                                                        {[
+                                                            { label: "Sets",   val: lastGoalEntry.setGoal },
+                                                            { label: "Reps",   val: lastGoalEntry.repGoal },
+                                                            { label: "Weight", val: lastGoalEntry.weightGoal != null ? `${lastGoalEntry.weightGoal} lbs` : null },
+                                                        ].map(({ label, val }) => val != null && (
+                                                            <div key={label} className="flex flex-col items-center">
+                                                                <span className="text-lg text-nier-text-dark leading-none">{val}</span>
+                                                                <span className="text-[9px] uppercase tracking-widest text-nier-text-dark/60 mt-0.5">{label}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 )}
+                                                <div className="p-4 flex-1">
+                                                    {metaMap.get(selectedMovement)?.notes ? (
+                                                        <p className="text-sm text-nier-text-dark leading-relaxed whitespace-pre-wrap">
+                                                            {metaMap.get(selectedMovement)!.notes}
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-xs text-nier-text-dark/35 uppercase tracking-widest">
+                                                            No notes — use ✎ to add some.
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     ) : (
@@ -347,14 +371,14 @@ const BodyWindow = ({ onClose }: Props) => {
                                                         const isGoal = e.weightGoal != null || e.repGoal != null || e.setGoal != null;
                                                         const parts: string[] = [];
                                                         if (!isGoal) {
-                                                            if (e.weightUsed    != null) parts.push(`${e.weightUsed} lbs`);
                                                             if (e.setsCompleted != null) parts.push(`${e.setsCompleted} sets`);
                                                             if (e.repsCompleted != null) parts.push(`${e.repsCompleted} reps`);
+                                                            if (e.weightUsed    != null) parts.push(`${e.weightUsed} lbs`);
                                                         } else {
                                                             const goalParts: string[] = [];
-                                                            if (e.weightGoal != null) goalParts.push(`${e.weightGoal} lbs`);
                                                             if (e.setGoal    != null) goalParts.push(`${e.setGoal} sets`);
                                                             if (e.repGoal    != null) goalParts.push(`${e.repGoal} reps`);
+                                                            if (e.weightGoal != null) goalParts.push(`${e.weightGoal} lbs`);
                                                             if (goalParts.length) parts.push(`Goal: ${goalParts.join(", ")}`);
                                                         }
                                                         return (
@@ -391,7 +415,7 @@ const BodyWindow = ({ onClose }: Props) => {
                 <WorkoutModal
                     mode={modal}
                     movement={modal !== "create" ? selectedMovement ?? undefined : undefined}
-                    lastEntry={modal === "log" ? lastLogEntry ?? undefined : undefined}
+                    lastEntry={lastLogEntry ?? undefined}
                     onClose={() => setModal(null)}
                     onSaved={fetchEntries}
                 />

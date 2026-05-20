@@ -50,7 +50,7 @@ const EntryEditModal = ({ entry, movementName, onClose, onSaved, onDelete }: Pro
         try {
             const payload: Record<string, unknown> = {
                 id: entry.id,
-                datetime: new Date(date).toISOString(),
+                datetime: (() => { const [y, m, d] = date.split("-").map(Number); return new Date(y, m - 1, d).toISOString(); })(),
             };
             if (!isGoal) {
                 if (weightUsed)    payload.weightUsed    = Number(weightUsed);
@@ -99,17 +99,17 @@ const EntryEditModal = ({ entry, movementName, onClose, onSaved, onDelete }: Pro
 
                         {!isGoal && (
                             <div className="flex gap-3">
-                                <NumTextField label="Weight" value={weightUsed}    onChange={setWeightUsed} />
                                 <NumTextField label="Sets"   value={setsCompleted} onChange={setSetsCompleted} />
                                 <NumTextField label="Reps"   value={repsCompleted} onChange={setRepsCompleted} />
+                                <NumTextField label="Weight" value={weightUsed}    onChange={setWeightUsed} />
                             </div>
                         )}
 
                         {isGoal && (
                             <div className="flex gap-3">
-                                <NumTextField label="Weight Goal" value={weightGoal} onChange={setWeightGoal} />
                                 <NumTextField label="Set Goal"    value={setGoal}    onChange={setSetGoal} />
                                 <NumTextField label="Rep Goal"    value={repGoal}    onChange={setRepGoal} />
+                                <NumTextField label="Weight Goal" value={weightGoal} onChange={setWeightGoal} />
                             </div>
                         )}
 

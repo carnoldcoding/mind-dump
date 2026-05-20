@@ -36,9 +36,9 @@ const TITLES: Record<ModalMode, string> = {
 const WorkoutModal = ({ mode, movement, lastEntry, onClose, onSaved }: Props) => {
     const [name, setName]                 = useState("");
     const [date, setDate]                 = useState(todayStr());
-    const [weightGoal, setWeightGoal]     = useState("");
-    const [repGoal, setRepGoal]           = useState("");
-    const [setGoal, setSetGoal]           = useState("");
+    const [setGoal, setSetGoal]           = useState(lastEntry?.setsCompleted != null ? String(lastEntry.setsCompleted) : "");
+    const [repGoal, setRepGoal]           = useState(lastEntry?.repsCompleted != null ? String(lastEntry.repsCompleted) : "");
+    const [weightGoal, setWeightGoal]     = useState(lastEntry?.weightUsed    != null ? String(lastEntry.weightUsed)    : "");
     const [weightUsed, setWeightUsed]     = useState(lastEntry?.weightUsed != null ? String(lastEntry.weightUsed) : "");
     const [repsCompleted, setRepsCompleted] = useState(lastEntry?.repsCompleted != null ? String(lastEntry.repsCompleted) : "");
     const [setsCompleted, setSetsCompleted] = useState(lastEntry?.setsCompleted != null ? String(lastEntry.setsCompleted) : "");
@@ -60,7 +60,7 @@ const WorkoutModal = ({ mode, movement, lastEntry, onClose, onSaved }: Props) =>
 
         const payload: Record<string, any> = {
             workoutName,
-            datetime: new Date(date).toISOString(),
+            datetime: (() => { const [y, m, d] = date.split("-").map(Number); return new Date(y, m - 1, d).toISOString(); })(),
         };
 
         if (mode === "goals") {
@@ -171,17 +171,17 @@ const WorkoutModal = ({ mode, movement, lastEntry, onClose, onSaved }: Props) =>
 
                         {mode === "goals" && (
                             <div className="flex gap-3">
-                                <NumTextField label="Weight Goal" value={weightGoal} onChange={setWeightGoal} />
                                 <NumTextField label="Set Goal"    value={setGoal}    onChange={setSetGoal} />
                                 <NumTextField label="Rep Goal"    value={repGoal}    onChange={setRepGoal} />
+                                <NumTextField label="Weight Goal" value={weightGoal} onChange={setWeightGoal} />
                             </div>
                         )}
 
                         {mode === "log" && (
                             <div className="flex gap-3">
-                                <NumTextField label="Weight" value={weightUsed}    onChange={setWeightUsed} />
                                 <NumTextField label="Sets"   value={setsCompleted} onChange={setSetsCompleted} />
                                 <NumTextField label="Reps"   value={repsCompleted} onChange={setRepsCompleted} />
+                                <NumTextField label="Weight" value={weightUsed}    onChange={setWeightUsed} />
                             </div>
                         )}
 
