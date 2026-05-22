@@ -39,8 +39,6 @@ const BodyWindow = ({ onClose }: Props) => {
     const [editingMovement, setEditingMovement]   = useState<string | null>(null);
     const [tagFilter, setTagFilter]               = useState<TagFilter>("all");
     const [activeTab, setActiveTab]               = useState<ActiveTab>("chart");
-    const [dragIndex, setDragIndex]               = useState<number | null>(null);
-    const [dragOverIndex, setDragOverIndex]       = useState<number | null>(null);
     const [editingEntry, setEditingEntry]         = useState<EntryToEdit | null>(null);
 
     const fetchEntries = useCallback(async () => {
@@ -146,21 +144,23 @@ const BodyWindow = ({ onClose }: Props) => {
         fetchEntries();
     }, [fetchEntries]);
 
-    // ── Drag to reorder ─────────────────────────────────────────────
-    const handleReorder = useCallback(async (from: number, to: number) => {
-        if (from === to) return;
-        const reordered = [...movements];
-        const [item] = reordered.splice(from, 1);
-        reordered.splice(to, 0, item);
+    // ── Reorder by name ─────────────────────────────────────────────
+    const handleReorder = useCallback(async (name: string, direction: -1 | 1) => {
+        const idx = movements.indexOf(name);
+        const swapIdx = idx + direction;
+        if (idx === -1 || swapIdx < 0 || swapIdx >= movements.length) return;
 
-        await Promise.all(reordered.map(async (name, idx) => {
-            const meta = metaMap.get(name);
+        const reordered = [...movements];
+        [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+
+        await Promise.all(reordered.map(async (n, order) => {
+            const meta = metaMap.get(n);
             if (meta?.id) {
                 const url = new URL("/api/body/update_entry", config.apiUri);
                 return fetch(url.toString(), {
                     method:  "POST",
                     headers: { "Content-Type": "application/json" },
-                    body:    JSON.stringify({ id: meta.id, order: idx }),
+                    body:    JSON.stringify({ id: meta.id, order }),
                 });
             } else {
                 const url = new URL("/api/body/add_entry", config.apiUri);
@@ -168,8 +168,8 @@ const BodyWindow = ({ onClose }: Props) => {
                     method:  "POST",
                     headers: { "Content-Type": "application/json" },
                     body:    JSON.stringify({
-                        workoutName: name, _meta: true,
-                        displayName: name, tag: null, notes: "", order: idx,
+                        workoutName: n, _meta: true,
+                        displayName: n, tag: null, notes: "", order,
                         datetime: new Date().toISOString(),
                     }),
                 });
@@ -234,27 +234,30 @@ const BodyWindow = ({ onClose }: Props) => {
                                         <span className="text-nier-text-dark/40 text-xs uppercase px-3 py-3">
                                             {movements.length === 0 ? "No movements yet" : "None in this category"}
                                         </span>
-                                    ) : filteredMovements.map((name, idx) => {
+                                    ) : filteredMovements.map((name) => {
                                         const meta = metaMap.get(name);
                                         const isSelected = selectedMovement === name;
-                                        const isDraggingOver = dragOverIndex === idx && dragIndex !== idx;
+                                        const fullIdx = movements.indexOf(name);
                                         return (
                                             <div
                                                 key={name}
-                                                data-movement-index={idx}
-                                                draggable
-                                                onDragStart={e => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(idx)); setDragIndex(idx); }}
-                                                onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOverIndex(idx); }}
-                                                onDrop={e => { e.preventDefault(); const from = parseInt(e.dataTransfer.getData("text/plain")); if (!isNaN(from)) handleReorder(from, idx); setDragIndex(null); setDragOverIndex(null); }}
-                                                onDragEnd={() => { setDragIndex(null); setDragOverIndex(null); }}
                                                 className={`flex items-center gap-1.5 border-b border-nier-150/40 last:border-0 group transition-colors ${
-                                                    isSelected ? "bg-nier-text-dark" : isDraggingOver ? "bg-nier-150/60" : "hover:bg-nier-150/30"
-                                                } ${dragIndex === idx ? "opacity-40" : ""}`}
+                                                    isSelected ? "bg-nier-text-dark" : "hover:bg-nier-150/30"
+                                                }`}
                                             >
-                                                {/* Drag handle */}
-                                                <span className={`pl-2 text-sm select-none cursor-grab active:cursor-grabbing shrink-0 ${isSelected ? "text-nier-100-lighter/40" : "text-nier-text-dark/25"}`}>
-                                                    ≡
-                                                </span>
+                                                {/* Up/down buttons */}
+                                                <div className="pl-1.5 flex flex-col shrink-0">
+                                                    <button
+                                                        onClick={() => handleReorder(name, -1)}
+                                                        disabled={fullIdx === 0}
+                                                        className={`text-[9px] leading-none cursor-pointer disabled:opacity-20 disabled:cursor-default ${isSelected ? "text-nier-100-lighter/60" : "text-nier-text-dark/50"}`}
+                                                    >▲</button>
+                                                    <button
+                                                        onClick={() => handleReorder(name, 1)}
+                                                        disabled={fullIdx === movements.length - 1}
+                                                        className={`text-[9px] leading-none cursor-pointer disabled:opacity-20 disabled:cursor-default ${isSelected ? "text-nier-100-lighter/60" : "text-nier-text-dark/50"}`}
+                                                    >▼</button>
+                                                </div>
 
                                                 {/* Name — click to select */}
                                                 <button
@@ -264,17 +267,10 @@ const BodyWindow = ({ onClose }: Props) => {
                                                     {meta?.displayName || name}
                                                 </button>
 
-                                                {/* Tag badge */}
-                                                {meta?.tag && (
-                                                    <span className={`text-[9px] uppercase shrink-0 ${isSelected ? "text-nier-100-lighter/50" : "text-nier-text-dark/40"}`}>
-                                                        {meta.tag}
-                                                    </span>
-                                                )}
-
                                                 {/* Edit button */}
                                                 <button
                                                     onClick={e => { e.stopPropagation(); setEditingMovement(name); }}
-                                                    className={`pr-2 text-sm opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity shrink-0 ${isSelected ? "text-nier-100-lighter/60" : "text-nier-text-dark/40"}`}
+                                                    className={`pr-2 text-sm cursor-pointer shrink-0 ${isSelected ? "text-nier-100-lighter/60" : "text-nier-text-dark/40"}`}
                                                 >
                                                     ✎
                                                 </button>
