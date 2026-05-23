@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router";
 import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
@@ -34,8 +35,10 @@ const ReviewDetail = () => {
     const [error,     setError]     = useState<string | null>(null);
     const [data,      setData]      = useState<any>(null);
     const [activeTab, setActiveTab] = useState<string>('');
-    const [mods,      setMods]      = useState<Mod[]>([]);
-    const [tracks,    setTracks]    = useState<AudioTrack[]>([]);
+    const [mods,        setMods]        = useState<Mod[]>([]);
+    const [tracks,      setTracks]      = useState<AudioTrack[]>([]);
+    const [screenshots, setScreenshots] = useState<{ _id: string; url: string; title?: string }[]>([]);
+    const [selectedImg, setSelectedImg] = useState<{ url: string; title?: string } | null>(null);
     const [parent]                  = useState(location.pathname.split('/')[1]);
     const { slug }                  = useParams<{ category: string; slug: string }>();
 
@@ -83,7 +86,19 @@ const ReviewDetail = () => {
                 if (res.ok) setTracks(await res.json());
             } catch { /* network error */ }
         };
+
+        const fetchScreenshots = async () => {
+            try {
+                const url = new URL("/api/images", config.apiUri);
+                url.searchParams.set("post_id", data._id);
+                url.searchParams.set("type", "screenshot");
+                const res = await fetch(url.toString());
+                if (res.ok) setScreenshots(await res.json());
+            } catch { /* network error */ }
+        };
+
         fetchTracks();
+        fetchScreenshots();
     }, [data]);
 
 
@@ -233,6 +248,24 @@ const ReviewDetail = () => {
                                                     ))}
                                                 </ul>
                                             )}
+                                            {activeTab === 'graphics' && screenshots.length > 0 && (
+                                                <div className="border-t border-nier-150 pt-2 flex gap-2 overflow-x-auto pb-1">
+                                                    {screenshots.map(img => (
+                                                        <button
+                                                            key={img._id}
+                                                            onClick={() => setSelectedImg(img)}
+                                                            className="shrink-0 h-24 aspect-video bg-nier-150/20 overflow-hidden block cursor-pointer hover:opacity-80 transition-opacity"
+                                                            title={img.title}
+                                                        >
+                                                            <img
+                                                                src={img.url}
+                                                                alt={img.title || 'Screenshot'}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -250,6 +283,38 @@ const ReviewDetail = () => {
 
                 </article>
             </div>
+            {selectedImg && createPortal(
+                <div
+                    className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+                    onClick={() => setSelectedImg(null)}
+                >
+                    <div
+                        className="relative w-full max-w-4xl"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
+                        <article className="bg-nier-100-lighter relative flex flex-col">
+                            <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
+                                <span className="text-nier-text-dark text-sm uppercase tracking-widest truncate">
+                                    {selectedImg.title || 'Screenshot'}
+                                </span>
+                                <button
+                                    onClick={() => setSelectedImg(null)}
+                                    className="text-3xl leading-none cursor-pointer hover:text-nier-dark transition-colors ml-4 flex-shrink-0"
+                                >×</button>
+                            </div>
+                            <div className="bg-nier-100 p-2">
+                                <img
+                                    src={selectedImg.url}
+                                    alt={selectedImg.title || 'Screenshot'}
+                                    className="w-full max-h-[80vh] object-contain block"
+                                />
+                            </div>
+                        </article>
+                    </div>
+                </div>,
+                document.body
+            )}
         </>
     );
 };

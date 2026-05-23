@@ -81,6 +81,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const [uploadProgress, setUploadProgress] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [images, setImages]               = useState<{ _id: string; url: string; title?: string }[]>([]);
+    const [imgFiles, setImgFiles]           = useState<File[]>([]);
+    const [imgTitle, setImgTitle]           = useState('');
+    const [imgUploading, setImgUploading]   = useState(false);
+    const [imgProgress, setImgProgress]     = useState({ current: 0, total: 0, filePct: 0 });
+    const imgFileInputRef = useRef<HTMLInputElement>(null);
+
     // Refs for values needed inside timer callbacks (avoids stale closures)
     const reviewRef        = useRef(review);
     const typeRef          = useRef(type);
@@ -122,6 +129,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             setMods(editingReview.mods ?? []);
             setSlugManual(true);     // existing slug — don't auto-override
             fetchTracks(editingReview._id);
+            fetchImages(editingReview._id);
         } else {
             setReview(EMPTY_REVIEW);
             setType('game');
@@ -129,6 +137,9 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             setTracks([]);
             setUploadFile(null);
             setUploadTitle('');
+            setImages([]);
+            setImgFiles([]);
+            setImgTitle('');
             setSlugManual(false);
             isNewlySaved.current = false;
         }
@@ -364,6 +375,67 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         } catch { /* network error */ }
     };
 
+    // ── Image helpers ────────────────────────────────────────────────
+    const fetchImages = async (postId: string) => {
+        try {
+            const url = new URL('/api/images', config.apiUri);
+            url.searchParams.set('post_id', postId);
+            url.searchParams.set('type', 'screenshot');
+            const res = await fetch(url.toString());
+            if (res.ok) setImages(await res.json());
+        } catch { /* network error */ }
+    };
+
+    const handleImageUpload = async () => {
+        if (!imgFiles.length || !editingReview) return;
+        const token = localStorage.getItem('adminToken');
+        const total = imgFiles.length;
+        setImgUploading(true);
+
+        const uploadOne = (file: File, idx: number): Promise<void> =>
+            new Promise(resolve => {
+                const form = new FormData();
+                form.append('file', file);
+                form.append('post_id', editingReview._id);
+                form.append('type', 'screenshot');
+                form.append('title', (total === 1 && imgTitle) ? imgTitle : file.name.replace(/\.[^.]+$/, ''));
+
+                const xhr = new XMLHttpRequest();
+                xhr.upload.addEventListener('progress', e => {
+                    if (e.lengthComputable)
+                        setImgProgress({ current: idx, total, filePct: Math.round((e.loaded / e.total) * 100) });
+                });
+                xhr.addEventListener('load', () => resolve());
+                xhr.addEventListener('error', () => resolve());
+                xhr.open('POST', new URL('/api/images/upload', config.apiUri).toString());
+                if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                xhr.send(form);
+            });
+
+        for (let i = 0; i < imgFiles.length; i++) {
+            setImgProgress({ current: i + 1, total, filePct: 0 });
+            await uploadOne(imgFiles[i], i + 1);
+        }
+
+        setImgUploading(false);
+        setImgFiles([]);
+        setImgTitle('');
+        if (imgFileInputRef.current) imgFileInputRef.current.value = '';
+        fetchImages(editingReview._id);
+    };
+
+    const handleImageDelete = async (imageId: string) => {
+        const token = localStorage.getItem('adminToken');
+        try {
+            const url = new URL(`/api/images/${imageId}`, config.apiUri);
+            await fetch(url.toString(), {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            setImages(prev => prev.filter(img => img._id !== imageId));
+        } catch { /* network error */ }
+    };
+
     if (!isOpen) return null;
 
     const saveLabel = (() => {
@@ -518,6 +590,100 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                     ))}
                                 </ul>
                             )}
+                        </div>
+                    )}
+
+                    {/* Screenshots — only available when editing an existing review */}
+                    {editingReview && (
+                        <div className="flex flex-col gap-2 border-t border-nier-150 pt-4">
+                            <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">
+                                Screenshots{images.length > 0 ? ` (${images.length})` : ''}
+                            </span>
+
+                            {images.length > 0 && (
+                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                    {images.map(img => (
+                                        <div key={img._id} className="relative group aspect-video bg-nier-150/20 overflow-hidden">
+                                            <a href={img.url} target="_blank" rel="noreferrer">
+                                                <img
+                                                    src={img.url}
+                                                    alt={img.title || 'Screenshot'}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </a>
+                                            <button
+                                                onClick={() => handleImageDelete(img._id)}
+                                                className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-800"
+                                            >×</button>
+                                            {img.title && (
+                                                <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <span className="text-[10px] text-white truncate block">{img.title}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="flex flex-col gap-1.5">
+                                <div className="flex flex-col sm:flex-row gap-2">
+                                    <div
+                                        className="sm:flex-1 flex items-center gap-2 px-3 h-9 border border-dashed border-nier-150 cursor-pointer hover:bg-nier-150/20 transition-colors"
+                                        onClick={() => imgFileInputRef.current?.click()}
+                                    >
+                                        <span className="text-sm text-nier-text-dark/80 truncate flex-1">
+                                            {imgFiles.length === 0 ? 'Select images...' : imgFiles.length === 1 ? imgFiles[0].name : `${imgFiles.length} files selected`}
+                                        </span>
+                                        <span className="text-xs uppercase tracking-widest text-nier-text-dark/50 shrink-0">Browse</span>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        {imgFiles.length <= 1 && (
+                                            <input
+                                                type="text"
+                                                placeholder="Title (opt)"
+                                                value={imgTitle}
+                                                onChange={e => setImgTitle(e.target.value)}
+                                                className="flex-1 sm:w-36 sm:flex-none px-3 h-9 bg-nier-100-lighter border border-nier-150 text-sm outline-none"
+                                            />
+                                        )}
+                                        <button
+                                            onClick={handleImageUpload}
+                                            disabled={imgUploading || !imgFiles.length}
+                                            className="px-3 h-9 text-sm bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
+                                        >
+                                            {imgUploading
+                                                ? imgProgress.total > 1
+                                                    ? `${imgProgress.current}/${imgProgress.total} — ${imgProgress.filePct}%`
+                                                    : `${imgProgress.filePct}%`
+                                                : imgFiles.length > 1 ? `Upload ${imgFiles.length}` : 'Upload'}
+                                        </button>
+                                    </div>
+                                </div>
+                                {imgUploading && (
+                                    <div className="w-full bg-nier-150/30 h-1">
+                                        <div
+                                            className="bg-nier-text-dark h-1 transition-all duration-200"
+                                            style={{ width: `${Math.round(((imgProgress.current - 1) / imgProgress.total + imgProgress.filePct / 100 / imgProgress.total) * 100)}%` }}
+                                        />
+                                    </div>
+                                )}
+                                <input
+                                    ref={imgFileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    className="hidden"
+                                    onChange={e => {
+                                        const files = Array.from(e.target.files ?? []);
+                                        if (!files.length) return;
+                                        setImgFiles(files);
+                                        if (files.length === 1 && !imgTitle)
+                                            setImgTitle(files[0].name.replace(/\.[^.]+$/, ''));
+                                        else
+                                            setImgTitle('');
+                                    }}
+                                />
+                            </div>
                         </div>
                     )}
 
