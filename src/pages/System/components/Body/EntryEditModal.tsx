@@ -27,7 +27,7 @@ type Props = {
 const toDateStr = (iso: string) => iso.split("T")[0];
 
 const EntryEditModal = ({ entry, movementName, onClose, onSaved, onDelete }: Props) => {
-    const isGoal = entry.weightGoal != null || entry.setGoal != null || entry.repGoal != null;
+    const isGoal = classifyEntry(entry) === "goal";
 
     const [date, setDate]               = useState(toDateStr(entry.datetime));
     const [weightUsed, setWeightUsed]   = useState(entry.weightUsed   != null ? String(entry.weightUsed)   : "");

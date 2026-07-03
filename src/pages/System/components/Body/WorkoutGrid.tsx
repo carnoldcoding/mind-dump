@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef } from "react";
+import { classifyEntry } from "./entry";
 
 type Entry = { datetime: string; weightUsed?: number; repsCompleted?: number; setsCompleted?: number };
 
@@ -21,7 +22,7 @@ const WorkoutGrid = ({ entries }: Props) => {
     const { weeks, monthLabels } = useMemo(() => {
         const dateMap = new Map<string, number>();
         entries
-            .filter(e => e.weightUsed != null || e.repsCompleted != null || e.setsCompleted != null)
+            .filter(e => classifyEntry(e) === "log")
             .forEach(e => {
                 const d = new Date(e.datetime).toISOString().split("T")[0];
                 dateMap.set(d, (dateMap.get(d) || 0) + 1);

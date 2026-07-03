@@ -8,6 +8,7 @@ import EntryEditModal from "./EntryEditModal";
 import type { ModalMode } from "./WorkoutModal";
 import type { MovementMeta } from "./MovementEditModal";
 import type { EntryToEdit } from "./EntryEditModal";
+import { classifyEntry } from "./entry";
 
 type RawEntry = {
     id?: string;
@@ -53,7 +54,7 @@ const BodyWindow = ({ onClose }: Props) => {
     const metaMap = useMemo(() => {
         const map = new Map<string, MovementMeta>();
         entries
-            .filter(e => e._meta)
+            .filter(e => classifyEntry(e) === "meta")
             .forEach(e => {
                 map.set(e.workoutName, {
                     id:          e.id ?? e._id,
@@ -68,7 +69,7 @@ const BodyWindow = ({ onClose }: Props) => {
     }, [entries]);
 
     const movements = useMemo(() => {
-        const names = [...new Set(entries.filter(e => !e._meta).map(e => e.workoutName))];
+        const names = [...new Set(entries.filter(e => classifyEntry(e) !== "meta").map(e => e.workoutName))];
         return names.sort((a, b) => (metaMap.get(a)?.order ?? 9999) - (metaMap.get(b)?.order ?? 9999));
     }, [entries, metaMap]);
 
@@ -81,7 +82,7 @@ const BodyWindow = ({ onClose }: Props) => {
         if (movements.length > 0 && selectedMovement === null) setSelectedMovement(movements[0]);
     }, [movements, selectedMovement]);
 
-    const workoutEntries = useMemo(() => entries.filter(e => !e._meta), [entries]);
+    const workoutEntries = useMemo(() => entries.filter(e => classifyEntry(e) !== "meta"), [entries]);
 
     const selectedEntries = useMemo(
         () => workoutEntries.filter(e => e.workoutName === selectedMovement),
@@ -90,14 +91,14 @@ const BodyWindow = ({ onClose }: Props) => {
 
     const lastLogEntry = useMemo(() => {
         const logs = selectedEntries
-            .filter(e => e.weightUsed != null || e.repsCompleted != null || e.setsCompleted != null)
+            .filter(e => classifyEntry(e) === "log")
             .sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
         return logs[0] ?? null;
     }, [selectedEntries]);
 
     const lastGoalEntry = useMemo(() => {
         const goals = selectedEntries
-            .filter(e => e.setGoal != null || e.repGoal != null || e.weightGoal != null)
+            .filter(e => classifyEntry(e) === "goal")
             .sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
         return goals[0] ?? null;
     }, [selectedEntries]);
@@ -334,14 +335,14 @@ const BodyWindow = ({ onClose }: Props) => {
                                             <div className="overflow-y-auto flex-1">
                                                 {(() => {
                                                     const logEntries = [...selectedEntries]
-                                                        .filter(e => e.weightUsed != null || e.repsCompleted != null || e.setsCompleted != null || e.weightGoal != null || e.repGoal != null || e.setGoal != null)
+                                                        .filter(e => classifyEntry(e) === "log" || classifyEntry(e) === "goal")
                                                         .sort((a, b) => new Date(b.datetime).getTime() - new Date(a.datetime).getTime());
                                                     if (logEntries.length === 0) return (
                                                         <p className="text-xs text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">No entries yet.</p>
                                                     );
                                                     return logEntries.map(e => {
                                                         const id = e.id ?? e._id;
-                                                        const isGoal = e.weightGoal != null || e.repGoal != null || e.setGoal != null;
+                                                        const isGoal = classifyEntry(e) === "goal";
                                                         const parts: string[] = [];
                                                         if (!isGoal) {
                                                             if (e.setsCompleted != null) parts.push(`${e.setsCompleted} sets`);
