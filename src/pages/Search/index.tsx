@@ -2,7 +2,8 @@ import PageHeader from "../../components/common/PageHeader"
 import { useState, useEffect } from "react";
 import type { BookPost, CinemaPost, GamePost } from "../../types";
 import { Link } from "react-router-dom";
-import config from "../../config";
+import { backend } from "../../api/backend";
+import { rankByTitle } from "../../utils/rankByTitle";
 import gameLight from "../../assets/game-light.svg";
 import monitorLight from "../../assets/monitor-light.svg";
 import bookLight from "../../assets/book-light.svg";
@@ -20,15 +21,8 @@ const Search = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const url = new URL('/api/posts', config.apiUri);
-                const response = await fetch(url.toString());
-                
-                if(response.ok){
-                    const data = await response.json();
-                    setPosts(data);
-                } else{
-                    setError('Failed to fetch posts');
-                }
+                const data = await backend.getReviews();
+                setPosts(data);
             } catch (error) {
                 setError('Network error');
             } finally {
@@ -45,20 +39,9 @@ const Search = () => {
 
     const filterPosts = (query: string) => {
         if (query !== "") {
-          const lowerQuery = query.toLowerCase();
           const eligible: any[] = posts.filter((post: any) => post.status !== 'todo');
-
-          const startsWithMatches : any[] = eligible.filter((post: any) =>
-            post.title.toLowerCase().startsWith(lowerQuery)
-          );
-
-          const containsMatches : any[] = eligible.filter((post: any) =>
-            post.title.toLowerCase().includes(lowerQuery) &&
-            !startsWithMatches.includes(post)
-          );
-      
           //@ts-ignore
-          setFilteredPosts([...startsWithMatches, ...containsMatches]);
+          setFilteredPosts(rankByTitle(eligible, query));
         } else {
           setFilteredPosts([]);
         }
