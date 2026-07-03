@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import config from '../config';
+import { backend } from '../api/backend';
 
 interface AuthContextType {
   isLoggedIn: boolean;
@@ -19,20 +19,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const checkAuth = async () => {
       const token = localStorage.getItem('adminToken');
       if (token) {
-        // Verify token with backend
         try {
-          const url = new URL('/api/auth/verify', config.apiUri);
-          const response = await fetch(url.toString(), {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (response.ok) {
-            setIsLoggedIn(true);
-          } else {
-            localStorage.removeItem('adminToken');
-          }
+          await backend.verifyToken(token);
+          setIsLoggedIn(true);
         } catch (error) {
           console.error('Auth check failed:', error);
           localStorage.removeItem('adminToken');
@@ -46,22 +35,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (password: string): Promise<boolean> => {
     try {
-      const url = new URL('/api/auth/login', config.apiUri);
-      const response = await fetch(url.toString(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password }),
-      });
-
-      if (response.ok) {
-        const { token } = await response.json();
-        localStorage.setItem('adminToken', token);
-        setIsLoggedIn(true);
-        return true;
-      }
-      return false;
+      const { token } = await backend.login(password);
+      localStorage.setItem('adminToken', token);
+      setIsLoggedIn(true);
+      return true;
     } catch (error) {
       console.error('Login failed:', error);
       return false;

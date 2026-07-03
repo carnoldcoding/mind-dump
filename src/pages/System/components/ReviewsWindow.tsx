@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import config from "../../../config";
+import { backend } from "../../../api/backend";
 import { PieChart } from "./pieChart";
 import { BarChart } from "./barChart";
 import { ReviewPanel } from "./ReviewPanel";
@@ -22,9 +22,7 @@ const ReviewsWindow = ({ onClose }: Props) => {
 
     const fetchPosts = async () => {
         try {
-            const url = new URL("/api/posts", config.apiUri);
-            const response = await fetch(url.toString());
-            if (response.ok) setPosts(await response.json());
+            setPosts(await backend.getReviews());
         } catch {
             // network error — posts stay empty
         }

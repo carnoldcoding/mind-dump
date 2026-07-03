@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import config from "../../../../config";
+import { backend } from "../../../../api/backend";
 import WorkoutGrid from "./WorkoutGrid";
 import MovementChart from "./MovementChart";
 import WorkoutModal from "./WorkoutModal";
@@ -43,9 +43,7 @@ const BodyWindow = ({ onClose }: Props) => {
 
     const fetchEntries = useCallback(async () => {
         try {
-            const url = new URL("/api/body", config.apiUri);
-            const res = await fetch(url.toString());
-            if (res.ok) setEntries(await res.json());
+            setEntries(await backend.getBodyEntries());
         } catch { /* network error */ }
     }, []);
 
@@ -120,13 +118,7 @@ const BodyWindow = ({ onClose }: Props) => {
         const toDelete = entries.filter(e => e.workoutName === workoutName);
         await Promise.all(toDelete.map(e => {
             const id = e.id ?? e._id;
-            if (!id) return Promise.resolve();
-            const url = new URL("/api/body/remove_entry", config.apiUri);
-            return fetch(url.toString(), {
-                method:  "POST",
-                headers: { "Content-Type": "application/json" },
-                body:    JSON.stringify({ id }),
-            });
+            return id ? backend.removeBodyEntry(id) : Promise.resolve();
         }));
         if (selectedMovement === workoutName) setSelectedMovement(null);
         setEditingMovement(null);
@@ -135,12 +127,7 @@ const BodyWindow = ({ onClose }: Props) => {
 
     // ── Delete single entry ─────────────────────────────────────────
     const handleDeleteEntry = useCallback(async (id: string) => {
-        const url = new URL("/api/body/remove_entry", config.apiUri);
-        await fetch(url.toString(), {
-            method:  "POST",
-            headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ id }),
-        });
+        await backend.removeBodyEntry(id);
         fetchEntries();
     }, [fetchEntries]);
 
@@ -156,22 +143,12 @@ const BodyWindow = ({ onClose }: Props) => {
         await Promise.all(reordered.map(async (n, order) => {
             const meta = metaMap.get(n);
             if (meta?.id) {
-                const url = new URL("/api/body/update_entry", config.apiUri);
-                return fetch(url.toString(), {
-                    method:  "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body:    JSON.stringify({ id: meta.id, order }),
-                });
+                return backend.updateBodyEntry({ id: meta.id, order });
             } else {
-                const url = new URL("/api/body/add_entry", config.apiUri);
-                return fetch(url.toString(), {
-                    method:  "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body:    JSON.stringify({
-                        workoutName: n, _meta: true,
-                        displayName: n, tag: null, notes: "", order,
-                        datetime: new Date().toISOString(),
-                    }),
+                return backend.addBodyEntry({
+                    workoutName: n, _meta: true,
+                    displayName: n, tag: null, notes: "", order,
+                    datetime: new Date().toISOString(),
                 });
             }
         }));

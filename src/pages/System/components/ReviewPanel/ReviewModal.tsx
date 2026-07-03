@@ -7,7 +7,7 @@ import { ImageTextField } from "../../../../components/common/ImageTextField"
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { Button } from "../../../../components/common/Button"
-import config from "../../../../config"
+import { backend } from "../../../../api/backend"
 import { NumTextField } from "../../../../components/common/NumTextField"
 import { transformKeysToSnakeCase } from "../../../../utils/helpers"
 import { gameGenres, movieGenres, bookGenres } from "../../../../utils/genres"
@@ -151,15 +151,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
     // ── Fetch creators when type changes ─────────────────────────────
     useEffect(() => {
-        const load = async () => {
-            try {
-                const url = new URL('/api/posts/get_creators', config.apiUri);
-                url.searchParams.set('type', type);
-                const res = await fetch(url.toString());
-                if (res.ok) setCreatorList(await res.json());
-            } catch { /* silently ignore */ }
-        };
-        load();
+        backend.getCreators(type).then(setCreatorList).catch(() => { /* silently ignore */ });
     }, [type]);
 
     // ── Autosave: 2.5s after last change ────────────────────────────
@@ -186,30 +178,19 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         isUpdate: boolean,
         closeAfter: boolean,
     ) => {
-        const parsed   = transformKeysToSnakeCase(currentReview);
-        const endpoint = isUpdate ? '/api/posts/update_post' : '/api/posts/add_post';
+        const parsed = transformKeysToSnakeCase(currentReview);
 
         setSaveStatus('saving');
 
         try {
-            const url = new URL(endpoint, config.apiUri);
-            const res = await fetch(url.toString(), {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ ...parsed, type: currentType, mods: modsRef.current }),
-            });
-
-            if (res.ok) {
-                setSaveStatus('saved');
-                isNewlySaved.current = true;
-                if (closeAfter) {
-                    onReviewAdded();
-                    resetAndClose();
-                } else {
-                    setTimeout(() => setSaveStatus(s => s === 'saved' ? 'idle' : s), 2500);
-                }
+            await backend.saveReview({ ...parsed, type: currentType, mods: modsRef.current }, isUpdate);
+            setSaveStatus('saved');
+            isNewlySaved.current = true;
+            if (closeAfter) {
+                onReviewAdded();
+                resetAndClose();
             } else {
-                setSaveStatus('error');
+                setTimeout(() => setSaveStatus(s => s === 'saved' ? 'idle' : s), 2500);
             }
         } catch {
             setSaveStatus('error');
@@ -236,12 +217,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             return;
         }
         try {
-            const url = new URL('/api/posts/remove_post', config.apiUri);
-            await fetch(url.toString(), {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ slug: editingReview.slug }),
-            });
+            await backend.deleteReview(editingReview.slug);
             onReviewAdded();
             resetAndClose();
         } catch {
@@ -325,12 +301,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
     // ── Audio track helpers ──────────────────────────────────────────
     const fetchTracks = async (postId: string) => {
-        try {
-            const url = new URL('/api/audio', config.apiUri);
-            url.searchParams.set('post_id', postId);
-            const res = await fetch(url.toString());
-            if (res.ok) setTracks(await res.json());
-        } catch { /* network error */ }
+        backend.getAudioTracks(postId).then(setTracks).catch(() => { /* network error */ });
     };
 
     const handleAudioUpload = () => {
@@ -338,7 +309,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         setUploading(true);
         setUploadProgress(0);
 
-        const token = localStorage.getItem('adminToken');
+        const token = backend.authToken();
         const form = new FormData();
         form.append('file', uploadFile);
         form.append('post_id', editingReview._id);
@@ -358,37 +329,26 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             }
         });
         xhr.addEventListener('error', () => { setUploading(false); });
-        xhr.open('POST', new URL('/api/audio/upload', config.apiUri).toString());
+        xhr.open('POST', backend.uploadUrl('/api/audio/upload'));
         if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         xhr.send(form);
     };
 
     const handleAudioDelete = async (trackId: string) => {
-        const token = localStorage.getItem('adminToken');
         try {
-            const url = new URL(`/api/audio/${trackId}`, config.apiUri);
-            await fetch(url.toString(), {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await backend.deleteAudioTrack(trackId);
             setTracks(prev => prev.filter(t => t._id !== trackId));
         } catch { /* network error */ }
     };
 
     // ── Image helpers ────────────────────────────────────────────────
     const fetchImages = async (postId: string) => {
-        try {
-            const url = new URL('/api/images', config.apiUri);
-            url.searchParams.set('post_id', postId);
-            url.searchParams.set('type', 'screenshot');
-            const res = await fetch(url.toString());
-            if (res.ok) setImages(await res.json());
-        } catch { /* network error */ }
+        backend.getImages(postId, 'screenshot').then(setImages).catch(() => { /* network error */ });
     };
 
     const handleImageUpload = async () => {
         if (!imgFiles.length || !editingReview) return;
-        const token = localStorage.getItem('adminToken');
+        const token = backend.authToken();
         const total = imgFiles.length;
         setImgUploading(true);
 
@@ -407,7 +367,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                 });
                 xhr.addEventListener('load', () => resolve());
                 xhr.addEventListener('error', () => resolve());
-                xhr.open('POST', new URL('/api/images/upload', config.apiUri).toString());
+                xhr.open('POST', backend.uploadUrl('/api/images/upload'));
                 if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
                 xhr.send(form);
             });
@@ -425,13 +385,8 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     };
 
     const handleImageDelete = async (imageId: string) => {
-        const token = localStorage.getItem('adminToken');
         try {
-            const url = new URL(`/api/images/${imageId}`, config.apiUri);
-            await fetch(url.toString(), {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await backend.deleteImage(imageId);
             setImages(prev => prev.filter(img => img._id !== imageId));
         } catch { /* network error */ }
     };

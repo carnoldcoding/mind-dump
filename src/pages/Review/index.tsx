@@ -2,7 +2,8 @@ import PageHeader from "../../components/common/PageHeader";
 import Card from "../../components/common/Card";
 import { useEffect, useState } from "react";
 import Loader from "../../components/common/Loader";
-import config from "../../config";
+import { backend } from "../../api/backend";
+import { rankByTitle } from "../../utils/rankByTitle";
 import { useParams } from "react-router";
 import { TextField } from "../../components/common/TextField";
 import { Button } from "../../components/common/Button";
@@ -148,17 +149,9 @@ const Review = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const url = new URL('/api/posts', config.apiUri);
-                url.searchParams.set('type', type);
-                const response = await fetch(url.toString());
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    setPosts(data);
-                    setFilteredPosts(data);
-                } else {
-                    setError('Failed to fetch posts');
-                }
+                const data = await backend.getReviews({ type });
+                setPosts(data);
+                setFilteredPosts(data);
             } catch (error) {
                 setError('Network error');
             } finally {
@@ -170,19 +163,8 @@ const Review = () => {
     }, [category])
 
     useEffect(() => {
-        let result = [...posts];
-
-        if (query) {
-            const q = query.toLowerCase();
-            const starts = result.filter(p => p.title.toLowerCase().startsWith(q));
-            const includes = result.filter(
-                p => p.title.toLowerCase().includes(q) && !starts.includes(p)
-            );
-            result = [...starts, ...includes];
-        }
-
+        let result = query ? rankByTitle(posts, query) : [...posts];
         result = filterReviews(result);
-
         setFilteredPosts(result);
     }, [posts, query, filters]);
 
