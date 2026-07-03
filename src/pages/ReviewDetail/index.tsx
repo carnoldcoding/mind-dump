@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router";
 import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
-import config from "../../config";
+import { backend } from "../../api/backend";
 import Loader from "../../components/common/Loader";
 import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
@@ -51,15 +51,8 @@ const ReviewDetail = () => {
             try {
                 setLoading(true);
                 setError(null);
-                const url = new URL('/api/posts', config.apiUri);
-                url.searchParams.set('slug', slug);
-                const response = await fetch(url.toString());
-                if (response.ok) {
-                    const d = await response.json();
-                    setData(d[0]);
-                } else {
-                    setError('Failed to fetch post');
-                }
+                const d = await backend.getReviews({ slug });
+                setData(d[0]);
             } catch {
                 setError('Network error');
             } finally {
@@ -78,27 +71,8 @@ const ReviewDetail = () => {
         if (entries.length > 0) setActiveTab(entries[0][0]);
         else if (loadedMods.length > 0) setActiveTab('mods');
 
-        const fetchTracks = async () => {
-            try {
-                const url = new URL("/api/audio", config.apiUri);
-                url.searchParams.set("post_id", data._id);
-                const res = await fetch(url.toString());
-                if (res.ok) setTracks(await res.json());
-            } catch { /* network error */ }
-        };
-
-        const fetchScreenshots = async () => {
-            try {
-                const url = new URL("/api/images", config.apiUri);
-                url.searchParams.set("post_id", data._id);
-                url.searchParams.set("type", "screenshot");
-                const res = await fetch(url.toString());
-                if (res.ok) setScreenshots(await res.json());
-            } catch { /* network error */ }
-        };
-
-        fetchTracks();
-        fetchScreenshots();
+        backend.getAudioTracks(data._id).then(setTracks).catch(() => { /* network error */ });
+        backend.getImages(data._id, 'screenshot').then(setScreenshots).catch(() => { /* network error */ });
     }, [data]);
 
 

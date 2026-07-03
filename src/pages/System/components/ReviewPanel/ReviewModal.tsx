@@ -7,7 +7,8 @@ import { ImageTextField } from "../../../../components/common/ImageTextField"
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { Button } from "../../../../components/common/Button"
-import config from "../../../../config"
+import { backend } from "../../../../api/backend"
+import { useMediaUpload } from "./useMediaUpload"
 import { NumTextField } from "../../../../components/common/NumTextField"
 import { transformKeysToSnakeCase } from "../../../../utils/helpers"
 import { gameGenres, movieGenres, bookGenres } from "../../../../utils/genres"
@@ -77,15 +78,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const [tracks, setTracks]           = useState<AudioTrack[]>([]);
     const [uploadFile, setUploadFile]   = useState<File | null>(null);
     const [uploadTitle, setUploadTitle] = useState('');
-    const [uploading, setUploading]     = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
+    const audioUpload = useMediaUpload('/api/audio/upload');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [images, setImages]               = useState<{ _id: string; url: string; title?: string }[]>([]);
     const [imgFiles, setImgFiles]           = useState<File[]>([]);
     const [imgTitle, setImgTitle]           = useState('');
-    const [imgUploading, setImgUploading]   = useState(false);
-    const [imgProgress, setImgProgress]     = useState({ current: 0, total: 0, filePct: 0 });
+    const imageUpload = useMediaUpload('/api/images/upload');
     const imgFileInputRef = useRef<HTMLInputElement>(null);
 
     // Refs for values needed inside timer callbacks (avoids stale closures)
@@ -151,15 +150,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
     // ── Fetch creators when type changes ─────────────────────────────
     useEffect(() => {
-        const load = async () => {
-            try {
-                const url = new URL('/api/posts/get_creators', config.apiUri);
-                url.searchParams.set('type', type);
-                const res = await fetch(url.toString());
-                if (res.ok) setCreatorList(await res.json());
-            } catch { /* silently ignore */ }
-        };
-        load();
+        backend.getCreators(type).then(setCreatorList).catch(() => { /* silently ignore */ });
     }, [type]);
 
     // ── Autosave: 2.5s after last change ────────────────────────────
@@ -186,30 +177,19 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         isUpdate: boolean,
         closeAfter: boolean,
     ) => {
-        const parsed   = transformKeysToSnakeCase(currentReview);
-        const endpoint = isUpdate ? '/api/posts/update_post' : '/api/posts/add_post';
+        const parsed = transformKeysToSnakeCase(currentReview);
 
         setSaveStatus('saving');
 
         try {
-            const url = new URL(endpoint, config.apiUri);
-            const res = await fetch(url.toString(), {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ ...parsed, type: currentType, mods: modsRef.current }),
-            });
-
-            if (res.ok) {
-                setSaveStatus('saved');
-                isNewlySaved.current = true;
-                if (closeAfter) {
-                    onReviewAdded();
-                    resetAndClose();
-                } else {
-                    setTimeout(() => setSaveStatus(s => s === 'saved' ? 'idle' : s), 2500);
-                }
+            await backend.saveReview({ ...parsed, type: currentType, mods: modsRef.current }, isUpdate);
+            setSaveStatus('saved');
+            isNewlySaved.current = true;
+            if (closeAfter) {
+                onReviewAdded();
+                resetAndClose();
             } else {
-                setSaveStatus('error');
+                setTimeout(() => setSaveStatus(s => s === 'saved' ? 'idle' : s), 2500);
             }
         } catch {
             setSaveStatus('error');
@@ -236,12 +216,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             return;
         }
         try {
-            const url = new URL('/api/posts/remove_post', config.apiUri);
-            await fetch(url.toString(), {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ slug: editingReview.slug }),
-            });
+            await backend.deleteReview(editingReview.slug);
             onReviewAdded();
             resetAndClose();
         } catch {
@@ -325,99 +300,55 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
     // ── Audio track helpers ──────────────────────────────────────────
     const fetchTracks = async (postId: string) => {
-        try {
-            const url = new URL('/api/audio', config.apiUri);
-            url.searchParams.set('post_id', postId);
-            const res = await fetch(url.toString());
-            if (res.ok) setTracks(await res.json());
-        } catch { /* network error */ }
+        backend.getAudioTracks(postId).then(setTracks).catch(() => { /* network error */ });
     };
 
-    const handleAudioUpload = () => {
+    const handleAudioUpload = async () => {
         if (!uploadFile || !editingReview) return;
-        setUploading(true);
-        setUploadProgress(0);
+        const file  = uploadFile;
+        const title = uploadTitle || file.name.replace(/\.[^.]+$/, '');
 
-        const token = localStorage.getItem('adminToken');
-        const form = new FormData();
-        form.append('file', uploadFile);
-        form.append('post_id', editingReview._id);
-        form.append('title', uploadTitle || uploadFile.name.replace(/\.[^.]+$/, ''));
+        const ok = await audioUpload.upload([file], () => {
+            const form = new FormData();
+            form.append('file', file);
+            form.append('post_id', editingReview._id);
+            form.append('title', title);
+            return form;
+        });
 
-        const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener('progress', e => {
-            if (e.lengthComputable) setUploadProgress(Math.round((e.loaded / e.total) * 100));
-        });
-        xhr.addEventListener('load', () => {
-            setUploading(false);
-            if (xhr.status >= 200 && xhr.status < 300) {
-                setUploadFile(null);
-                setUploadTitle('');
-                if (fileInputRef.current) fileInputRef.current.value = '';
-                fetchTracks(editingReview._id);
-            }
-        });
-        xhr.addEventListener('error', () => { setUploading(false); });
-        xhr.open('POST', new URL('/api/audio/upload', config.apiUri).toString());
-        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-        xhr.send(form);
+        if (ok) {
+            setUploadFile(null);
+            setUploadTitle('');
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            fetchTracks(editingReview._id);
+        }
     };
 
     const handleAudioDelete = async (trackId: string) => {
-        const token = localStorage.getItem('adminToken');
         try {
-            const url = new URL(`/api/audio/${trackId}`, config.apiUri);
-            await fetch(url.toString(), {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await backend.deleteAudioTrack(trackId);
             setTracks(prev => prev.filter(t => t._id !== trackId));
         } catch { /* network error */ }
     };
 
     // ── Image helpers ────────────────────────────────────────────────
     const fetchImages = async (postId: string) => {
-        try {
-            const url = new URL('/api/images', config.apiUri);
-            url.searchParams.set('post_id', postId);
-            url.searchParams.set('type', 'screenshot');
-            const res = await fetch(url.toString());
-            if (res.ok) setImages(await res.json());
-        } catch { /* network error */ }
+        backend.getImages(postId, 'screenshot').then(setImages).catch(() => { /* network error */ });
     };
 
     const handleImageUpload = async () => {
         if (!imgFiles.length || !editingReview) return;
-        const token = localStorage.getItem('adminToken');
         const total = imgFiles.length;
-        setImgUploading(true);
 
-        const uploadOne = (file: File, idx: number): Promise<void> =>
-            new Promise(resolve => {
-                const form = new FormData();
-                form.append('file', file);
-                form.append('post_id', editingReview._id);
-                form.append('type', 'screenshot');
-                form.append('title', (total === 1 && imgTitle) ? imgTitle : file.name.replace(/\.[^.]+$/, ''));
+        await imageUpload.upload(imgFiles, file => {
+            const form = new FormData();
+            form.append('file', file);
+            form.append('post_id', editingReview._id);
+            form.append('type', 'screenshot');
+            form.append('title', (total === 1 && imgTitle) ? imgTitle : file.name.replace(/\.[^.]+$/, ''));
+            return form;
+        });
 
-                const xhr = new XMLHttpRequest();
-                xhr.upload.addEventListener('progress', e => {
-                    if (e.lengthComputable)
-                        setImgProgress({ current: idx, total, filePct: Math.round((e.loaded / e.total) * 100) });
-                });
-                xhr.addEventListener('load', () => resolve());
-                xhr.addEventListener('error', () => resolve());
-                xhr.open('POST', new URL('/api/images/upload', config.apiUri).toString());
-                if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-                xhr.send(form);
-            });
-
-        for (let i = 0; i < imgFiles.length; i++) {
-            setImgProgress({ current: i + 1, total, filePct: 0 });
-            await uploadOne(imgFiles[i], i + 1);
-        }
-
-        setImgUploading(false);
         setImgFiles([]);
         setImgTitle('');
         if (imgFileInputRef.current) imgFileInputRef.current.value = '';
@@ -425,13 +356,8 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     };
 
     const handleImageDelete = async (imageId: string) => {
-        const token = localStorage.getItem('adminToken');
         try {
-            const url = new URL(`/api/images/${imageId}`, config.apiUri);
-            await fetch(url.toString(), {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await backend.deleteImage(imageId);
             setImages(prev => prev.filter(img => img._id !== imageId));
         } catch { /* network error */ }
     };
@@ -648,22 +574,22 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                         )}
                                         <button
                                             onClick={handleImageUpload}
-                                            disabled={imgUploading || !imgFiles.length}
+                                            disabled={imageUpload.uploading || !imgFiles.length}
                                             className="px-3 h-9 text-sm bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
                                         >
-                                            {imgUploading
-                                                ? imgProgress.total > 1
-                                                    ? `${imgProgress.current}/${imgProgress.total} — ${imgProgress.filePct}%`
-                                                    : `${imgProgress.filePct}%`
+                                            {imageUpload.uploading
+                                                ? imageUpload.progress.total > 1
+                                                    ? `${imageUpload.progress.current}/${imageUpload.progress.total} — ${imageUpload.progress.filePct}%`
+                                                    : `${imageUpload.progress.filePct}%`
                                                 : imgFiles.length > 1 ? `Upload ${imgFiles.length}` : 'Upload'}
                                         </button>
                                     </div>
                                 </div>
-                                {imgUploading && (
+                                {imageUpload.uploading && (
                                     <div className="w-full bg-nier-150/30 h-1">
                                         <div
                                             className="bg-nier-text-dark h-1 transition-all duration-200"
-                                            style={{ width: `${Math.round(((imgProgress.current - 1) / imgProgress.total + imgProgress.filePct / 100 / imgProgress.total) * 100)}%` }}
+                                            style={{ width: `${Math.round(((imageUpload.progress.current - 1) / imageUpload.progress.total + imageUpload.progress.filePct / 100 / imageUpload.progress.total) * 100)}%` }}
                                         />
                                     </div>
                                 )}
@@ -733,16 +659,16 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                         />
                                         <button
                                             onClick={handleAudioUpload}
-                                            disabled={uploading || !uploadFile}
+                                            disabled={audioUpload.uploading || !uploadFile}
                                             className="px-3 h-9 text-sm bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
                                         >
-                                            {uploading ? `${uploadProgress}%` : 'Upload'}
+                                            {audioUpload.uploading ? `${audioUpload.progress.filePct}%` : 'Upload'}
                                         </button>
                                     </div>
                                 </div>
-                                {uploading && (
+                                {audioUpload.uploading && (
                                     <div className="w-full bg-nier-150/30 h-1">
-                                        <div className="bg-nier-text-dark h-1 transition-all duration-200" style={{ width: `${uploadProgress}%` }} />
+                                        <div className="bg-nier-text-dark h-1 transition-all duration-200" style={{ width: `${audioUpload.progress.filePct}%` }} />
                                     </div>
                                 )}
                                 <input

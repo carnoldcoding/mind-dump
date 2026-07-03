@@ -3,8 +3,7 @@ import { createPortal } from "react-dom";
 import { NumTextField } from "../../../../components/common/NumTextField";
 import { DateField } from "../../../../components/common/DateField";
 import { Button } from "../../../../components/common/Button";
-import config from "../../../../config";
-import { classifyEntry } from "./entry";
+import { backend } from "../../../../api/backend";
 
 export type EntryToEdit = {
     id: string;
@@ -62,14 +61,9 @@ const EntryEditModal = ({ entry, movementName, onClose, onSaved, onDelete }: Pro
                 if (setGoal)       payload.setGoal       = Number(setGoal);
                 if (repGoal)       payload.repGoal       = Number(repGoal);
             }
-            const url = new URL("/api/body/update_entry", config.apiUri);
-            const res = await fetch(url.toString(), {
-                method:  "POST",
-                headers: { "Content-Type": "application/json" },
-                body:    JSON.stringify(payload),
-            });
-            if (res.ok) { onSaved(); onClose(); }
-            else setError("Save failed");
+            await backend.updateBodyEntry(payload);
+            onSaved();
+            onClose();
         } catch {
             setError("Network error");
         } finally {
