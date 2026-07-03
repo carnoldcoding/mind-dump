@@ -38,7 +38,7 @@ const BodyWindow = ({ onClose }: Props) => {
     const [modal, setModal]                       = useState<ModalMode | null>(null);
     const [editingMovement, setEditingMovement]   = useState<string | null>(null);
     const [tagFilter, setTagFilter]               = useState<TagFilter>("all");
-    const [activeTab, setActiveTab]               = useState<ActiveTab>("chart");
+    const [activeTab, setActiveTab]               = useState<ActiveTab>("notes");
     const [editingEntry, setEditingEntry]         = useState<EntryToEdit | null>(null);
 
     const fetchEntries = useCallback(async () => {
@@ -293,8 +293,8 @@ const BodyWindow = ({ onClose }: Props) => {
                                     <div className="flex items-center justify-between">
                                         {/* Tabs */}
                                         <div className="flex">
-                                            <button className={tabBtn(activeTab === "chart")}   onClick={() => setActiveTab("chart")}>Chart</button>
                                             <button className={tabBtn(activeTab === "notes")}   onClick={() => setActiveTab("notes")}>Notes</button>
+                                            <button className={tabBtn(activeTab === "chart")}   onClick={() => setActiveTab("chart")}>Chart</button>
                                             <button className={tabBtn(activeTab === "history")} onClick={() => setActiveTab("history")}>History</button>
                                         </div>
                                         {/* Actions */}

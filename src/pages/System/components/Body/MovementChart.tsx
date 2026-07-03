@@ -44,7 +44,7 @@ const METRIC_CONFIG: Record<Exclude<Metric, "volume">, {
 };
 
 const MovementChart = ({ name, entries }: Props) => {
-    const [metric, setMetric] = useState<Metric>("weight");
+    const [metric, setMetric] = useState<Metric>("volume");
 
     const isVolume = metric === "volume";
     const cfg = isVolume ? null : METRIC_CONFIG[metric];
