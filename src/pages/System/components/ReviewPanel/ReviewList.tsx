@@ -3,7 +3,8 @@ import { ReviewModal } from "./ReviewModal"
 import { ReviewGridCard } from "./ReviewGridCard"
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
-import config from "../../../../config"
+import { backend } from "../../../../api/backend"
+import { rankByTitle } from "../../../../utils/rankByTitle"
 import { TextField } from "../../../../components/common/TextField"
 import { Button } from "../../../../components/common/Button"
 
@@ -51,10 +52,7 @@ export const ReviewList = () => {
 
     // Search filter — re-applies active sort after filtering
     useEffect(() => {
-        const postCopy = [...posts];
-        const firstPass  = postCopy.filter(p => p.title.toLowerCase().startsWith(query.toLowerCase()));
-        const secondPass = postCopy.filter(p => p.title.toLowerCase().includes(query.toLowerCase()) && !firstPass.includes(p));
-        const filtered = [...firstPass, ...secondPass];
+        const filtered = rankByTitle(posts, query);
         const active = activeSortRef.current;
         setFilteredPosts(active ? applySort(filtered, active.metric, active.stateValue) : filtered);
     }, [query, posts]);
@@ -72,16 +70,11 @@ export const ReviewList = () => {
         });
 
         try {
-            const url = new URL('/api/posts/update_post', config.apiUri);
-            await fetch(url.toString(), {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ...post,
-                    status:         newStatus,
-                    date_completed: newStatus === 'done' ? today : post.date_completed,
-                }),
-            });
+            await backend.saveReview({
+                ...post,
+                status:         newStatus,
+                date_completed: newStatus === 'done' ? today : post.date_completed,
+            }, true);
             fetchPosts();
         } catch (err) {
             console.error('Status update error:', err);
@@ -102,13 +95,7 @@ export const ReviewList = () => {
     const deletePost = async (slug: string) => {
         try {
             setError(null);
-            const url = new URL('/api/posts/remove_post', config.apiUri);
-            const response = await fetch(url.toString(), {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ slug }),
-            });
-            if (!response.ok) setError('Failed to delete review');
+            await backend.deleteReview(slug);
         } catch (err: any) {
             setError('Network error: ' + err.message);
         }
@@ -117,19 +104,13 @@ export const ReviewList = () => {
     const fetchPosts = async () => {
         try {
             setError(null);
-            const url = new URL('/api/posts', config.apiUri);
-            const response = await fetch(url.toString());
-            if (response.ok) {
-                const data = await response.json();
-                const toTime = (p: any) => {
-                    const d = p.date_completed || p.release_date;
-                    return d ? new Date(d).getTime() : 0;
-                };
-                const sorted = [...data].sort((a, b) => toTime(b) - toTime(a));
-                setPosts(sorted);
-            } else {
-                setError('Failed to fetch posts');
-            }
+            const data = await backend.getReviews();
+            const toTime = (p: any) => {
+                const d = p.date_completed || p.release_date;
+                return d ? new Date(d).getTime() : 0;
+            };
+            const sorted = [...data].sort((a, b) => toTime(b) - toTime(a));
+            setPosts(sorted);
         } catch {
             setError('Network error');
         }
