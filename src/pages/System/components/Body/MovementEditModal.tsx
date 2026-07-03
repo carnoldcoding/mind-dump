@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { TextField } from "../../../../components/common/TextField";
 import { BigTextField } from "../../../../components/common/BigTextField";
 import { Button } from "../../../../components/common/Button";
-import config from "../../../../config";
+import { backend } from "../../../../api/backend";
 
 export type MovementMeta = {
     id?: string;   // normalised from _id or id on the raw document
@@ -42,33 +42,21 @@ const WorkoutModal = ({ meta, onClose, onSaved, onDelete }: Props) => {
         setError("");
 
         try {
-            let res: Response;
             if (meta.id) {
-                const url = new URL("/api/body/update_entry", config.apiUri);
-                res = await fetch(url.toString(), {
-                    method:  "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body:    JSON.stringify({ id: meta.id, displayName: displayName.trim(), tag, notes }),
-                });
+                await backend.updateBodyEntry({ id: meta.id, displayName: displayName.trim(), tag, notes });
             } else {
-                const url = new URL("/api/body/add_entry", config.apiUri);
-                res = await fetch(url.toString(), {
-                    method:  "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body:    JSON.stringify({
-                        workoutName: meta.workoutName,
-                        _meta: true,
-                        displayName: displayName.trim(),
-                        tag,
-                        notes,
-                        order: meta.order,
-                        datetime: new Date().toISOString(),
-                    }),
+                await backend.addBodyEntry({
+                    workoutName: meta.workoutName,
+                    _meta: true,
+                    displayName: displayName.trim(),
+                    tag,
+                    notes,
+                    order: meta.order,
+                    datetime: new Date().toISOString(),
                 });
             }
-
-            if (res.ok) { onSaved(); onClose(); }
-            else setError("Save failed");
+            onSaved();
+            onClose();
         } catch {
             setError("Network error");
         } finally {

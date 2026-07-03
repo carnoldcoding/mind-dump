@@ -4,7 +4,7 @@ import { TextField } from "../../../../components/common/TextField";
 import { NumTextField } from "../../../../components/common/NumTextField";
 import { DateField } from "../../../../components/common/DateField";
 import { Button } from "../../../../components/common/Button";
-import config from "../../../../config";
+import { backend } from "../../../../api/backend";
 
 export type ModalMode = "create" | "goals" | "log";
 
@@ -76,36 +76,22 @@ const WorkoutModal = ({ mode, movement, lastEntry, onClose, onSaved }: Props) =>
         }
 
         try {
-            const url = new URL("/api/body/add_entry", config.apiUri);
-            const res = await fetch(url.toString(), {
-                method:  "POST",
-                headers: { "Content-Type": "application/json" },
-                body:    JSON.stringify(payload),
-            });
+            await backend.addBodyEntry(payload);
 
-            if (res.ok) {
-                // Seed a meta entry so the movement is immediately configurable
-                if (mode === "create") {
-                    const metaUrl = new URL("/api/body/add_entry", config.apiUri);
-                    await fetch(metaUrl.toString(), {
-                        method:  "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body:    JSON.stringify({
-                            workoutName: payload.workoutName,
-                            _meta: true,
-                            displayName: payload.workoutName,
-                            tag: createTag,
-                            notes: "",
-                            order: 9999,
-                            datetime: new Date().toISOString(),
-                        }),
-                    });
-                }
-                onSaved();
-                onClose();
-            } else {
-                setError("Save failed");
+            // Seed a meta entry so the movement is immediately configurable
+            if (mode === "create") {
+                await backend.addBodyEntry({
+                    workoutName: payload.workoutName,
+                    _meta: true,
+                    displayName: payload.workoutName,
+                    tag: createTag,
+                    notes: "",
+                    order: 9999,
+                    datetime: new Date().toISOString(),
+                });
             }
+            onSaved();
+            onClose();
         } catch {
             setError("Network error");
         } finally {
