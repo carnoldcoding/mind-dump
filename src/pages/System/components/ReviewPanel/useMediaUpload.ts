@@ -12,7 +12,6 @@ export function useMediaUpload(uploadPath: string) {
 
     const uploadOne = (form: FormData, index: number, total: number): Promise<boolean> =>
         new Promise(resolve => {
-            const token = backend.authToken();
             const xhr = new XMLHttpRequest();
             xhr.upload.addEventListener("progress", e => {
                 if (e.lengthComputable)
@@ -21,7 +20,6 @@ export function useMediaUpload(uploadPath: string) {
             xhr.addEventListener("load", () => resolve(xhr.status >= 200 && xhr.status < 300));
             xhr.addEventListener("error", () => resolve(false));
             xhr.open("POST", backend.uploadUrl(uploadPath));
-            if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
             xhr.send(form);
         });
 

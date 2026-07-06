@@ -1,6 +1,6 @@
 // Single seam to the mind-dump-backend Express API. Every request the app
-// makes — URL construction, auth header, JSON parsing, error shape — goes
-// through here instead of being rebuilt at each call site.
+// makes — URL construction, JSON parsing, error shape — goes through here
+// instead of being rebuilt at each call site.
 import config from "../config";
 import type { AudioTrack } from "../types";
 
@@ -16,23 +16,13 @@ function buildUrl(path: string, params?: Params): string {
     return url.toString();
 }
 
-function authToken(): string | null {
-    return localStorage.getItem("adminToken");
-}
-
-function authHeader(): Record<string, string> {
-    const token = authToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 async function request<T>(
     path: string,
-    init: RequestInit & { params?: Params; auth?: boolean } = {}
+    init: RequestInit & { params?: Params } = {}
 ): Promise<T> {
-    const { params, auth, headers, ...rest } = init;
+    const { params, headers, ...rest } = init;
     const finalHeaders: Record<string, string> = { ...(headers as Record<string, string> | undefined) };
     if (rest.body && !finalHeaders["Content-Type"]) finalHeaders["Content-Type"] = "application/json";
-    if (auth) Object.assign(finalHeaders, authHeader());
 
     const res = await fetch(buildUrl(path, params), { ...rest, headers: finalHeaders });
     if (!res.ok) throw new Error(`${rest.method ?? "GET"} ${path} failed (${res.status})`);
@@ -41,11 +31,9 @@ async function request<T>(
 }
 
 export const backend = {
-    // ── Auth ──────────────────────────────────────────────────────────
-    verifyToken: (token: string) =>
-        request<void>("/api/auth/verify", { headers: { Authorization: `Bearer ${token}` } }),
-    login: (password: string) =>
-        request<{ token: string }>("/api/auth/login", { method: "POST", body: JSON.stringify({ password }) }),
+    // ── Trusted device ───────────────────────────────────────────────
+    probeTrustedDevice: () =>
+        fetch(buildUrl("/api/system/probe")).then(res => res.ok),
 
     // ── Reviews ───────────────────────────────────────────────────────
     getReviews: (params?: { type?: string; slug?: string; title?: string }) =>
@@ -70,15 +58,14 @@ export const backend = {
 
     // ── Audio ─────────────────────────────────────────────────────────
     getAudioTracks: (postId: string) => request<AudioTrack[]>("/api/audio", { params: { post_id: postId } }),
-    deleteAudioTrack: (id: string) => request<any>(`/api/audio/${id}`, { method: "DELETE", auth: true }),
+    deleteAudioTrack: (id: string) => request<any>(`/api/audio/${id}`, { method: "DELETE" }),
 
     // ── Images ────────────────────────────────────────────────────────
     getImages: (postId: string, type = "screenshot") =>
         request<any[]>("/api/images", { params: { post_id: postId, type } }),
-    deleteImage: (id: string) => request<any>(`/api/images/${id}`, { method: "DELETE", auth: true }),
+    deleteImage: (id: string) => request<any>(`/api/images/${id}`, { method: "DELETE" }),
 
-    // Raw URL + token for the XHR-based upload flows (need progress events,
-    // so they can't go through fetch-based `request`).
+    // Raw URL for the XHR-based upload flows (need progress events, so they
+    // can't go through fetch-based `request`).
     uploadUrl: (path: string) => buildUrl(path),
-    authToken,
 };

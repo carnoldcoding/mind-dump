@@ -1,12 +1,15 @@
 import { Link, useLocation } from "react-router-dom";
 import { navItems } from "./NavItems";
+import { useTrustedDevice } from "../../context/TrustedDeviceContext";
 
 const Navigation = () => {
     const location = useLocation();
+    const { trusted } = useTrustedDevice();
+    const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
     return (
         <>
             <nav className="flex justify-center pt-8 gap-10 fixed w-screen nier-dot-pattern bg-nier-50 z-50">
-            {navItems.map(item => {
+            {visibleNavItems.map(item => {
                 const isActive =
                 location.pathname === item.path ||
                 location.pathname.startsWith(item.path + "/");

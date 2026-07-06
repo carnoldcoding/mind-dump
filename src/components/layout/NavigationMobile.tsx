@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { navItems } from "./NavItems";
+import { useTrustedDevice } from "../../context/TrustedDeviceContext";
 
 interface NavigationMobileProps{
     isOpen: boolean;
@@ -8,6 +9,8 @@ interface NavigationMobileProps{
 
 const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     const location = useLocation();
+    const { trusted } = useTrustedDevice();
+    const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
     return (
         <>
         <button
@@ -25,7 +28,7 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
         <nav className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-screen p
             transition-all ease-in-out duration-300 overflow-hidden
             shadow-[-3px_5px_0_0] shadow-nier-shadow pt-15 z-100 ${isOpen ? 'w-60 p-5' : 'w-0 p0'}`}>
-            {navItems.map(item => {
+            {visibleNavItems.map(item => {
                 const isActive =
                 location.pathname === item.path ||
                 location.pathname.startsWith(item.path + "/");
