@@ -1,6 +1,6 @@
 # Mind Dump (Frontend)
 
-A personal, single-user app for two things: writing reviews of games/movies/books, and tracking body/workout data over time. It's gated behind a single shared admin password (`system`) — there's no multi-user concept anywhere in this app.
+A personal, single-user app for two things: writing reviews of games/movies/books, and tracking body/workout data over time. There's no multi-user concept anywhere in this app — access to `System` is gated by network identity (see **Trusted device** below), not a password. See [ADR-0001](./docs/adr/0001-tailnet-gated-system-access.md).
 
 ## Language
 
@@ -25,7 +25,11 @@ Descriptive metadata on a Review. Games have developers + platforms; cinema has 
 ### System (admin area)
 
 **System**:
-The password-gated personal dashboard, styled as a retro desktop/terminal. Contains two areas ("windows"): Reviews management and Body tracking. This is where Reviews get authored/edited — the public Search/Category pages are read-only.
+The personal dashboard, styled as a retro desktop/terminal, reachable only from a **Trusted device**. Contains two areas ("windows"): Reviews management and Body tracking. This is where Reviews get authored/edited — the public Search/Category pages are read-only.
+
+**Trusted device**:
+A device (currently: one phone, one computer) enrolled in the Tailscale tailnet used to reach `System` and every non-public API route. Trust is network identity, not a credential — there is no login form, password, or token anywhere in this app. See [ADR-0001](./docs/adr/0001-tailnet-gated-system-access.md).
+_Avoid_: "logged in" / "authenticated" — there's no session or account, just network membership.
 
 ### Body tracking
 
@@ -42,4 +46,5 @@ Not a modeled entity — no session groups multiple Movements together. Used inf
 
 ### Journal
 
-Planned third area (alongside Reviews and Body) for free-form entries. Not yet built — currently a placeholder page, and hidden from primary navigation.
+Planned third area (alongside Reviews and Body) for free-form entries. The frontend is currently just a placeholder page, hidden from primary navigation — but the backend already has a full CRUD API for it (`/api/soul`, `Soul Data` collection), unauthenticated until [ADR-0001](./docs/adr/0001-tailnet-gated-system-access.md) lands.
+_Avoid_: "Soul" outside of backend code — `soul` is the backend's internal name (route path, collection name); "Journal" is the user-facing term.
