@@ -7,6 +7,7 @@ import { backend } from "../../api/backend";
 import Loader from "../../components/common/Loader";
 import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
+import { useStageState } from "../../context/BootSequenceContext";
 type Mod = { name: string; author?: string; url?: string; notes?: string };
 
 const TYPE_ICON: Record<string, string> = {
@@ -30,6 +31,10 @@ const reviewPropMap = {
 const ReviewDetail = () => {
     const navigate  = useNavigate();
     const location  = useLocation();
+    // See Search/index.tsx — waits for the boot sequence's 'header' stage
+    // before its first ever reveal, true immediately on every navigation
+    // after that.
+    const { active: contentActive } = useStageState('header');
 
     const [loading,   setLoading]   = useState<boolean>(false);
     const [error,     setError]     = useState<string | null>(null);
@@ -91,7 +96,7 @@ const ReviewDetail = () => {
         <>
             <PageHeader name={data.title} />
 
-            <div className="mt-5 relative nier-enter">
+            <div className={`mt-5 relative ${contentActive ? 'nier-enter' : 'invisible'}`}>
                 <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
 
                 <article className="bg-nier-100 relative flex flex-col md:h-[34rem]">

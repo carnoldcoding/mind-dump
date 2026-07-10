@@ -10,7 +10,10 @@
         width: 100vw;
         height: 100vh;
         pointer-events: none;
-        z-index: 1; /* Above grid (999) but below UI */
+        /* Negative on purpose — page content uses position:relative with no
+           explicit z-index (i.e. z-index:auto), which ranks below any
+           explicit z-index, positive or not. This must stay behind it. */
+        z-index: -10;
         overflow: hidden;
       }
       
@@ -101,15 +104,18 @@
       }
 
       /*
-        Nier page transition — sharp left-to-right data-write reveal with glitch flicker
+        Nier page transition — sharp left-to-right data-write reveal.
+        220ms/12px used to be barely perceptible against a dense content
+        grid appearing all at once — bumped up so it actually reads as a
+        reveal rather than a pop.
       */
       @keyframes nier-enter {
-        0%   { opacity: 0; transform: translateX(-12px); }
-        100% { opacity: 1; transform: translateX(0); }
+        0%   { opacity: 0; transform: translateX(-28px) scale(0.98); }
+        100% { opacity: 1; transform: translateX(0) scale(1); }
       }
 
       .nier-enter {
-        animation: nier-enter 220ms ease-out forwards;
+        animation: nier-enter 450ms ease-out forwards;
       }
 
       @keyframes nier-backdrop-enter {
@@ -128,5 +134,113 @@
 
       .nier-modal-enter {
         animation: nier-modal-enter 240ms ease-out forwards;
+      }
+
+      /*
+        Boot sequence — corner lines grow in, then hold at full opacity
+        (the wrapper in CornerLines.tsx owns the later fade-out, once the
+        triangle stage that plays over these lines is done).
+        transform-origin is set per-line inline (anchored at its corner).
+      */
+      @keyframes nier-boot-line-grow {
+        0%   { transform: rotate(var(--nier-line-rotate, 0deg)) scaleX(0); opacity: 0; }
+        20%  { opacity: 1; }
+        65%  { transform: rotate(var(--nier-line-rotate, 0deg)) scaleX(1); opacity: 1; }
+        100% { transform: rotate(var(--nier-line-rotate, 0deg)) scaleX(1); opacity: 1; }
+      }
+
+      .nier-boot-line {
+        animation: nier-boot-line-grow 500ms ease-in-out forwards;
+      }
+
+      /*
+        Boot sequence — triangle grid pop-in. The screen starts solid black;
+        each triangle pans in by transitioning from black to the same base
+        tone as the rest, so the grid becomes a uniform beige background
+        (not a permanent two-tone checker) as it's "painted" tile by tile.
+      */
+      @keyframes nier-boot-triangle-pop {
+        0%   { transform: scale(1); fill: #000000; }
+        55%  { transform: scale(1.05); fill: var(--color-nier-100); }
+        100% { transform: scale(1); fill: var(--color-nier-50); }
+      }
+
+      .nier-boot-triangle {
+        transform-box: fill-box;
+        transform-origin: center;
+        animation: nier-boot-triangle-pop 350ms ease-out forwards;
+      }
+
+      /*
+        Boot sequence — top/bottom border bars wipe in edge-to-edge. Top
+        goes left-to-right; bottom uses the reverse variant (right-to-left).
+      */
+      @keyframes nier-boot-border-wipe {
+        0%   { clip-path: inset(0 100% 0 0); }
+        100% { clip-path: inset(0 0 0 0); }
+      }
+
+      .nier-boot-border-wipe {
+        animation: nier-boot-border-wipe 500ms ease-in-out forwards;
+      }
+
+      @keyframes nier-boot-border-wipe-reverse {
+        0%   { clip-path: inset(0 0 0 100%); }
+        100% { clip-path: inset(0 0 0 0); }
+      }
+
+      .nier-boot-border-wipe-reverse {
+        animation: nier-boot-border-wipe-reverse 500ms ease-in-out forwards;
+      }
+
+      /*
+        Boot sequence — nav items fade in one-by-one (domino). Delay is set
+        per-item via an inline --nier-nav-delay custom property.
+      */
+      @keyframes nier-boot-nav-item {
+        0%   { opacity: 0; transform: translateY(-6px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+
+      .nier-boot-nav-item {
+        /* "both" (not just "forwards") so the item holds the 0% keyframe's
+           invisible state during its own stagger delay too — otherwise it
+           renders at its normal (fully visible) style until the delay
+           elapses, then snaps to invisible when the animation actually
+           starts, reading as a blink right before each item fades in. */
+        animation: nier-boot-nav-item 250ms ease-out both;
+        animation-delay: var(--nier-nav-delay, 0ms);
+      }
+
+      /*
+        Panel reveal (usePanelReveal) — 'box' stage: the panel expands from
+        a centered point, horizontally first, then vertically. Children are
+        kept invisible during this (see the panel's own JSX) so they don't
+        visibly stretch/squish along with the box.
+      */
+      @keyframes nier-panel-box-reveal {
+        0%   { transform: scaleX(0) scaleY(0.02); }
+        50%  { transform: scaleX(1) scaleY(0.02); }
+        100% { transform: scaleX(1) scaleY(1); }
+      }
+
+      .nier-panel-box-reveal {
+        transform-origin: center;
+        animation: nier-panel-box-reveal 500ms ease-in-out forwards;
+      }
+
+      /*
+        Panel reveal — 'cards' stage: each card falls into place with a
+        slight overshoot/settle, staggered per-card via --nier-card-delay.
+      */
+      @keyframes nier-panel-card-fall {
+        0%   { opacity: 0; transform: translateY(-18px); }
+        60%  { opacity: 1; transform: translateY(4px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+
+      .nier-panel-card-fall {
+        animation: nier-panel-card-fall 350ms ease-out both;
+        animation-delay: var(--nier-card-delay, 0ms);
       }
   }
