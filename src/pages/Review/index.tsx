@@ -10,9 +10,16 @@ import { Button } from "../../components/common/Button";
 import { MutliSelectField } from "../../components/common/MultiSelectField";
 import { gameGenres, movieGenres, bookGenres } from "../../utils/helpers";
 import { useLocation } from "react-router";
+import { useStageState } from "../../context/BootSequenceContext";
+import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
+import { useDecodeText } from "../../hooks/useDecodeText";
 
 const Review = () => {
     const location = useLocation();
+    // See Search/index.tsx — waits for the boot sequence's 'header' stage
+    // before its first ever reveal, true immediately on every navigation
+    // after that.
+    const { active: contentActive } = useStageState('header');
 
     const searchParams = new URLSearchParams(location.search);
     const genreParam = searchParams.get('genre');
@@ -32,6 +39,18 @@ const Review = () => {
     });
  
     const { category } = useParams<{category: string}>();
+    // Hooks must run unconditionally, so these sit above the `if (!category)
+    // return null` below even though category may briefly be undefined.
+    // resetKey=category so this restarts fresh on every category switch —
+    // Review itself doesn't unmount between categories (React Router keeps
+    // the same component instance, just re-renders with new params), so
+    // without this the hook's state would stay stuck from the previous
+    // category while the section's own `key` still forces its DOM to
+    // remount, leaving cards "ready" from frame one instead of waiting.
+    const panelStage = usePanelReveal(contentActive, category);
+    const titleReady = panelStageIndex(panelStage) >= panelStageIndex('title');
+    const cardsReady = panelStageIndex(panelStage) >= panelStageIndex('cards');
+    const decodedPanelTitle = useDecodeText(`${category ?? ''} VIEW PANEL`.toUpperCase(), titleReady);
 
     const handleFieldChange = (field: string, value: any) => {
         setFilters(prev => ({
@@ -201,14 +220,18 @@ const Review = () => {
         if (error) return <div>Error: {error}</div>;
         
         return (
-          <section key={category} className="mt-5 nier-enter">
-            <article className="bg-nier-100 mt-5 relative flex flex-col h-[42rem]">
+          <section key={category} className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
+            {/* Sibling of article, not a child — a transform (from
+                nier-panel-box-reveal) makes an element establish its own
+                stacking context, which would trap a -z-1 child instead of
+                letting it render behind the whole article as intended. */}
+            <div className={`absolute w-full h-[42rem] mt-5 bg-nier-shadow top-1 left-1 ${contentActive ? 'nier-panel-box-reveal' : 'invisible'}`}></div>
+            <article className={`bg-nier-100 mt-5 relative flex flex-col h-[42rem] ${contentActive ? 'nier-panel-box-reveal' : 'invisible'}`}>
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 className="text-nier-text-dark text-xl capitalize">{category} View Panel</h3>
+                        <h3 className={`text-nier-text-dark text-xl uppercase ${titleReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
                     </div>
-                    <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1"></aside>
 
-                    <header className="flex gap-3 justify-between items-center px-4 pt-4 pb-4 border-b border-nier-150/40 flex-shrink-0">
+                    <header className={`flex gap-3 justify-between items-center px-4 pt-4 pb-4 border-b border-nier-150/40 flex-shrink-0 ${titleReady ? '' : 'invisible'}`}>
                         <TextField label="Search" value={query} onChange={setQuery} altBg={true}/>
                         <button
                             onClick={() => setShowFilters(!showFilters)}
@@ -374,15 +397,19 @@ const Review = () => {
                     )}
 
                     {/* Review Preview Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 overflow-y-auto flex-1 items-start content-start">
+                    <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 p-4 overflow-y-auto flex-1 items-start content-start ${titleReady ? '' : 'invisible'}`}>
                         {filteredPosts.length > 0
                             ? filteredPosts
                                 .filter((post: any) => post.status === "done")
                                 .sort((a: any, b: any) => {
                                     return new Date(b.date_completed).getTime() - new Date(a.date_completed).getTime();
                                 })
-                                .map((post: any) => (
-                                    <div className="w-full" key={post._id}>
+                                .map((post: any, i: number) => (
+                                    <div
+                                        className={`w-full ${cardsReady ? 'nier-panel-card-fall' : 'invisible'}`}
+                                        key={post._id}
+                                        style={cardsReady ? ({ '--nier-card-delay': `${Math.min(i, 20) * 30}ms` } as React.CSSProperties) : undefined}
+                                    >
                                     <Card
                                         {...post}
                                         releaseDate={filters.dateReleasedRange.active}

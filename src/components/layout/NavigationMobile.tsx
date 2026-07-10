@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { navItems } from "./NavItems";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
+import { useStageState } from "../../context/BootSequenceContext";
 
 interface NavigationMobileProps{
     isOpen: boolean;
@@ -10,6 +11,7 @@ interface NavigationMobileProps{
 const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     const location = useLocation();
     const { trusted } = useTrustedDevice();
+    const { active: borderActive, animating: borderAnimating } = useStageState('borders');
     const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
     return (
         <>
@@ -20,7 +22,7 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
             {isOpen ? '×' : '☰'}
         </button>
         <div className="fixed top-0 right-0 w-full z-99">
-            <div className="nier-dot-pattern fixed top-0 w-screen bg-nier-50 z-"></div>
+            <div className={`nier-dot-pattern fixed top-0 w-screen bg-nier-50 z-40 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}></div>
         </div>
         <div className="h-16"></div>
         
