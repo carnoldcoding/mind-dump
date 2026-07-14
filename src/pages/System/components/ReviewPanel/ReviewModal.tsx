@@ -16,6 +16,7 @@ import ModModal from "./ModModal"
 import type { Mod } from "./ModModal"
 import type { AudioTrack } from "../../../../types"
 import AudioPlayer from "../../../ReviewDetail/AudioPlayer"
+import { enterClass } from "../../../../utils/animations"
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -373,9 +374,9 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     })();
 
     return createPortal(
-        <div className="fixed inset-0 bg-black/40 z-[110] overflow-y-auto flex flex-col nier-backdrop-enter">
+        <div className={`fixed inset-0 bg-black/40 z-[110] overflow-y-auto flex flex-col ${enterClass('nier-backdrop-enter')}`}>
             <div className="flex flex-1 items-start sm:items-center justify-center p-2 sm:p-4">
-            <div className="relative w-full max-w-4xl nier-modal-enter">
+            <div className={`relative w-full max-w-4xl ${enterClass('nier-modal-enter')}`}>
                 <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
             <article className="bg-nier-100-lighter relative w-full max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col">
 

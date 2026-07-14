@@ -9,6 +9,7 @@ import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal } from "../../hooks/usePanelReveal";
+import { enterClass } from "../../utils/animations";
 type Mod = { name: string; author?: string; url?: string; notes?: string };
 
 const TYPE_ICON: Record<string, string> = {
@@ -104,9 +105,9 @@ const ReviewDetail = () => {
             <PageHeader name={data.title} />
 
             <div key={slug} className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
-                <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? 'nier-enter' : 'invisible'}`} />
+                <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`} />
 
-                <article className={`bg-nier-100 relative flex flex-col md:h-[34rem] ${contentActive ? 'nier-enter' : 'invisible'}`}>
+                <article className={`bg-nier-100 relative flex flex-col md:h-[34rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
 
                     {/* ── Header bar ─────────────────────────────────── */}
                     <div className={`h-10 bg-nier-150 flex items-stretch flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>

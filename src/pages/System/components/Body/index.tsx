@@ -10,6 +10,7 @@ import type { MovementMeta } from "./MovementEditModal";
 import type { EntryToEdit } from "./EntryEditModal";
 import { classifyEntry } from "./entry";
 import { usePanelReveal, panelStageIndex } from "../../../../hooks/usePanelReveal";
+import { enterClass } from "../../../../utils/animations";
 
 type RawEntry = {
     id?: string;
@@ -176,8 +177,8 @@ const BodyWindow = ({ onClose }: Props) => {
                 {/* Sibling of the panel div, not a child — see
                     Review/index.tsx for why: a transform on the panel would
                     trap a child shadow in the wrong stacking context. */}
-                <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1 nier-enter" />
-                <div className="relative bg-nier-100 border border-nier-150 nier-enter">
+                <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
+                <div className={`relative bg-nier-100 border border-nier-150 ${enterClass('nier-enter')}`}>
 
                     {/* Window title bar */}
                     <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 ${contentReady ? '' : 'invisible'}`}>

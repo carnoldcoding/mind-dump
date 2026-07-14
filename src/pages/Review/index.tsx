@@ -13,6 +13,7 @@ import { useLocation } from "react-router";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
 import { useDecodeText } from "../../hooks/useDecodeText";
+import { enterClass } from "../../utils/animations";
 
 const Review = () => {
     const location = useLocation();
@@ -225,8 +226,8 @@ const Review = () => {
                 nier-enter) makes an element establish its own
                 stacking context, which would trap a -z-1 child instead of
                 letting it render behind the whole article as intended. */}
-            <div className={`absolute w-full h-[42rem] mt-5 bg-nier-shadow top-1 left-1 ${contentActive ? 'nier-enter' : 'invisible'}`}></div>
-            <article className={`bg-nier-100 mt-5 relative flex flex-col h-[42rem] ${contentActive ? 'nier-enter' : 'invisible'}`}>
+            <div className={`absolute w-full h-[42rem] mt-5 bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}></div>
+            <article className={`bg-nier-100 mt-5 relative flex flex-col h-[42rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 className={`text-nier-text-dark text-xl uppercase ${titleReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
                     </div>

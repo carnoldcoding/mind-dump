@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { animationsDisabled } from '../utils/animations';
 
 export type PanelStage = 'box' | 'title' | 'cards' | 'done';
 
@@ -36,6 +37,11 @@ export const usePanelReveal = (ready: boolean, resetKey?: string | number) => {
 
   useEffect(() => {
     if (!ready) return;
+
+    if (animationsDisabled()) {
+      setStage('done');
+      return;
+    }
 
     setStage('box');
     const toTitle = window.setTimeout(() => setStage('title'), DURATIONS.box);

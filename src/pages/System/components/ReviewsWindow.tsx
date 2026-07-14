@@ -5,6 +5,7 @@ import { BarChart } from "./barChart";
 import { ReviewPanel } from "./ReviewPanel";
 import { ReviewModal } from "./ReviewPanel/ReviewModal";
 import { usePanelReveal, panelStageIndex } from "../../../hooks/usePanelReveal";
+import { enterClass } from "../../../utils/animations";
 
 const TYPE_ICON: Record<string, string> = {
     game:   'game-controller-sharp',
@@ -51,8 +52,8 @@ const ReviewsWindow = ({ onClose }: Props) => {
             {/* Sibling of the panel div, not a child — see Review/index.tsx
                 for why: a transform on the panel would trap a child shadow
                 in the wrong stacking context. */}
-            <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1 nier-enter" />
-            <div className="relative bg-nier-100 border border-nier-150 nier-enter">
+            <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
+            <div className={`relative bg-nier-100 border border-nier-150 ${enterClass('nier-enter')}`}>
                 <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 ${contentReady ? '' : 'invisible'}`}>
                     <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Reviews</h3>
                     <button

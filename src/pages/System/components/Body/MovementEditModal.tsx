@@ -4,6 +4,7 @@ import { TextField } from "../../../../components/common/TextField";
 import { BigTextField } from "../../../../components/common/BigTextField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
+import { enterClass } from "../../../../utils/animations";
 
 export type MovementMeta = {
     id?: string;   // normalised from _id or id on the raw document
@@ -65,8 +66,8 @@ const WorkoutModal = ({ meta, onClose, onSaved, onDelete }: Props) => {
     };
 
     return createPortal(
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 nier-backdrop-enter">
-            <div className="relative w-full max-w-md nier-modal-enter">
+        <div className={`fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 ${enterClass('nier-backdrop-enter')}`}>
+            <div className={`relative w-full max-w-md ${enterClass('nier-modal-enter')}`}>
                 <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
                 <article className="bg-nier-100-lighter relative">
 

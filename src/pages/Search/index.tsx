@@ -10,6 +10,7 @@ import bookLight from "../../assets/book-light.svg";
 import Loader from "../../components/common/Loader";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
+import { enterClass } from "../../utils/animations";
 
 
 const Search = () => {
@@ -68,8 +69,8 @@ const Search = () => {
             {/* Sibling of article, not a child — see Review/index.tsx for
                 why: a transform on article would trap a child shadow in
                 the wrong stacking context. */}
-            <div className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? 'nier-enter' : 'invisible'}`}></div>
-            <article className={`md:w-full ${filteredPosts.length > 0 ? 'h-auto' : 'h-30'} bg-nier-100 relative ${contentActive ? 'nier-enter' : 'invisible'}`}>
+            <div className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}></div>
+            <article className={`md:w-full ${filteredPosts.length > 0 ? 'h-auto' : 'h-30'} bg-nier-100 relative ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
                 <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
                 </div>
 

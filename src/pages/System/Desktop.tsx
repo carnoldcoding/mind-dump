@@ -3,6 +3,7 @@ import ReviewsWindow from "./components/ReviewsWindow";
 import BodyWindow from "./components/Body";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
+import { enterClass } from "../../utils/animations";
 
 const FolderIcon = ({ selected }: { selected: boolean }) => (
     <svg viewBox="0 0 56 46" width="56" height="46" xmlns="http://www.w3.org/2000/svg">
@@ -52,8 +53,8 @@ const Desktop = () => {
             {/* Sibling of article, not a child — see Review/index.tsx for
                 why: a transform on article would trap a child shadow in
                 the wrong stacking context. */}
-            <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? 'nier-enter' : 'invisible'}`} />
-            <article className={`bg-nier-50 relative border border-nier-150 ${contentActive ? 'nier-enter' : 'invisible'}`}>
+            <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`} />
+            <article className={`bg-nier-50 relative border border-nier-150 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
 
                 {/* Title bar */}
                 <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 ${contentReady ? '' : 'invisible'}`}>
