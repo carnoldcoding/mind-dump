@@ -9,6 +9,7 @@ import type { ModalMode } from "./WorkoutModal";
 import type { MovementMeta } from "./MovementEditModal";
 import type { EntryToEdit } from "./EntryEditModal";
 import { classifyEntry } from "./entry";
+import { usePanelReveal, panelStageIndex } from "../../../../hooks/usePanelReveal";
 
 type RawEntry = {
     id?: string;
@@ -34,6 +35,12 @@ type ActiveTab = "chart" | "notes" | "history";
 type Props = { onClose: () => void };
 
 const BodyWindow = ({ onClose }: Props) => {
+    // Always ready=true — this window only ever mounts well after boot is
+    // done (user has to open System, then click a folder icon), and the
+    // conditional render in Desktop.tsx already gives it a fresh mount
+    // each time it's opened, so no resetKey is needed either.
+    const panelStage = usePanelReveal(true);
+    const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
     const [entries, setEntries]                   = useState<RawEntry[]>([]);
     const [selectedMovement, setSelectedMovement] = useState<string | null>(null);
     const [modal, setModal]                       = useState<ModalMode | null>(null);
@@ -165,19 +172,22 @@ const BodyWindow = ({ onClose }: Props) => {
 
     return (
         <>
-            <div className="relative nier-enter">
-                <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
-                <div className="relative bg-nier-100 border border-nier-150">
+            <div className="relative">
+                {/* Sibling of the panel div, not a child — see
+                    Review/index.tsx for why: a transform on the panel would
+                    trap a child shadow in the wrong stacking context. */}
+                <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1 nier-enter" />
+                <div className="relative bg-nier-100 border border-nier-150 nier-enter">
 
                     {/* Window title bar */}
-                    <div className="h-10 bg-nier-150 flex items-center justify-between px-5">
+                    <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 ${contentReady ? '' : 'invisible'}`}>
                         <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Body</h3>
                         <button onClick={onClose} className="text-sm px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none">
                             ✕
                         </button>
                     </div>
 
-                    <div className="p-4 flex flex-col gap-4">
+                    <div className={`p-4 flex flex-col gap-4 ${contentReady ? '' : 'invisible'}`}>
                         <WorkoutGrid entries={workoutEntries} />
 
                         <div className="flex gap-4 flex-col md:flex-row">
