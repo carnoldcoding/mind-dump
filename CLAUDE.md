@@ -1,6 +1,6 @@
 # Mind Dump (Frontend)
 
-Personal, single-user app for writing reviews of games/movies/books and tracking body/workout data over time. React 19 + TypeScript + Vite, Tailwind v4, react-router v7. No test suite yet.
+Personal, single-user app for writing reviews of games/movies/books and tracking body/workout data over time. React 19 + TypeScript + Vite, Tailwind v4, react-router v7. Vitest for tests, though coverage is still thin — most modules have none yet.
 
 Read these before making non-trivial changes:
 
@@ -13,6 +13,7 @@ Read these before making non-trivial changes:
 - `npm run dev` — dev server
 - `npm run build-strict` — typecheck + build (use this, not `npm run build`, to catch type errors)
 - `npm run lint`
+- `npm run test` — Vitest
 
 ## Things that will surprise you
 
