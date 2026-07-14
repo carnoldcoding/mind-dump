@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import { animationsDisabled } from '../utils/animations';
 
 export type PanelStage = 'box' | 'title' | 'cards' | 'done';
 
 const PANEL_STAGE_ORDER: PanelStage[] = ['box', 'title', 'cards', 'done'];
 
 const DURATIONS: Record<Exclude<PanelStage, 'done'>, number> = {
-  box: 500,   // matches .nier-panel-box-reveal's own duration
+  box: 450,   // matches .nier-enter's own duration
   title: 500, // rough decode duration for a typical panel title
   cards: 500, // stagger window for the card grid
 };
@@ -36,6 +37,11 @@ export const usePanelReveal = (ready: boolean, resetKey?: string | number) => {
 
   useEffect(() => {
     if (!ready) return;
+
+    if (animationsDisabled()) {
+      setStage('done');
+      return;
+    }
 
     setStage('box');
     const toTitle = window.setTimeout(() => setStage('title'), DURATIONS.box);

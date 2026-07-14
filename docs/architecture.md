@@ -9,7 +9,7 @@ How the frontend is put together. For domain vocabulary (Review, Movement, Entry
 - **react-router v7** for routing (`createBrowserRouter`, `RouterProvider`)
 - **chart.js** / **react-chartjs-2** for the Body section's movement charts
 - **zustand** is a dependency but is currently **unused** — no store exists anywhere in `src/`. Don't assume global state management is in place.
-- No test runner is configured. There are no tests in this repo today.
+- **Vitest** (+ jsdom, `@testing-library/react`) is the test runner, added for `src/utils/animations.ts` and `src/hooks/usePanelReveal.ts`. Coverage is thin — most modules still have no tests.
 
 ## Commands
 
@@ -18,6 +18,7 @@ How the frontend is put together. For domain vocabulary (Review, Movement, Entry
 - `npm run build-strict` — `tsc -b && vite build`, use this to actually catch type errors
 - `npm run lint` — ESLint (flat config, `eslint.config.js`)
 - `npm run preview` — serve the production build locally
+- `npm run test` — Vitest (`vitest run`)
 
 ## Routing (`src/routes/index.tsx`)
 
@@ -53,3 +54,4 @@ The API is a separate repo (`mind-dump-backend`, Express) — not covered by thi
 - `src/types/index.ts` — shared TypeScript types (see drift note above)
 - `src/utils/` — helpers and static data (genres lists, etc.)
 - `src/styles/` — extra CSS beyond Tailwind utilities (`animations.css`, `custom.css`) — look here for the `nier-enter`/`nier-modal-enter` transition classes used throughout modals and page transitions
+- `src/utils/animations.ts` — single seam for the `VITE_DISABLE_ANIMATIONS` dev flag (set in `.env.local`, build-time, restart the dev server to pick up a change). When set, panel-reveal and modal enter/backdrop animations resolve instantly instead of animating — useful when iterating on layout. Does not affect the boot sequence, `Navigation`'s entrance, the ambient background, or the loading spinner.

@@ -9,14 +9,20 @@ import monitorLight from "../../assets/monitor-light.svg";
 import bookLight from "../../assets/book-light.svg";
 import Loader from "../../components/common/Loader";
 import { useStageState } from "../../context/BootSequenceContext";
+import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
+import { enterClass } from "../../utils/animations";
 
 
 const Search = () => {
     // Waits for the boot sequence's 'header' stage before its first ever
-    // reveal (so nier-enter actually plays visibly instead of running to
+    // reveal (so the box-reveal actually plays visibly instead of running to
     // completion while <main> is still hidden) — true immediately on every
     // navigation after that, since boot only ever happens once per session.
     const { active: contentActive } = useStageState('header');
+    // No resetKey needed — unlike Review, Search has no route param, so it
+    // fully unmounts/remounts on navigation away and back.
+    const panelStage = usePanelReveal(contentActive);
+    const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
     const [loading, setLoading] = useState<boolean>(false);
     const [posts, setPosts] = useState([]);
     const [filteredPosts, setFilteredPosts] = useState([]);
@@ -59,13 +65,16 @@ const Search = () => {
     return (
         <>
             <PageHeader name="SEARCH" />
-            <div className={`mt-5 relative ${contentActive ? 'nier-enter' : 'invisible'}`}>
-            <div className="absolute w-full h-full bg-nier-shadow top-1 left-1"></div>
-            <article className={`md:w-full ${filteredPosts.length > 0 ? 'h-auto' : 'h-30'} bg-nier-100 relative`}>
+            <div className="mt-5 relative">
+            {/* Sibling of article, not a child — see Review/index.tsx for
+                why: a transform on article would trap a child shadow in
+                the wrong stacking context. */}
+            <div className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}></div>
+            <article className={`md:w-full ${filteredPosts.length > 0 ? 'h-auto' : 'h-30'} bg-nier-100 relative ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
                 <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5">
                 </div>
 
-                <div className="p-4 flex flex-col gap-5">
+                <div className={`p-4 flex flex-col gap-5 ${contentReady ? '' : 'invisible'}`}>
                     <div className="border-2 border-nier-150 flex">
                         <input type="text" onKeyUp={handleTyping} autoFocus className="focus:outline focus:border-nier-dark w-full p-2 px-4"/>
                     </div>
