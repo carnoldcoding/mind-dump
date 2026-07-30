@@ -24,8 +24,8 @@ const Search = () => {
     const panelStage = usePanelReveal(contentActive);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
     const [loading, setLoading] = useState<boolean>(false);
-    const [posts, setPosts] = useState([]);
-    const [filteredPosts, setFilteredPosts] = useState([]);
+    const [posts, setPosts] = useState<any[]>([]);
+    const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(()=> {

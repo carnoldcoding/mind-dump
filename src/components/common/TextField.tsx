@@ -1,5 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 
+interface TextFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  altBg?: boolean;
+  type?: string;
+  autofillData?: string[];
+}
+
 export const TextField = ({ label, value, onChange, disabled, altBg, type, autofillData }: TextFieldProps) => {
   const [filteredData, setFilteredData] = useState<string[]>([]);
   const [isFocused, setIsFocused] = useState(false);

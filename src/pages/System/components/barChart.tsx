@@ -66,7 +66,7 @@ export const BarChart = ({ data }: { data: any[] }) => {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: 'bottom' },
+      legend: { position: 'bottom' as const },
       tooltip: { enabled: true },
     },
     scales: {
