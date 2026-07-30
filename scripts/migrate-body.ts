@@ -10,14 +10,19 @@
 
 import { planMigration } from "../src/pages/System/components/Body/migration.ts";
 import type { LegacyDoc, MigrationPlan } from "../src/pages/System/components/Body/migration.ts";
+import { describeGoal } from "../src/pages/System/components/Body/entry.ts";
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
 const apiFlag = args.indexOf("--api");
-const apiBase =
-    (apiFlag !== -1 ? args[apiFlag + 1] : undefined) ??
-    process.env.BODY_API_URI ??
-    "https://webserver.tail75a2e4.ts.net/";
+// No default. This deletes documents, so which server it points at is not a
+// thing to be inferred — and config.ts can't be imported here anyway, since
+// it reads import.meta.env.
+const apiBase = (apiFlag !== -1 ? args[apiFlag + 1] : undefined) ?? process.env.BODY_API_URI;
+if (!apiBase) {
+    console.error("\nno target: pass --api <url> or set BODY_API_URI\n");
+    process.exit(1);
+}
 
 async function api<T>(path: string, body?: unknown): Promise<T> {
     const res = await fetch(new URL(path, apiBase), {
@@ -29,26 +34,18 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
     return res.json() as Promise<T>;
 }
 
-const describeGoal = (goal: { sets: number | null; reps: number | null; weight: number | null } | null) => {
-    if (!goal) return "no goal";
-    const parts = [
-        goal.sets != null ? `${goal.sets} sets` : null,
-        goal.reps != null ? `${goal.reps} reps` : null,
-        goal.weight != null ? `${goal.weight} lbs` : null,
-    ].filter(Boolean);
-    return parts.length ? parts.join(" · ") : "no goal";
-};
+const goalText = (goal: Parameters<typeof describeGoal>[0]) => describeGoal(goal) ?? "no goal";
 
 function report(plan: MigrationPlan) {
     console.log(apply ? "APPLYING\n" : "DRY RUN — no writes\n");
 
     if (plan.backfill.length) {
         console.log(`  backfill Movement record × ${plan.backfill.length}`);
-        for (const b of plan.backfill) console.log(`    ${b.workoutName}  (${describeGoal(b.goal)})`);
+        for (const b of plan.backfill) console.log(`    ${b.workoutName}  (${goalText(b.goal)})`);
     }
     if (plan.setGoal.length) {
         console.log(`  fold goal into Movement × ${plan.setGoal.length}`);
-        for (const g of plan.setGoal) console.log(`    ${g.workoutName}  ${describeGoal(g.goal)}`);
+        for (const g of plan.setGoal) console.log(`    ${g.workoutName}  ${goalText(g.goal)}`);
     }
 
     const stale = plan.deletions.filter(d => d.reason === "stale-goal");

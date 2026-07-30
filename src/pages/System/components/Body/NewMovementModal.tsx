@@ -4,8 +4,12 @@ import { TextField } from "../../../../components/common/TextField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
 import { enterClass } from "../../../../utils/animations";
+import type { MovementTag } from "./entry";
 
 type Props = {
+    // Where this Movement lands in the list — the end of it. Sending the
+    // unordered sentinel instead would tie every new Movement together.
+    order: number;
     onClose: () => void;
     onSaved: (workoutName: string) => void;
 };
@@ -14,9 +18,9 @@ type Props = {
 // Entry that rendered nowhere, purely so the movement's name would be
 // discoverable, plus the record itself. The Movement record is the Movement
 // now, so the placeholder is gone.
-const NewMovementModal = ({ onClose, onSaved }: Props) => {
+const NewMovementModal = ({ order, onClose, onSaved }: Props) => {
     const [name, setName]     = useState("");
-    const [tag, setTag]       = useState<"upper" | "lower" | null>(null);
+    const [tag, setTag]       = useState<MovementTag>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError]   = useState("");
 
@@ -38,7 +42,7 @@ const NewMovementModal = ({ onClose, onSaved }: Props) => {
                 displayName: workoutName,
                 tag,
                 notes: "",
-                order: 9999,
+                order,
                 goal: null,
                 datetime: new Date().toISOString(),
             });

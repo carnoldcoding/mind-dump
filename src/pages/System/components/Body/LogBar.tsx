@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NumTextField } from "../../../../components/common/NumTextField";
 import { DateField } from "../../../../components/common/DateField";
 import { backend } from "../../../../api/backend";
-import { describeGoal } from "./entry";
+import { atLocalMidnight, describeGoal, fieldValue, todayValue } from "./entry";
 import type { Entry, Movement } from "./entry";
 
 type Props = {
@@ -11,19 +11,7 @@ type Props = {
     onSaved: () => void;
 };
 
-const todayStr = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-
-const atLocalMidnight = (value: string) => {
-    const [y, m, d] = value.split("-").map(Number);
-    return new Date(y, m - 1, d).toISOString();
-};
-
 const numOrUndefined = (value: string) => (value.trim() === "" ? undefined : Number(value));
-
-const str = (n: number | undefined) => (n != null ? String(n) : "");
 
 // Logging is the thing this window exists for, so it isn't behind a button.
 // The fields sit where the Movement is, pre-filled with whatever was done
@@ -34,10 +22,10 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
     // and the most recent Entry, so a new selection or a fresh save remounts
     // it with new values. Re-seeding from an effect instead would clobber
     // anything typed before that effect got a chance to run.
-    const [sets, setSets]       = useState(str(lastEntry?.setsCompleted));
-    const [reps, setReps]       = useState(str(lastEntry?.repsCompleted));
-    const [weight, setWeight]   = useState(str(lastEntry?.weightUsed));
-    const [date, setDate]       = useState(todayStr());
+    const [sets, setSets]       = useState(fieldValue(lastEntry?.setsCompleted));
+    const [reps, setReps]       = useState(fieldValue(lastEntry?.repsCompleted));
+    const [weight, setWeight]   = useState(fieldValue(lastEntry?.weightUsed));
+    const [date, setDate]       = useState(todayValue());
     const [dateOpen, setDateOpen] = useState(false);
     const [saving, setSaving]   = useState(false);
     const [error, setError]     = useState("");
@@ -66,7 +54,7 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
                 datetime: atLocalMidnight(date),
             });
             // Back to today so the next log never silently inherits a backdate.
-            setDate(todayStr());
+            setDate(todayValue());
             setDateOpen(false);
             onSaved();
         } catch {
@@ -96,7 +84,7 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
                     <div className="flex items-center gap-2">
                         <div className="w-44"><DateField label="Date" value={date} onChange={setDate} /></div>
                         <button
-                            onClick={() => { setDate(todayStr()); setDateOpen(false); }}
+                            onClick={() => { setDate(todayValue()); setDateOpen(false); }}
                             aria-label="Clear date"
                             className="text-sm px-2 min-h-11 cursor-pointer text-nier-text-dark/60 hover:text-nier-text-dark"
                         >✕</button>

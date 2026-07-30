@@ -6,7 +6,8 @@ import { NumTextField } from "../../../../components/common/NumTextField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
 import { enterClass } from "../../../../utils/animations";
-import type { Goal, Movement } from "./entry";
+import { fieldNumber, fieldValue } from "./entry";
+import type { Goal, Movement, MovementTag } from "./entry";
 
 type Props = {
     movement: Movement;
@@ -15,19 +16,16 @@ type Props = {
     onDelete: (workoutName: string) => void;
 };
 
-const str = (n: number | null | undefined) => (n != null ? String(n) : "");
-const num = (s: string) => (s.trim() === "" ? null : Number(s));
-
 // Everything that defines a Movement is edited here, Goal included. A Goal is
 // current state, not history — saving replaces whatever was there before.
 const MovementEditModal = ({ movement, onClose, onSaved, onDelete }: Props) => {
     const confirmId = useId();
     const [displayName, setDisplayName] = useState(movement.displayName);
-    const [tag, setTag]                 = useState<"upper" | "lower" | null>(movement.tag);
+    const [tag, setTag]                 = useState<MovementTag>(movement.tag);
     const [notes, setNotes]             = useState(movement.notes);
-    const [setGoal, setSetGoal]         = useState(str(movement.goal?.sets));
-    const [repGoal, setRepGoal]         = useState(str(movement.goal?.reps));
-    const [weightGoal, setWeightGoal]   = useState(str(movement.goal?.weight));
+    const [setGoal, setSetGoal]         = useState(fieldValue(movement.goal?.sets));
+    const [repGoal, setRepGoal]         = useState(fieldValue(movement.goal?.reps));
+    const [weightGoal, setWeightGoal]   = useState(fieldValue(movement.goal?.weight));
     const [saving, setSaving]           = useState(false);
     const [error, setError]             = useState("");
     const [deleteStage, setDeleteStage] = useState<"idle" | "confirm">("idle");
@@ -44,7 +42,7 @@ const MovementEditModal = ({ movement, onClose, onSaved, onDelete }: Props) => {
         setSaving(true);
         setError("");
 
-        const goal: Goal = { sets: num(setGoal), reps: num(repGoal), weight: num(weightGoal) };
+        const goal: Goal = { sets: fieldNumber(setGoal), reps: fieldNumber(repGoal), weight: fieldNumber(weightGoal) };
         const isEmpty = goal.sets == null && goal.reps == null && goal.weight == null;
 
         try {

@@ -8,7 +8,10 @@ type Props = {
     selected: string | null;
     onSelect: (workoutName: string) => void;
     onEdit: (workoutName: string) => void;
-    onReorder: (workoutName: string, direction: -1 | 1) => void;
+    // Named rather than directional: with a tag filter on, the neighbour that
+    // matters is the one visible above or below, not the one adjacent in the
+    // full list.
+    onReorder: (workoutName: string, swapWith: string) => void;
     onCreate: () => void;
 };
 
@@ -73,9 +76,10 @@ const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCrea
                         <li className="text-nier-text-dark/40 text-xs uppercase px-3 py-3">
                             {movements.length === 0 ? "No movements yet" : "None in this category"}
                         </li>
-                    ) : filtered.map(m => {
+                    ) : filtered.map((m, visibleIdx) => {
                         const isSelected = selected === m.workoutName;
-                        const fullIdx = movements.indexOf(m);
+                        const above = filtered[visibleIdx - 1];
+                        const below = filtered[visibleIdx + 1];
                         return (
                             <li
                                 key={m.workoutName}
@@ -86,14 +90,14 @@ const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCrea
                                 {managing && (
                                     <div className="flex shrink-0">
                                         <button
-                                            onClick={() => onReorder(m.workoutName, -1)}
-                                            disabled={fullIdx === 0}
+                                            onClick={() => above && onReorder(m.workoutName, above.workoutName)}
+                                            disabled={!above}
                                             aria-label={`Move ${m.displayName} up`}
                                             className={`w-9 min-h-11 text-xs cursor-pointer disabled:opacity-20 disabled:cursor-default ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/60"}`}
                                         >▲</button>
                                         <button
-                                            onClick={() => onReorder(m.workoutName, 1)}
-                                            disabled={fullIdx === movements.length - 1}
+                                            onClick={() => below && onReorder(m.workoutName, below.workoutName)}
+                                            disabled={!below}
                                             aria-label={`Move ${m.displayName} down`}
                                             className={`w-9 min-h-11 text-xs cursor-pointer disabled:opacity-20 disabled:cursor-default ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/60"}`}
                                         >▼</button>

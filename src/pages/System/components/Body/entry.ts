@@ -17,11 +17,17 @@ export type Goal = {
     weight: number | null;
 };
 
+export type MovementTag = "upper" | "lower" | null;
+
+// Where a Movement sorts when it has no order of its own — last, and out of
+// the way of anything deliberately positioned.
+export const UNORDERED = 9999;
+
 export type Movement = {
     id?: string;
     workoutName: string;
     displayName: string;
-    tag: "upper" | "lower" | null;
+    tag: MovementTag;
     notes: string;
     order: number;
     goal: Goal | null;
@@ -31,9 +37,10 @@ export type Entry = {
     id?: string;
     workoutName: string;
     datetime: string;
-    setsCompleted?: number;
-    repsCompleted?: number;
-    weightUsed?: number;
+    // Null once a field has been deliberately cleared, absent if never set.
+    setsCompleted?: number | null;
+    repsCompleted?: number | null;
+    weightUsed?: number | null;
 };
 
 // What the API actually returns — every field optional, ids under either key.
@@ -44,16 +51,33 @@ export type BodyDoc = {
     datetime: string;
     _meta?: boolean;
     displayName?: string;
-    tag?: "upper" | "lower" | null;
+    tag?: MovementTag;
     notes?: string;
     order?: number;
     goal?: Goal | null;
-    setsCompleted?: number;
-    repsCompleted?: number;
-    weightUsed?: number;
+    setsCompleted?: number | null;
+    repsCompleted?: number | null;
+    weightUsed?: number | null;
 };
 
-const docId = (doc: BodyDoc) => doc._id ?? doc.id;
+// Mongo returns `_id`; some call sites have already normalised it to `id`.
+export const docId = (doc: { _id?: string; id?: string }) => doc._id ?? doc.id;
+
+// ── Form-field conversions, shared by every Body form ────────────────
+export const fieldValue = (n: number | null | undefined) => (n != null ? String(n) : "");
+export const fieldNumber = (value: string) => (value.trim() === "" ? null : Number(value));
+
+// A logged set belongs to a day, not an instant, so dates round-trip through
+// local midnight rather than picking up whatever time it happens to be.
+export const atLocalMidnight = (value: string) => {
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y, m - 1, d).toISOString();
+};
+
+export const todayValue = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 export const goalIsEmpty = (goal: Goal | null | undefined): boolean =>
     !goal || (goal.sets == null && goal.reps == null && goal.weight == null);
@@ -86,7 +110,7 @@ export function partitionBodyDocs(docs: BodyDoc[]): { movements: Movement[]; ent
                 displayName: doc.displayName || doc.workoutName,
                 tag: doc.tag ?? null,
                 notes: doc.notes || "",
-                order: doc.order ?? 9999,
+                order: doc.order ?? UNORDERED,
                 goal: goalIsEmpty(doc.goal) ? null : doc.goal!,
             });
         } else {

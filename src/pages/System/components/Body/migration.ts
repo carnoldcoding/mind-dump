@@ -6,12 +6,11 @@
 // and does nothing else unless told to apply it, so the irreversible part of
 // the migration is reviewable before it happens.
 
-export type Goal = {
-    sets: number | null;
-    reps: number | null;
-    weight: number | null;
-};
+import type { Goal } from "./entry";
+export type { Goal };
 
+// The pre-migration document shape. Deliberately separate from BodyDoc: these
+// fields only exist in data that hasn't been migrated yet.
 export type LegacyDoc = {
     _id?: string;
     id?: string;

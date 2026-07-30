@@ -352,7 +352,81 @@ describe("Creating a Movement", () => {
     });
 });
 
+describe("Reordering with a filter applied", () => {
+    it("swaps with the neighbour that is actually visible", async () => {
+        await renderBody([
+            movement("Bench Press", { _id: "m-1", tag: "upper", order: 0 }),
+            movement("Squat",       { _id: "m-2", tag: "lower", order: 1 }),
+            movement("Overhead",    { _id: "m-3", tag: "upper", order: 2 }),
+        ]);
+
+        fireEvent.click(screen.getByRole("button", { name: /^upper$/i }));
+        fireEvent.click(screen.getByRole("button", { name: /manage/i }));
+        // Bench Press and Overhead are adjacent on screen but not in the full list.
+        fireEvent.click(screen.getByRole("button", { name: /move overhead up/i }));
+
+        await waitFor(() => expect(mocked.updateBodyEntry).toHaveBeenCalledTimes(3));
+        expect(mocked.updateBodyEntry).toHaveBeenCalledWith({ id: "m-3", order: 0 });
+        expect(mocked.updateBodyEntry).toHaveBeenCalledWith({ id: "m-1", order: 2 });
+    });
+
+    it("does not offer to move the first or last visible Movement past the edge", async () => {
+        await renderBody([
+            movement("Bench Press", { _id: "m-1", tag: "upper", order: 0 }),
+            movement("Squat",       { _id: "m-2", tag: "lower", order: 1 }),
+        ]);
+
+        fireEvent.click(screen.getByRole("button", { name: /^lower$/i }));
+        fireEvent.click(screen.getByRole("button", { name: /manage/i }));
+
+        expect((screen.getByRole("button", { name: /move squat up/i }) as HTMLButtonElement).disabled).toBe(true);
+        expect((screen.getByRole("button", { name: /move squat down/i }) as HTMLButtonElement).disabled).toBe(true);
+    });
+});
+
+describe("Clearing a value", () => {
+    it("sends null so an emptied field is actually cleared", async () => {
+        await renderBody([
+            movement("Bench Press"),
+            entry("Bench Press", "2026-07-01T00:00:00.000Z"),
+        ]);
+
+        fireEvent.click(screen.getByRole("button", { name: /^history$/i }));
+        fireEvent.click(within(screen.getByRole("region", { name: /history/i })).getAllByRole("button")[0]);
+
+        const dialog = screen.getByRole("dialog", { name: /edit entry/i });
+        fireEvent.change(within(dialog).getByLabelText("Weight"), { target: { value: "" } });
+        fireEvent.click(within(dialog).getByRole("button", { name: /^save$/i }));
+
+        await waitFor(() => expect(mocked.updateBodyEntry).toHaveBeenCalled());
+        expect(mocked.updateBodyEntry).toHaveBeenCalledWith(
+            expect.objectContaining({ weightUsed: null })
+        );
+    });
+});
+
 describe("Deleting", () => {
+    it("keeps the Movement when all of its entries are deleted", async () => {
+        await renderBody([
+            movement("Bench Press"),
+            entry("Bench Press", "2026-07-01T00:00:00.000Z"),
+        ]);
+
+        fireEvent.click(screen.getByRole("button", { name: /^history$/i }));
+        fireEvent.click(within(screen.getByRole("region", { name: /history/i })).getAllByRole("button")[0]);
+
+        const dialog = screen.getByRole("dialog", { name: /edit entry/i });
+        // The Movement record is refetched unchanged; only the Entry goes.
+        mocked.getBodyEntries.mockResolvedValue([movement("Bench Press")]);
+        fireEvent.click(within(dialog).getByRole("button", { name: /^delete$/i }));
+
+        await waitFor(() => expect(mocked.removeBodyEntry).toHaveBeenCalledTimes(1));
+        expect(mocked.removeBodyEntry).toHaveBeenCalledWith("e-Bench Press-2026-07-01T00:00:00.000Z");
+        await waitFor(() =>
+            expect(within(list()).getByRole("button", { name: "Bench Press" })).toBeDefined()
+        );
+    });
+
     it("removes a Movement and all of its entries when explicitly deleted", async () => {
         await renderBody([
             movement("Bench Press"),

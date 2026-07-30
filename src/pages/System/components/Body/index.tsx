@@ -7,7 +7,7 @@ import LogBar from "./LogBar";
 import NewMovementModal from "./NewMovementModal";
 import MovementEditModal from "./MovementEditModal";
 import EntryEditModal from "./EntryEditModal";
-import { partitionBodyDocs, describeEntry } from "./entry";
+import { partitionBodyDocs, describeEntry, docId } from "./entry";
 import type { BodyDoc, Entry } from "./entry";
 import { usePanelReveal, panelStageIndex } from "../../../../hooks/usePanelReveal";
 import { enterClass } from "../../../../utils/animations";
@@ -72,7 +72,7 @@ const BodyWindow = ({ onClose }: Props) => {
     const handleDeleteMovement = useCallback(async (workoutName: string) => {
         const doomed = docs.filter(d => d.workoutName === workoutName);
         await Promise.all(doomed.map(d => {
-            const id = d._id ?? d.id;
+            const id = docId(d);
             return id ? backend.removeBodyEntry(id) : Promise.resolve();
         }));
         if (selectedName === workoutName) setSelectedName(null);
@@ -87,10 +87,12 @@ const BodyWindow = ({ onClose }: Props) => {
 
     // Every Movement gets its order rewritten, so the sequence stays dense
     // and total rather than depending on whatever the previous values were.
-    const handleReorder = useCallback(async (workoutName: string, direction: -1 | 1) => {
+    // The caller names the Movement to swap with, because the neighbour the
+    // user can see isn't the adjacent one when a tag filter is applied.
+    const handleReorder = useCallback(async (workoutName: string, swapWith: string) => {
         const idx = movements.findIndex(m => m.workoutName === workoutName);
-        const swapIdx = idx + direction;
-        if (idx === -1 || swapIdx < 0 || swapIdx >= movements.length) return;
+        const swapIdx = movements.findIndex(m => m.workoutName === swapWith);
+        if (idx === -1 || swapIdx === -1) return;
 
         const reordered = [...movements];
         [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
@@ -199,6 +201,7 @@ const BodyWindow = ({ onClose }: Props) => {
 
             {creating && (
                 <NewMovementModal
+                    order={movements.length}
                     onClose={() => setCreating(false)}
                     onSaved={(workoutName) => { setSelectedName(workoutName); fetchDocs(); }}
                 />

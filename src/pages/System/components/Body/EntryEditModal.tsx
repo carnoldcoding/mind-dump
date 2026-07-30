@@ -5,6 +5,7 @@ import { DateField } from "../../../../components/common/DateField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
 import { enterClass } from "../../../../utils/animations";
+import { atLocalMidnight, fieldNumber, fieldValue } from "./entry";
 import type { Entry } from "./entry";
 
 type Props = {
@@ -16,17 +17,15 @@ type Props = {
 };
 
 const toDateStr = (iso: string) => iso.split("T")[0];
-const str = (n: number | undefined) => (n != null ? String(n) : "");
-const num = (s: string) => (s.trim() === "" ? undefined : Number(s));
 
 // An Entry is one logged set and nothing else, so this form has one shape.
 // It used to branch on whether it was editing a goal or a log, because both
 // were stored here.
 const EntryEditModal = ({ entry, movementName, onClose, onSaved, onDelete }: Props) => {
     const [date, setDate]     = useState(toDateStr(entry.datetime));
-    const [sets, setSets]     = useState(str(entry.setsCompleted));
-    const [reps, setReps]     = useState(str(entry.repsCompleted));
-    const [weight, setWeight] = useState(str(entry.weightUsed));
+    const [sets, setSets]     = useState(fieldValue(entry.setsCompleted));
+    const [reps, setReps]     = useState(fieldValue(entry.repsCompleted));
+    const [weight, setWeight] = useState(fieldValue(entry.weightUsed));
     const [saving, setSaving] = useState(false);
     const [error, setError]   = useState("");
 
@@ -40,15 +39,15 @@ const EntryEditModal = ({ entry, movementName, onClose, onSaved, onDelete }: Pro
         setSaving(true);
         setError("");
         try {
-            const setsCompleted = num(sets);
-            const repsCompleted = num(reps);
-            const weightUsed    = num(weight);
+            // Nulls rather than omissions: the backend $sets whatever it's
+            // given, so leaving a key out would silently keep the old value
+            // and make an emptied field impossible to clear.
             await backend.updateBodyEntry({
                 id: entry.id,
-                datetime: (() => { const [y, m, d] = date.split("-").map(Number); return new Date(y, m - 1, d).toISOString(); })(),
-                ...(setsCompleted != null && { setsCompleted }),
-                ...(repsCompleted != null && { repsCompleted }),
-                ...(weightUsed != null && { weightUsed }),
+                datetime: atLocalMidnight(date),
+                setsCompleted: fieldNumber(sets),
+                repsCompleted: fieldNumber(reps),
+                weightUsed:    fieldNumber(weight),
             });
             onSaved();
             onClose();

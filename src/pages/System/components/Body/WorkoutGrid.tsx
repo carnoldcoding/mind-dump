@@ -5,10 +5,6 @@ type Props = {
     entries: Entry[];
 };
 
-// Every Entry is a performed set now, so density means what it looks like it
-// means without any filtering — goals and placeholders aren't in here.
-const isPerformed = (e: Entry) =>
-    e.setsCompleted != null || e.repsCompleted != null || e.weightUsed != null;
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -24,8 +20,9 @@ const WorkoutGrid = ({ entries }: Props) => {
 
     const { weeks, monthLabels } = useMemo(() => {
         const dateMap = new Map<string, number>();
+        // No filtering: every Entry is a performed set, so density means what
+        // it looks like it means.
         entries
-            .filter(isPerformed)
             .forEach(e => {
                 const d = new Date(e.datetime).toISOString().split("T")[0];
                 dateMap.set(d, (dateMap.get(d) || 0) + 1);
