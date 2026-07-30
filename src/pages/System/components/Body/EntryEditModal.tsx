@@ -5,6 +5,7 @@ import { DateField } from "../../../../components/common/DateField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
 import { enterClass } from "../../../../utils/animations";
+import { classifyEntry } from "./entry";
 
 export type EntryToEdit = {
     id: string;
