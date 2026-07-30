@@ -9,22 +9,14 @@ import {
     Tooltip,
     Legend,
 } from "chart.js";
+import type { Entry, Goal } from "./entry";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
-
-type Entry = {
-    datetime: string;
-    weightUsed?: number;
-    weightGoal?: number;
-    repsCompleted?: number;
-    repGoal?: number;
-    setsCompleted?: number;
-    setGoal?: number;
-};
 
 type Props = {
     name: string;
     entries: Entry[];
+    goal: Goal | null;
 };
 
 type Metric = "weight" | "reps" | "volume";
@@ -35,15 +27,22 @@ const METRICS: { key: Metric; label: string }[] = [
     { key: "volume", label: "Volume" },
 ];
 
-const METRIC_CONFIG: Record<Exclude<Metric, "volume">, {
-    actual: keyof Entry;
-    unit: string;
-}> = {
+const METRIC_CONFIG: Record<Exclude<Metric, "volume">, { actual: keyof Entry; unit: string }> = {
     weight: { actual: "weightUsed",    unit: "lbs"  },
     reps:   { actual: "repsCompleted", unit: "reps" },
 };
 
-const MovementChart = ({ name, entries }: Props) => {
+// A Goal is a single current value, so it maps onto whichever metric is being
+// viewed. Volume has no goal of its own — it's the product of the other two,
+// so its target only exists when both do.
+function goalFor(metric: Metric, goal: Goal | null): number | null {
+    if (!goal) return null;
+    if (metric === "weight") return goal.weight;
+    if (metric === "reps") return goal.reps;
+    return goal.reps != null && goal.weight != null ? goal.reps * goal.weight : null;
+}
+
+const MovementChart = ({ name, entries, goal }: Props) => {
     const [metric, setMetric] = useState<Metric>("volume");
 
     const isVolume = metric === "volume";
@@ -61,43 +60,42 @@ const MovementChart = ({ name, entries }: Props) => {
     );
 
     const unit = isVolume ? "" : cfg!.unit;
+    const goalValue = goalFor(metric, goal);
 
-    const chartData = {
-        labels,
-        datasets: isVolume
-            ? [
-                {
-                    label: "Volume (reps × weight)",
-                    data: sorted.map(e =>
-                        e.repsCompleted != null && e.weightUsed != null
-                            ? e.repsCompleted * e.weightUsed
-                            : null
-                    ),
-                    borderColor: "#48483D",
-                    backgroundColor: "rgba(72, 72, 61, 0.08)",
-                    pointBackgroundColor: "#48483D",
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    borderWidth: 2,
-                    tension: 0.3,
-                    fill: true,
-                },
-            ]
-            : [
-                {
-                    label: metric === "weight" ? "Weight Used" : "Reps",
-                    data: sorted.map(e => (e[cfg!.actual] as number | undefined) ?? null),
-                    borderColor: "#48483D",
-                    backgroundColor: "rgba(72, 72, 61, 0.08)",
-                    pointBackgroundColor: "#48483D",
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    borderWidth: 2,
-                    tension: 0.3,
-                    fill: true,
-                },
-            ],
+    const actual = {
+        label: isVolume ? "Volume (reps × weight)" : metric === "weight" ? "Weight Used" : "Reps",
+        data: sorted.map(e =>
+            isVolume
+                ? (e.repsCompleted != null && e.weightUsed != null ? e.repsCompleted * e.weightUsed : null)
+                : ((e[cfg!.actual] as number | undefined) ?? null)
+        ),
+        borderColor: "#48483D",
+        backgroundColor: "rgba(72, 72, 61, 0.08)",
+        pointBackgroundColor: "#48483D",
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true,
     };
+
+    // Only the current Goal is stored, so this reads flat across the whole
+    // history rather than tracking what the target was at the time — see
+    // ADR-0002. No points and no fill, so it reads as a target and not as a
+    // second measurement.
+    const goalLine = goalValue != null && sorted.length > 0 ? {
+        label: "Goal",
+        data: sorted.map(() => goalValue),
+        borderColor: "#8A8570",
+        borderDash: [6, 4],
+        borderWidth: 2,
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        tension: 0,
+        fill: false,
+    } : null;
+
+    const chartData = { labels, datasets: goalLine ? [actual, goalLine] : [actual] };
 
     const options = {
         responsive: true,
@@ -105,11 +103,7 @@ const MovementChart = ({ name, entries }: Props) => {
         plugins: {
             legend: {
                 position: "bottom" as const,
-                labels: {
-                    color: "#3A3A31",
-                    font: { size: 11 },
-                    boxWidth: 12,
-                },
+                labels: { color: "#3A3A31", font: { size: 11 }, boxWidth: 12 },
             },
             tooltip: {
                 backgroundColor: "#48483D",
@@ -142,7 +136,7 @@ const MovementChart = ({ name, entries }: Props) => {
     };
 
     const tabBtn = (active: boolean) =>
-        `text-[10px] uppercase tracking-wide px-2.5 py-0.5 border cursor-pointer transition-colors ${
+        `text-[10px] uppercase tracking-wide px-3 py-1.5 border cursor-pointer transition-colors ${
             active
                 ? "bg-nier-text-dark text-nier-100-lighter border-nier-dark"
                 : "border-nier-dark text-nier-text-dark/60 hover:text-nier-text-dark hover:bg-nier-150/40"
@@ -150,9 +144,9 @@ const MovementChart = ({ name, entries }: Props) => {
 
     return (
         <div className="w-full h-64 bg-nier-100-lighter relative">
-            <div className="h-7 w-full bg-nier-150 flex items-center justify-between px-3">
-                <span className="text-nier-text-dark text-sm uppercase tracking-wide">{name}</span>
-                <div className="flex gap-1">
+            <div className="min-h-7 w-full bg-nier-150 flex items-center justify-between gap-2 px-3 py-1">
+                <span className="text-nier-text-dark text-sm uppercase tracking-wide truncate">{name}</span>
+                <div className="flex gap-1 shrink-0">
                     {METRICS.map(m => (
                         <button key={m.key} onClick={() => setMetric(m.key)} className={tabBtn(metric === m.key)}>
                             {m.label}
@@ -161,7 +155,7 @@ const MovementChart = ({ name, entries }: Props) => {
                 </div>
             </div>
             <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
-            <div className="w-full h-full px-4 pt-2 pb-10">
+            <div className="w-full h-full px-4 pt-2 pb-12">
                 <Line data={chartData} options={options} />
             </div>
         </div>
