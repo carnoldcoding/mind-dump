@@ -34,12 +34,15 @@ _Avoid_: "logged in" / "authenticated" — there's no session or account, just n
 ### Body tracking
 
 **Movement**:
-A named exercise (e.g. "Bench Press") that the user tracks over time. Has a display name, an `upper`/`lower` tag, free-text notes, and a manual sort order.
+A named exercise (e.g. "Bench Press") that the user tracks over time. A stored record — it exists in its own right, whether or not anything has ever been logged against it, and survives the deletion of all its Entries. Has a display name, an `upper`/`lower` tag, free-text notes, a manual sort order, and a current Goal.
 _Avoid_: Workout — "workout" isn't a distinct concept in this app (see below).
 
-**Entry** *(current shape — see note below)*:
-A single dated data point logged against a Movement. Currently one flat shape covers two different meanings, distinguished only by which optional fields happen to be set: a **logged set** (`weightUsed`/`repsCompleted`/`setsCompleted` — what was actually done) or a **goal** (`weightGoal`/`repGoal`/`setGoal` — a target). A Movement's own metadata is also stored as an Entry, flagged `_meta: true`, in the same flat list as real log/goal entries.
-_Known issue, planned refactor_: this overloading (log vs. goal vs. meta, all inferred from field presence rather than an explicit discriminator) is slated to be split into distinct types in an upcoming refactor. Update this entry when that lands.
+**Goal**:
+The target a Movement is currently being worked toward — some combination of sets, reps and weight. A Movement has at most one at a time; setting a new Goal replaces the old one, and no record of previous targets is kept. See [ADR-0002](./docs/adr/0002-goal-as-movement-state.md).
+_Avoid_: treating a Goal as an event or a dated thing — it's current state, and asking "what was my goal in March" is not a question this app can answer.
+
+**Entry**:
+A single dated record of a set that was actually performed against a Movement — sets, reps and weight completed. Nothing else lives in this shape: Goals belong to the Movement, and a Movement's own identity is a Movement record rather than a specially flagged Entry.
 
 **"Workout"**:
 Not a modeled entity — no session groups multiple Movements together. Used informally in UI copy/component names ("Log Workout" button, "Workout Frequency" grid) to mean "logging a set against a Movement."

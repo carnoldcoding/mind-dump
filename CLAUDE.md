@@ -20,5 +20,5 @@ Read these before making non-trivial changes:
 - `zustand` is installed but unused — there is no global store in this codebase.
 - The backend (`mind-dump-backend`) is a separate repo. This repo only knows it as an HTTP API — see `docs/architecture.md` for the boundary and confirmed endpoints.
 - `src/types/index.ts` doesn't match runtime data shapes in several places (see `docs/architecture.md`). Don't treat it as authoritative.
-- The Body-tracking `Entry` shape currently conflates logged sets, goals, and movement metadata into one flat record, distinguished only by which optional fields are set. A refactor to split these is planned — check `CONTEXT.md` for current status before relying on this shape.
+- Body tracking stores two kinds of document in one collection — Movement and Entry — told apart by an explicit `_meta` flag, not by guessing from field presence. A Goal is current state on a Movement, so there is no goal history and no way to ask what a target used to be ([ADR-0002](./docs/adr/0002-goal-as-movement-state.md)).
 - Every change, including small ones, goes through a branch + PR — `main` rejects direct pushes.

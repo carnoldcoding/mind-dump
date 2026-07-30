@@ -19,6 +19,7 @@ How the frontend is put together. For domain vocabulary (Review, Movement, Entry
 - `npm run lint` — ESLint (flat config, `eslint.config.js`)
 - `npm run preview` — serve the production build locally
 - `npm run test` — Vitest (`vitest run`)
+- `npm run migrate:body` — one-time Body data migration, dry-run by default; `-- --apply` performs it. Point it at the tailnet hostname, since `/api/body` is gated. See [ADR-0002](./adr/0002-goal-as-movement-state.md)
 
 ## Routing (`src/routes/index.tsx`)
 
@@ -30,16 +31,19 @@ All routes render inside `Layout`:
 - `/system` — System (password-gated admin dashboard)
 - `/journal` — placeholder (`UnderConstruction`), not linked from primary nav yet
 
-## Auth (`src/context/AuthContext.tsx`)
+## Access (`src/context/TrustedDeviceContext.tsx`)
 
-Single shared admin credential, not a multi-user account system. Login posts a password to the backend; on success a bearer token is stored in `localStorage` (`adminToken`) and verified against `/api/auth/verify` on mount. This gate gives access to the entire `System` area (Review authoring + Body tracking) — there's no per-feature permission model.
+There is no login, no password, no token and no session anywhere in this app. Access to `System` (Review authoring + Body tracking) and to every non-public API route is gated on **network identity**: the device has to be enrolled in the Tailscale tailnet. The SPA probes a tailnet-gated endpoint on mount and only renders the `system` nav item and route if that probe succeeds; the real boundary is nginx in front of the backend. See [ADR-0001](./adr/0001-tailnet-gated-system-access.md).
+
+There's no per-feature permission model — a trusted device can do everything.
 
 ## Backend boundary
 
 The API is a separate repo (`mind-dump-backend`, Express) — not covered by this repo's docs. The frontend only knows it as an HTTP boundary:
 
 - Base URL comes from `src/config.ts` (`VITE_API_URI` env var, defaults to the production API)
-- Confirmed endpoints in use: `GET /api/posts` (all Reviews, or filtered by `?slug=`), `GET /api/auth/verify`, `GET /api/body`, `POST /api/body/add_entry`, `POST /api/body/update_entry`, `POST /api/body/remove_entry`
+- Confirmed endpoints in use: `GET /api/posts` (all Reviews, or filtered by `?slug=`), `GET /api/body`, `POST /api/body/add_entry`, `POST /api/body/update_entry`, `POST /api/body/remove_entry`
+- The `Body Data` collection is schemaless — the backend `$set`s whatever it's given — so a Movement's `goal` rides along on its record without any backend change
 - `ReviewDetail` also manages mods, audio tracks, and screenshots per Review — check that file directly for current endpoints rather than assuming, since this doc doesn't track them individually
 
 ## Known data-model drift
