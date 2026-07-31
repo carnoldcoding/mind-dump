@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "migrate:body": "node scripts/migrate-body.ts"
+    "migrate:body": "esbuild scripts/migrate-body.ts --bundle --format=esm --platform=node --outfile=node_modules/.cache/migrate-body.mjs && node node_modules/.cache/migrate-body.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.11",

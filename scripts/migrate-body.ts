@@ -6,7 +6,8 @@
 // Run this against the tailnet hostname, since /api/body is gated (ADR-0001).
 // Override with --api <url> or BODY_API_URI.
 //
-// Node runs this .ts file directly by stripping types — no build step.
+// The npm script bundles this through esbuild first — the dev container is on
+// Node 20, which can't run .ts directly.
 
 import { planMigration } from "../src/pages/System/components/Body/migration.ts";
 import type { LegacyDoc, MigrationPlan } from "../src/pages/System/components/Body/migration.ts";
