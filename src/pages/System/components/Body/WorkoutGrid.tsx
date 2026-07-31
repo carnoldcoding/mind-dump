@@ -1,11 +1,10 @@
 import { useMemo, useState, useRef } from "react";
-import { classifyEntry } from "./entry";
-
-type Entry = { datetime: string; weightUsed?: number; repsCompleted?: number; setsCompleted?: number };
+import type { Entry } from "./entry";
 
 type Props = {
     entries: Entry[];
 };
+
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -21,8 +20,9 @@ const WorkoutGrid = ({ entries }: Props) => {
 
     const { weeks, monthLabels } = useMemo(() => {
         const dateMap = new Map<string, number>();
+        // No filtering: every Entry is a performed set, so density means what
+        // it looks like it means.
         entries
-            .filter(e => classifyEntry(e) === "log")
             .forEach(e => {
                 const d = new Date(e.datetime).toISOString().split("T")[0];
                 dateMap.set(d, (dateMap.get(d) || 0) + 1);

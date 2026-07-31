@@ -213,23 +213,6 @@
       }
 
       /*
-        Panel reveal (usePanelReveal) — 'box' stage: the panel expands from
-        a centered point, horizontally first, then vertically. Children are
-        kept invisible during this (see the panel's own JSX) so they don't
-        visibly stretch/squish along with the box.
-      */
-      @keyframes nier-panel-box-reveal {
-        0%   { transform: scaleX(0) scaleY(0.02); }
-        50%  { transform: scaleX(1) scaleY(0.02); }
-        100% { transform: scaleX(1) scaleY(1); }
-      }
-
-      .nier-panel-box-reveal {
-        transform-origin: center;
-        animation: nier-panel-box-reveal 500ms ease-in-out forwards;
-      }
-
-      /*
         Panel reveal — 'cards' stage: each card falls into place with a
         slight overshoot/settle, staggered per-card via --nier-card-delay.
       */

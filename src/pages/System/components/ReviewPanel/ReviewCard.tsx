@@ -122,7 +122,7 @@ export const ReviewCard = ({ review, onEdit, onDelete, onDragStart, onDragEnd, i
                                 )}
                             </div>
                             <div className="flex gap-4">
-                                <Button label="cancel" handleClick={handleCancelDelete} />
+                                <Button label="cancel" type="secondary" handleClick={handleCancelDelete} />
                                 <Button label="confirm" type="primary" handleClick={handleConfirmDelete} />
                             </div>
                         </div>

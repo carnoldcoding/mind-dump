@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Button } from "../../../../components/common/Button";
 
-const STATUSES = ['todo', 'active', 'done'];
-
-export const ReviewPreview = ({review, deletePost, onDelete, onEdit, onStatusUpdate} :{review: any, deletePost: any, onDelete: any, onEdit:any, onStatusUpdate?: (slug: string, status: string) => void}) => {
+// `onStatusUpdate` is still accepted because ReviewList passes it, but this
+// component has never actually called it — the handler that would have was
+// dead code. Wiring status cycling up here is its own piece of work.
+export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: any, deletePost: any, onDelete: any, onEdit:any, onStatusUpdate?: (slug: string, status: string) => void}) => {
     const [isOpen, setIsOpen] = useState(false);
     const [deleteInput, setDeleteInput] = useState('');
     const [error, setError] = useState('');
@@ -22,13 +23,6 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit, onStatusUpd
         'active': 'timer-outline',
         'done': 'checkmark-circle-outline'
     }
-
-    const handleStatusCycle = () => {
-        if (!onStatusUpdate) return;
-        const idx  = STATUSES.indexOf(review.status);
-        const next = STATUSES[(idx + 1) % STATUSES.length];
-        onStatusUpdate(review.slug, next);
-    };
 
     const handleOpen = () => {
         document.body.style.overflow = "hidden";
@@ -105,7 +99,7 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit, onStatusUpd
                             {error && <p className="capitalize text-red-700 mt-4">{error}</p>}
                         </div>
                         <div className="flex gap-4">
-                            <Button label="cancel" handleClick={handleClose}></Button>
+                            <Button label="cancel" type="secondary" handleClick={handleClose}></Button>
                             <Button label="confirm" type="primary" handleClick={authenticateDeletion}></Button>
                         </div>
                     </div>

@@ -34,4 +34,4 @@ How this was verified
 
 ## Gates
 
-Manual review is currently the only gate — no CI, no required status checks. Automated checks (lint/build/tests as required status checks) are deferred until Docker + a test setup (TDD) are in place.
+Manual review is currently the only gate — no CI, no required status checks. Docker (local dev via `docker-compose.yml` in `mind-dump-fullstack`) and a test setup (Vitest) both now exist, but automated checks (lint/build/tests as required status checks) still haven't been wired up as CI.

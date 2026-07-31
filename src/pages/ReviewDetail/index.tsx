@@ -8,6 +8,8 @@ import Loader from "../../components/common/Loader";
 import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
+import { usePanelReveal } from "../../hooks/usePanelReveal";
+import { enterClass } from "../../utils/animations";
 type Mod = { name: string; author?: string; url?: string; notes?: string };
 
 const TYPE_ICON: Record<string, string> = {
@@ -46,6 +48,12 @@ const ReviewDetail = () => {
     const [selectedImg, setSelectedImg] = useState<{ url: string; title?: string } | null>(null);
     const [parent]                  = useState(location.pathname.split('/')[1]);
     const { slug }                  = useParams<{ category: string; slug: string }>();
+    // Same box-reveal used by the grid panel (Review/index.tsx) — box grows
+    // horizontally then vertically, content stays hidden until it settles so
+    // it doesn't visibly squish along with the box. resetKey=slug so this
+    // restarts on every review, not just the first mount of this route.
+    const panelStage = usePanelReveal(contentActive, slug);
+    const contentReady = panelStage !== 'box';
 
     const handleClose   = () => navigate(`/${parent}`);
     const filterByGenre = (genre: string) => navigate(`/${parent}?genre=${genre}`);
@@ -96,13 +104,13 @@ const ReviewDetail = () => {
         <>
             <PageHeader name={data.title} />
 
-            <div className={`mt-5 relative ${contentActive ? 'nier-enter' : 'invisible'}`}>
-                <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
+            <div key={slug} className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
+                <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`} />
 
-                <article className="bg-nier-100 relative flex flex-col md:h-[34rem]">
+                <article className={`bg-nier-100 relative flex flex-col md:h-[34rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
 
                     {/* ── Header bar ─────────────────────────────────── */}
-                    <div className="h-10 bg-nier-150 flex items-stretch flex-shrink-0">
+                    <div className={`h-10 bg-nier-150 flex items-stretch flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
                         <div className="flex items-center gap-2 px-4 flex-1 min-w-0">
                             <ion-icon name={TYPE_ICON[data.type]} style={{ flexShrink: 0 }}></ion-icon>
                             <h3 className="text-nier-text-dark text-lg truncate uppercase tracking-wide">
@@ -119,7 +127,7 @@ const ReviewDetail = () => {
                     </div>
 
                     {/* ── Body ───────────────────────────────────────── */}
-                    <div className="p-4 flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+                    <div className={`p-4 flex flex-col md:flex-row gap-4 flex-1 min-h-0 ${contentReady ? '' : 'invisible'}`}>
 
                         {/* Cover image */}
                         <div
@@ -253,8 +261,8 @@ const ReviewDetail = () => {
                     </div>
 
                     {/* ── Footer ─────────────────────────────────────── */}
-                    <div className="h-px bg-nier-150 mx-4 flex-shrink-0" />
-                    <div className="px-4 py-2 flex-shrink-0">
+                    <div className={`h-px bg-nier-150 mx-4 flex-shrink-0 ${contentReady ? '' : 'invisible'}`} />
+                    <div className={`px-4 py-2 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
                         <p className="text-sm italic text-nier-text-dark/60">
                             {data.release_date} — {creator}
                         </p>

@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import ReviewsWindow from "./components/ReviewsWindow";
 import BodyWindow from "./components/Body";
+import { useStageState } from "../../context/BootSequenceContext";
+import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
+import { enterClass } from "../../utils/animations";
 
 const FolderIcon = ({ selected }: { selected: boolean }) => (
     <svg viewBox="0 0 56 46" width="56" height="46" xmlns="http://www.w3.org/2000/svg">
@@ -20,6 +23,12 @@ const FolderIcon = ({ selected }: { selected: boolean }) => (
 );
 
 const Desktop = () => {
+    // Desktop didn't wait for boot before this — unlike Search/Review it
+    // could start its own enter animation while <main> was still hidden
+    // behind the boot sequence. Gated the same way now.
+    const { active: contentActive } = useStageState('header');
+    const panelStage = usePanelReveal(contentActive);
+    const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
     const [time, setTime] = useState("");
     const [date, setDate] = useState("");
     const [openApp, setOpenApp] = useState<string | null>(null);
@@ -40,12 +49,15 @@ const Desktop = () => {
     };
 
     return (
-        <div className="mt-5 relative nier-enter">
-            <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
-            <article className="bg-nier-50 relative border border-nier-150">
+        <div className="mt-5 relative">
+            {/* Sibling of article, not a child — see Review/index.tsx for
+                why: a transform on article would trap a child shadow in
+                the wrong stacking context. */}
+            <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`} />
+            <article className={`bg-nier-50 relative border border-nier-150 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
 
                 {/* Title bar */}
-                <div className="h-10 bg-nier-150 flex items-center justify-between px-5">
+                <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 ${contentReady ? '' : 'invisible'}`}>
                     <div className="flex items-center gap-3">
                         <span className="text-nier-text-dark text-sm uppercase tracking-widest font-semibold">
                             SYSTEM.OS
@@ -57,7 +69,7 @@ const Desktop = () => {
                 </div>
 
                 {/* Desktop area */}
-                <div className="relative p-4">
+                <div className={`relative p-4 ${contentReady ? '' : 'invisible'}`}>
                     {/* Icons — own stacking context, sit beneath any open window */}
                     <div className="absolute top-4 left-4 flex gap-4 z-0">
                         {(["reviews", "body"] as const).map(app => (
@@ -97,7 +109,7 @@ const Desktop = () => {
                 </div>
 
                 {/* Taskbar */}
-                <div className="h-8 bg-nier-150 border-t border-nier-dark/20 flex items-center justify-between px-4">
+                <div className={`h-8 bg-nier-150 border-t border-nier-dark/20 flex items-center justify-between px-4 ${contentReady ? '' : 'invisible'}`}>
                     <span className="text-xs text-nier-text-dark uppercase tracking-widest opacity-50">
                         MIND DUMP OS
                     </span>
