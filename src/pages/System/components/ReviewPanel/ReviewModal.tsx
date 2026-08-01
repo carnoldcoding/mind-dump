@@ -12,6 +12,7 @@ import { useMediaUpload } from "./useMediaUpload"
 import { NumTextField } from "../../../../components/common/NumTextField"
 import { transformKeysToSnakeCase } from "../../../../utils/helpers"
 import { todayIso } from "../../../../utils/completionDate"
+import { toIsoDate } from "./migration"
 import { gameGenres, movieGenres, bookGenres } from "../../../../utils/genres"
 import ModModal from "./ModModal"
 import type { Mod } from "./ModModal"
@@ -117,7 +118,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                 title:         editingReview.title         || '',
                 slug:          editingReview.slug          || '',
                 description:   editingReview.description   || '',
-                releaseDate:   editingReview.release_date  || '',
+                // The control is a native <input type="date">, which only
+                // understands ISO and renders blank for anything else — so a
+                // US-format release date showed as empty and silently cleared
+                // itself on the next save. Stored release dates are a mix of
+                // both formats; converting on the way in means editing one
+                // leaves it canonical.
+                releaseDate:   toIsoDate(editingReview.release_date || '') || '',
                 dateCompleted: editingReview.date_completed || '',
                 creator:       editingReview.creator || editingReview.developers?.[0] || editingReview.director || editingReview.author || '',
                 genres:        editingReview.genres        || [],

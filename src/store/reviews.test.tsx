@@ -179,6 +179,34 @@ describe("ordering by when I finished something", () => {
     });
 });
 
+describe("the editor's Release Date control", () => {
+    // A native <input type="date"> renders blank for anything that isn't ISO,
+    // so a US-format release date showed as empty and cleared itself on save.
+    it("shows a US-format release date instead of coming up blank", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Nioh", { release_date: "02/07/2017" }),
+        ]);
+
+        render(<ReviewList />);
+        fireEvent.click(await screen.findByText("Nioh"));
+
+        const released = await screen.findByLabelText("Release Date");
+        expect((released as HTMLInputElement).value).toBe("2017-02-07");
+    });
+
+    it("leaves a release date that is already ISO alone", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Doom", { release_date: "2016-05-13" }),
+        ]);
+
+        render(<ReviewList />);
+        fireEvent.click(await screen.findByText("Doom"));
+
+        const released = await screen.findByLabelText("Release Date");
+        expect((released as HTMLInputElement).value).toBe("2016-05-13");
+    });
+});
+
 describe("a write from System", () => {
     it("is reflected the next time a surface reads the collection", async () => {
         mocked.getReviews.mockResolvedValue([review("Nioh")]);

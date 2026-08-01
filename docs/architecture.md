@@ -51,7 +51,7 @@ The API is a separate repo (`mind-dump-backend`, Express) — not covered by thi
 
 `src/types/index.ts` (`GamePost`/`CinemaPost`/`BookPost`) doesn't match what the app actually reads/writes at runtime — e.g. `status`, `creator`, and `imagePath` (vs. `image_path`) are used in `ReviewPanel`/`ReviewModal` but aren't in the shared types. Treat the types file as incomplete, not authoritative, until it's reconciled.
 
-Date fields disagree with each other, too: `date_completed` is canonical ISO (`YYYY-MM-DD`) as of issue #18, but `release_date` is still stored US-first (`mm/dd/yyyy`). Anything comparing release dates has to convert first — use `toIsoDate` from `src/pages/System/components/ReviewPanel/migration.ts` rather than writing a second conversion. One consequence not yet fixed: the editor's Release Date control is a native `<input type="date">`, which renders blank for every Review whose release date is still US-format.
+Date fields disagree with each other, too: `date_completed` is canonical ISO (`YYYY-MM-DD`) as of issue #18, but `release_date` is still stored US-first (`mm/dd/yyyy`). Anything comparing release dates has to convert first — use `toIsoDate` from `src/pages/System/components/ReviewPanel/migration.ts` rather than writing a second conversion. The editor's Release Date control is a native `<input type="date">`, which only understands ISO — it used to render blank for US-format dates and clear them on the next save. It now converts on the way in, so editing a Review leaves its release date canonical. Stored release dates remain a mix of both formats until every Review has been edited, or until a migration folds the rest in.
 
 ## Directory conventions
 
