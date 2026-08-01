@@ -2,7 +2,7 @@
 // Replaces the old Search *page*: the ranking helper and the grouped-results
 // shape are what survived of it (ADR-0003).
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { useReviews, type Review } from "../../store/reviews";
@@ -65,6 +65,19 @@ export const SearchModal = ({ onClose }: Props) => {
     // Opening and typing should be one motion (story 12).
     useEffect(() => { inputRef.current?.focus(); }, []);
 
+    // One navigation, replacing the entry that carries `?search` rather than
+    // popping it and pushing the destination. Popping first would be a race:
+    // `history.go(-1)` is asynchronous in a real browser, so the push lands
+    // first and the deferred pop then walks back to `?search`, reopening
+    // Search on top of the Review. A memory router applies `go` synchronously,
+    // which is exactly why a test cannot show the difference.
+    //
+    // Replacing also leaves the history right: back from the Review goes to
+    // wherever Search was opened from, not through the search itself.
+    const openResult = useCallback((review: Review) => {
+        navigate(reviewPath(review), { replace: true });
+    }, [navigate]);
+
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             if (event.key === "Escape") {
@@ -88,20 +101,7 @@ export const SearchModal = ({ onClose }: Props) => {
         };
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
-    }, [flat, highlighted, navigate, onClose]);
-
-    // One navigation, replacing the entry that carries `?search` rather than
-    // popping it and pushing the destination. Popping first would be a race:
-    // `history.go(-1)` is asynchronous in a real browser, so the push lands
-    // first and the deferred pop then walks back to `?search`, reopening
-    // Search on top of the Review. A memory router applies `go` synchronously,
-    // which is exactly why a test cannot show the difference.
-    //
-    // Replacing also leaves the history right: back from the Review goes to
-    // wherever Search was opened from, not through the search itself.
-    const openResult = (review: Review) => {
-        navigate(reviewPath(review), { replace: true });
-    };
+    }, [flat, highlighted, openResult, onClose]);
 
     return createPortal(
         <div
