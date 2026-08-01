@@ -1,8 +1,8 @@
 import PageHeader from "../../components/common/PageHeader"
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { BookPost, CinemaPost, GamePost } from "../../types";
 import { Link } from "react-router-dom";
-import { backend } from "../../api/backend";
+import { useReviews } from "../../store/reviews";
 import { rankByTitle } from "../../utils/rankByTitle";
 import gameLight from "../../assets/game-light.svg";
 import monitorLight from "../../assets/monitor-light.svg";
@@ -23,27 +23,11 @@ const Search = () => {
     // fully unmounts/remounts on navigation away and back.
     const panelStage = usePanelReveal(contentActive);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const [loading, setLoading] = useState<boolean>(false);
-    const [posts, setPosts] = useState<any[]>([]);
+    // Read from the shared collection — no fetch of its own. Once Search is a
+    // modal (issue #19) it can open anywhere, and waiting on a request before
+    // you can type is the thing this avoids.
+    const { reviews, loading, error } = useReviews();
     const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(()=> {
-        const fetchGamePosts = async () => {
-            try {
-                setLoading(true);
-                setError(null);
-                const data = await backend.getReviews();
-                setPosts(data);
-            } catch (error) {
-                setError('Network error');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchGamePosts();
-    },[])
 
     const handleTyping = (event : any) => {
         filterPosts(event.target.value.toString());
@@ -51,7 +35,7 @@ const Search = () => {
 
     const filterPosts = (query: string) => {
         if (query !== "") {
-          const eligible: any[] = posts.filter((post: any) => post.status !== 'todo');
+          const eligible: any[] = reviews.filter((post: any) => post.status !== 'todo');
           //@ts-ignore
           setFilteredPosts(rankByTitle(eligible, query));
         } else {

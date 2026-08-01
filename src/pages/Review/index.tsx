@@ -1,8 +1,9 @@
 import PageHeader from "../../components/common/PageHeader";
 import Card from "../../components/common/Card";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Loader from "../../components/common/Loader";
-import { backend } from "../../api/backend";
+import { useReviews } from "../../store/reviews";
+import { byNewestCompleted } from "../../utils/completionDate";
 import { rankByTitle } from "../../utils/rankByTitle";
 import { useParams } from "react-router";
 import { TextField } from "../../components/common/TextField";
@@ -25,9 +26,9 @@ const Review = () => {
     const searchParams = new URLSearchParams(location.search);
     const genreParam = searchParams.get('genre');
 
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
-    const [posts, setPosts] = useState<any>([]);
+    // The whole collection, fetched once for the session; this page keeps the
+    // Category filtering that used to be a `?type=` on its own request.
+    const { reviews, loading, error } = useReviews();
     const [query, setQuery] = useState<string>('');
     const [genreOptions, setGenreOptions] = useState<string[]>([]);
     const [filteredPosts, setFilteredPosts] = useState<any>([]);
@@ -70,13 +71,16 @@ const Review = () => {
         }))
     }
 
-    const convertToISODate = (dateString: string): string | null => {
+    // Release dates are still stored US-first, so comparing them means
+    // converting first. Completion dates are not — they are canonical ISO
+    // (issue #18) and are compared directly.
+    const releaseDateToISO = (dateString: string): string | null => {
         if (!dateString) return null;
-        
+
         if (dateString.includes('-') && dateString.split('-')[0].length === 4) {
-            return dateString; 
+            return dateString;
         }
-        
+
         const [month, day, year] = dateString.split('/');
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     };
@@ -86,28 +90,28 @@ const Review = () => {
         return posts.filter((review: any) => {
             // Date released filter
             if (filters.dateReleasedRange.start) {
-                const releaseDate = convertToISODate(review.release_date);
+                const releaseDate = releaseDateToISO(review.release_date);
                 if (releaseDate && new Date(releaseDate) < new Date(filters.dateReleasedRange.start)) {
                     return false;
                 }
             }
             if (filters.dateReleasedRange.end) {
-                const releaseDate = convertToISODate(review.release_date);
+                const releaseDate = releaseDateToISO(review.release_date);
                 if (releaseDate && new Date(releaseDate) > new Date(filters.dateReleasedRange.end)) {
                     return false;
                 }
             }
 
-            // Date completed filter
+            // Date completed filter — both sides are ISO, so these compare as
+            // plain strings without going through Date at all.
+            const completedDate = review.date_completed?.trim();
             if (filters.dateCompletedRange.start) {
-                const completedDate = convertToISODate(review.date_completed);
-                if (completedDate && new Date(completedDate) < new Date(filters.dateCompletedRange.start)) {
+                if (completedDate && completedDate < filters.dateCompletedRange.start) {
                     return false;
                 }
             }
             if (filters.dateCompletedRange.end) {
-                const completedDate = convertToISODate(review.date_completed);
-                if (completedDate && new Date(completedDate) > new Date(filters.dateCompletedRange.end)) {
+                if (completedDate && completedDate > filters.dateCompletedRange.end) {
                     return false;
                 }
             }
@@ -162,25 +166,12 @@ const Review = () => {
 
     },[location.pathname])
 
-    useEffect(() => {
-        const fetchPosts = async () => {
-            const type = category.toString().endsWith('s') ? category.slice(0, -1) : category;
-
-            try {
-                setLoading(true);
-                setError(null);
-                const data = await backend.getReviews({ type });
-                setPosts(data);
-                setFilteredPosts(data);
-            } catch (error) {
-                setError('Network error');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchPosts();
-    }, [category])
+    // Category comes from the URL in plural form; the `type` on a Review is
+    // singular (see CONTEXT.md).
+    const posts = useMemo(() => {
+        const type = category.toString().endsWith('s') ? category.slice(0, -1) : category;
+        return reviews.filter((review: any) => review.type === type);
+    }, [reviews, category]);
 
     useEffect(() => {
         let result = query ? rankByTitle(posts, query) : [...posts];
@@ -402,9 +393,7 @@ const Review = () => {
                         {filteredPosts.length > 0
                             ? filteredPosts
                                 .filter((post: any) => post.status === "done")
-                                .sort((a: any, b: any) => {
-                                    return new Date(b.date_completed).getTime() - new Date(a.date_completed).getTime();
-                                })
+                                .sort(byNewestCompleted)
                                 .map((post: any, i: number) => (
                                     <div
                                         className={`w-full ${cardsReady ? 'nier-panel-card-fall' : 'invisible'}`}

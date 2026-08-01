@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { backend } from "../../../api/backend";
+import { useState } from "react";
+import { useReviews, invalidateReviews } from "../../../store/reviews";
 import { PieChart } from "./pieChart";
 import { BarChart } from "./barChart";
 import { ReviewPanel } from "./ReviewPanel";
@@ -18,7 +18,7 @@ type Props = {
 };
 
 const ReviewsWindow = ({ onClose }: Props) => {
-    const [posts, setPosts]           = useState<any[]>([]);
+    const { reviews: posts }          = useReviews();
     const [editingReview, setEditingReview] = useState<any>(null);
     const [modalOpen, setModalOpen]   = useState(false);
     // Always ready=true — this window only ever mounts well after boot is
@@ -27,16 +27,6 @@ const ReviewsWindow = ({ onClose }: Props) => {
     // each time it's opened, so no resetKey is needed either.
     const panelStage = usePanelReveal(true);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-
-    const fetchPosts = async () => {
-        try {
-            setPosts(await backend.getReviews());
-        } catch {
-            // network error — posts stay empty
-        }
-    };
-
-    useEffect(() => { fetchPosts(); }, []);
 
     const activePosts = posts
         .filter(p => p.status?.toLowerCase() === 'active')
@@ -116,7 +106,7 @@ const ReviewsWindow = ({ onClose }: Props) => {
             <ReviewModal
                 isOpen={modalOpen}
                 setIsOpen={setModalOpen}
-                onReviewAdded={() => { fetchPosts(); setEditingReview(null); }}
+                onReviewAdded={() => { invalidateReviews(); setEditingReview(null); }}
                 editingReview={editingReview}
             />
         </div>
