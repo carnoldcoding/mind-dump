@@ -34,8 +34,16 @@ export const ReviewList = () => {
     type SortMetric = 'rating' | 'status' | 'date';
     const activeSortRef = useRef<{ metric: SortMetric; stateValue: boolean } | null>(null);
 
-    // Default order: most recently finished first.
-    const posts = useMemo(() => [...reviews].sort(byNewestCompleted), [reviews]);
+    // Finished work only. Everything unfinished belongs to the Backlog folder,
+    // which owns capture, grooming and the Status transitions — this window is
+    // where a Review gets written up once it's done (ADR-0004).
+    //
+    // The charts above are deliberately not narrowed this way; they still read
+    // the whole collection.
+    const posts = useMemo(
+        () => reviews.filter(r => r.status === 'done').sort(byNewestCompleted),
+        [reviews],
+    );
 
     const applySort = (arr: any[], metric: string, stateValue: boolean): any[] => {
         const result = [...arr];

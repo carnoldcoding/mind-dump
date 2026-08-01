@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ReviewsWindow from "./components/ReviewsWindow";
 import BodyWindow from "./components/Body";
+import BacklogWindow from "./components/Backlog";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
 import { enterClass } from "../../utils/animations";
@@ -72,7 +73,7 @@ const Desktop = () => {
                 <div className={`relative p-4 ${contentReady ? '' : 'invisible'}`}>
                     {/* Icons — own stacking context, sit beneath any open window */}
                     <div className="absolute top-4 left-4 flex gap-4 z-0">
-                        {(["reviews", "body"] as const).map(app => (
+                        {(["backlog", "reviews", "body"] as const).map(app => (
                             <button
                                 key={app}
                                 onClick={() => handleFolderClick(app)}
@@ -96,6 +97,11 @@ const Desktop = () => {
                     {!openApp && <div className="h-48" />}
 
                     {/* Open window — higher stacking context, only mounted when needed */}
+                    {openApp === "backlog" && (
+                        <div className="relative z-10">
+                            <BacklogWindow onClose={() => setOpenApp(null)} />
+                        </div>
+                    )}
                     {openApp === "reviews" && (
                         <div className="relative z-10">
                             <ReviewsWindow onClose={() => setOpenApp(null)} />
