@@ -90,6 +90,14 @@ export function describeGoal(goal: Goal | null | undefined): string | null {
     return [shape, load].filter(Boolean).join(" @ ");
 }
 
+// Both places a Goal can be set — the Movement modal and the inline editor in
+// LogBar — build it from three text fields, and both have to agree that "all
+// three blank" means no Goal rather than a Goal of nothing.
+export function buildGoal(sets: string, reps: string, weight: string): Goal | null {
+    const goal: Goal = { sets: fieldNumber(sets), reps: fieldNumber(reps), weight: fieldNumber(weight) };
+    return goalIsEmpty(goal) ? null : goal;
+}
+
 export function describeEntry(entry: Entry): string {
     const parts: string[] = [];
     if (entry.setsCompleted != null) parts.push(`${entry.setsCompleted} sets`);
