@@ -16,6 +16,22 @@ A Review's place in its lifecycle: `todo` (queued, not started), `active` (curre
 **Category**:
 The kind of Review — `games`, `cinema`, or `books`. Used in URLs and navigation (plural form). The underlying `type` field on a Review is singular (`game`, `cinema`, `book`).
 
+**Now**:
+The site's front page: what is being played, watched and read at this moment — every Review with Status `active`, across all Categories at once — with what's queued up next and what was finished most recently on either side of it. The only view that answers "where am I" rather than "what do I have".
+_Avoid_: Home, Dashboard, Index
+
+**Capture**:
+Recording a Review at the moment it occurs to you — a title and a Category, nothing more. The rest of a Review's fields are asked for later, at the stage that needs them.
+_Avoid_: Add, Create, Quick-add
+
+**Backlog**:
+Everything unfinished, across all Categories at once — Reviews with Status `todo` or `active`. A Review joins it the moment it's captured and leaves it only when it goes `done`; nothing is added or removed by hand. Starting something doesn't take it off the list, because it isn't off the list until it's finished.
+_Avoid_: Queue, Wishlist, To-read, Someday list
+
+**Search**:
+Title lookup across every Category and every Status, opened from anywhere as a modal rather than visited as a page. Finds all Reviews, queued ones included, so it also answers whether something has already been captured.
+_Avoid_: Find, Filter, Query
+
 **Mod**:
 A game modification attached to a game Review — a name, optional author, URL, and notes. Only meaningful for `game`-category Reviews.
 
@@ -25,7 +41,7 @@ Descriptive metadata on a Review. Games have developers + platforms; cinema has 
 ### System (admin area)
 
 **System**:
-The personal dashboard, styled as a retro desktop/terminal, reachable only from a **Trusted device**. Contains two areas ("windows"): Reviews management and Body tracking. This is where Reviews get authored/edited — the public Search/Category pages are read-only.
+The personal dashboard, styled as a retro desktop/terminal, reachable only from a **Trusted device**. Contains two areas ("windows"): Reviews management and Body tracking. This is where Reviews get authored/edited — the public Now/Category pages are read-only.
 
 **Trusted device**:
 A device (currently: one phone, one computer) enrolled in the Tailscale tailnet used to reach `System` and every non-public API route. Trust is network identity, not a credential — there is no login form, password, or token anywhere in this app. See [ADR-0001](./docs/adr/0001-tailnet-gated-system-access.md).
