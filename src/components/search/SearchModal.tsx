@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { useReviews, type Review } from "../../store/reviews";
 import { rankByTitle } from "../../utils/rankByTitle";
+import { reviewPath } from "../../utils/categories";
 import { enterClass } from "../../utils/animations";
 import gameLight from "../../assets/game-light.svg";
 import monitorLight from "../../assets/monitor-light.svg";
@@ -16,26 +17,24 @@ type Props = {
     onClose: () => void;
 };
 
-// Display order, and the order the arrow keys walk.
+// Display order, and the order the arrow keys walk. Addresses come from
+// utils/categories — this only decides how each group is titled and iconned.
 const GROUPS = [
-    { type: "game", label: "GAMES", icon: gameLight, path: "games" },
-    { type: "cinema", label: "CINEMA", icon: monitorLight, path: "cinema" },
-    { type: "book", label: "BOOKS", icon: bookLight, path: "books" },
+    { type: "game", label: "GAMES", icon: gameLight },
+    { type: "cinema", label: "CINEMA", icon: monitorLight },
+    { type: "book", label: "BOOKS", icon: bookLight },
 ] as const;
 
+// Status is a three-value lifecycle (CONTEXT.md); these are the words for it
+// on this surface. Anything unrecognised shows itself rather than nothing.
 const STATUS_LABEL: Record<string, string> = {
     todo: "QUEUED",
     active: "IN PROGRESS",
     done: "FINISHED",
 };
 
-const reviewPath = (review: Review): string => {
-    const group = GROUPS.find(g => g.type === review.type);
-    return `/${group?.path ?? review.type}/${review.slug}`;
-};
-
 export const SearchModal = ({ onClose }: Props) => {
-    const { reviews } = useReviews();
+    const { reviews, loading } = useReviews();
     const navigate = useNavigate();
     const [query, setQuery] = useState("");
     const [highlighted, setHighlighted] = useState(0);
@@ -84,19 +83,24 @@ export const SearchModal = ({ onClose }: Props) => {
             } else if (event.key === "Enter") {
                 event.preventDefault();
                 const target = flat[highlighted];
-                if (target) {
-                    onClose();
-                    navigate(reviewPath(target));
-                }
+                if (target) openResult(target);
             }
         };
         window.addEventListener("keydown", onKeyDown);
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [flat, highlighted, navigate, onClose]);
 
+    // One navigation, replacing the entry that carries `?search` rather than
+    // popping it and pushing the destination. Popping first would be a race:
+    // `history.go(-1)` is asynchronous in a real browser, so the push lands
+    // first and the deferred pop then walks back to `?search`, reopening
+    // Search on top of the Review. A memory router applies `go` synchronously,
+    // which is exactly why a test cannot show the difference.
+    //
+    // Replacing also leaves the history right: back from the Review goes to
+    // wherever Search was opened from, not through the search itself.
     const openResult = (review: Review) => {
-        onClose();
-        navigate(reviewPath(review));
+        navigate(reviewPath(review), { replace: true });
     };
 
     return createPortal(
@@ -171,8 +175,15 @@ export const SearchModal = ({ onClose }: Props) => {
                                 </div>
                             ))}
 
+                            {/* "Nothing matches" is a claim about the
+                                collection, so it can only be made once the
+                                collection is here. Said too early it answers
+                                "have I already added that?" with a confident
+                                no (story 16). */}
                             {query && flat.length === 0 && (
-                                <p className="text-nier-text-dark/50">Nothing matches that.</p>
+                                loading
+                                    ? <p className="text-nier-text-dark/50">Still loading…</p>
+                                    : <p className="text-nier-text-dark/50">Nothing matches that.</p>
                             )}
                         </div>
                     </div>

@@ -120,8 +120,12 @@ const ReviewDetail = () => {
                         {/* Unfinished work has no rating yet, and rendering
                             the absence as a bare 0 reads as a score. Empty
                             critique sections already self-hide; this is the
-                            part that didn't. */}
-                        {!!data.rating && (
+                            part that didn't.
+
+                            Keyed on Status rather than on the number being
+                            falsy: unrated work stores a 0, and so does work
+                            genuinely rated 0. Only Status tells them apart. */}
+                        {data.status === 'done' && data.rating != null && (
                             <div className="bg-nier-dark flex items-center justify-center px-4 flex-shrink-0">
                                 <p className="text-nier-text-light text-lg leading-none font-medium">{data.rating}</p>
                             </div>

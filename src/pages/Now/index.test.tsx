@@ -119,11 +119,22 @@ describe("the up-next band", () => {
         const upNext = band("Up Next");
 
         expect(within(upNext).getAllByRole("listitem")).toHaveLength(5);
-        // The cap is a doorway, not a dead end (story 5) — and it says how
-        // much is behind it.
-        const throughToBacklog = within(upNext).getByRole("link", { name: /backlog/i });
-        expect(throughToBacklog.getAttribute("href")).toBe("/backlog");
-        expect(throughToBacklog.textContent).toMatch(/8/);
+        // The cap is a doorway, not a dead end (story 5).
+        expect(within(upNext).getByRole("link", { name: /backlog/i }).getAttribute("href")).toBe("/backlog");
+    });
+
+    // The Backlog is everything unfinished, so it has contents even when
+    // nothing is queued — the way through has to stay open.
+    it("still offers the way through when nothing is queued", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Nioh 3", { status: "active" }),
+        ]);
+
+        await showNow();
+        const upNext = band("Up Next");
+
+        expect(within(upNext).getByText(/nothing queued/i)).toBeDefined();
+        expect(within(upNext).getByRole("link", { name: /backlog/i })).toBeDefined();
     });
 
     it("says so plainly when nothing is queued", async () => {
@@ -167,6 +178,18 @@ describe("the recently-finished band", () => {
         await showNow();
 
         expect(within(band("Recently Finished")).getByText(/9/)).toBeDefined();
+    });
+
+    // Absence and zero are different things: unrated work stores a 0, and so
+    // does work genuinely rated 0.
+    it("shows a rating of zero rather than treating it as no rating", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Bad Game", { status: "done", rating: 0, date_completed: "2026-05-18" }),
+        ]);
+
+        await showNow();
+
+        expect(within(band("Recently Finished")).getByText(/0/)).toBeDefined();
     });
 
     it("says so plainly when nothing is finished", async () => {

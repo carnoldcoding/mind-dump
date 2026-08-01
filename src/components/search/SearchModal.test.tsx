@@ -248,6 +248,24 @@ describe("results", () => {
         expect(within(modal()).getByText("Inception").closest("button")!.textContent).toContain("IN PROGRESS");
     });
 
+    // "Nothing matches" is a claim about the collection, and answering
+    // "have I already added that?" with a confident no before the collection
+    // has arrived is the wrong answer (story 16).
+    it("does not claim nothing matches while the collection is still loading", async () => {
+        let release: (value: unknown[]) => void = () => {};
+        mocked.getReviews.mockReturnValue(new Promise(resolve => { release = resolve; }));
+
+        await renderApp();
+        await openSearch();
+        await type("nioh");
+
+        expect(within(modal()).queryByText(/nothing matches/i)).toBeNull();
+
+        await act(async () => { release([review("Nioh")]); });
+
+        expect(within(modal()).getByText("Nioh")).toBeDefined();
+    });
+
     it("says so when nothing matches", async () => {
         await renderApp();
         await openSearch();
@@ -289,6 +307,25 @@ describe("keyboard navigation", () => {
 
         // Up from the first lands on the last.
         expect(within(modal()).getByText("Nioh 3").closest("button")!.getAttribute("aria-current")).toBe("true");
+    });
+
+    // Opening a result replaces the ?search entry rather than popping it and
+    // pushing the Review, so back from the Review goes where Search was opened
+    // from. A memory router applies `go` synchronously, so this asserts the
+    // history shape rather than the race it prevents — see openResult.
+    it("leaves no search entry behind when it opens a result", async () => {
+        const { router } = await renderApp(["/games", "/"]);
+        await openSearch();
+        await type("hobbit");
+
+        fireEvent.keyDown(window, { key: "Enter" });
+        await act(async () => {});
+        expect(url()).toBe("/books/the-hobbit");
+
+        await act(async () => { router.navigate(-1); });
+
+        expect(url()).toBe("/");
+        expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
     });
 
     it("opens a result when it is clicked", async () => {
