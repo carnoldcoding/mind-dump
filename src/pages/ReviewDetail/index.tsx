@@ -117,9 +117,19 @@ const ReviewDetail = () => {
                                 {data.title}
                             </h3>
                         </div>
-                        <div className="bg-nier-dark flex items-center justify-center px-4 flex-shrink-0">
-                            <p className="text-nier-text-light text-lg leading-none font-medium">{data.rating}</p>
-                        </div>
+                        {/* Unfinished work has no rating yet, and rendering
+                            the absence as a bare 0 reads as a score. Empty
+                            critique sections already self-hide; this is the
+                            part that didn't.
+
+                            Keyed on Status rather than on the number being
+                            falsy: unrated work stores a 0, and so does work
+                            genuinely rated 0. Only Status tells them apart. */}
+                        {data.status === 'done' && data.rating != null && (
+                            <div className="bg-nier-dark flex items-center justify-center px-4 flex-shrink-0">
+                                <p className="text-nier-text-light text-lg leading-none font-medium">{data.rating}</p>
+                            </div>
+                        )}
                         <button
                             onClick={handleClose}
                             className="px-4 text-2xl leading-none cursor-pointer flex items-center hover:bg-nier-dark hover:text-nier-text-light transition-colors duration-150"

@@ -1,14 +1,16 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 import { navItems } from "./NavItems";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
 import { useStageState } from "../../context/BootSequenceContext";
+import searchIcon from '../../assets/search.svg';
 
 interface NavigationMobileProps{
     isOpen: boolean;
     onClose: () => void;
+    onOpenSearch: () => void;
 }
 
-const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
+const NavigationMobile = ({ isOpen, onClose, onOpenSearch } : NavigationMobileProps) => {
     const location = useLocation();
     const { trusted } = useTrustedDevice();
     const { active: borderActive, animating: borderAnimating } = useStageState('borders');
@@ -25,6 +27,18 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
                 className="fixed top-2 right-4 z-101 text-nier-text-dark h-11 w-11 text-4xl leading-none flex items-center justify-center"
             >
             {isOpen ? '×' : '☰'}
+        </button>
+        {/* Beside the hamburger and sized to match it — this is the device
+            where Search has no keyboard shortcut to fall back on (story 11).
+            Stays put while the drawer is open: it shares the hamburger's
+            z-101 so it sits above the drawer, and hiding it would take Search
+            away exactly when someone has opened the menu looking for it. */}
+        <button
+            onClick={onOpenSearch}
+            aria-label="Open search"
+            className="fixed top-2 right-16 z-101 text-nier-text-dark h-11 w-11 flex items-center justify-center"
+        >
+            <img src={searchIcon} alt="" className="h-6 w-6 object-contain" />
         </button>
         <div className="fixed top-0 right-0 w-full z-99">
             {/* h-20 lives here rather than on .nier-dot-pattern because the

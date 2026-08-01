@@ -26,7 +26,7 @@ How the frontend is put together. For domain vocabulary (Review, Movement, Entry
 
 All routes render inside `Layout`:
 
-- `/` — Search (global search across all Reviews)
+- `/` — Now (what's in progress, what's queued next, what was finished most recently)
 - `/:category` — Review (category browse/filter page for `games`/`cinema`/`books`)
 - `/:category/:slug` — ReviewDetail (single Review, full write-up)
 - `/system` — System (password-gated admin dashboard)
@@ -58,6 +58,7 @@ Dates were the exception and no longer are: both `date_completed` and `release_d
 - `src/pages/<PageName>/index.tsx` — one folder per route, with page-specific components in a nested `components/` folder
 - `src/components/common/` — generic form/UI primitives (TextField, Button, Card, etc.), used across pages
 - `src/components/layout/` — site chrome (Navigation, Layout, background animations)
+- `src/components/search/` — the Search modal and the hook holding its open state. A feature folder rather than a `common/` primitive: Search is one thing with one home, mounted by `Layout` so it is reachable from every page, and its hook is meaningless away from it ([ADR-0003](./adr/0003-search-as-modal-now-as-front-page.md))
 - `src/types/index.ts` — shared TypeScript types (see drift note above)
 - `src/store/` — zustand stores for domain data (`reviews.ts`). Surfaces read through the exported hook and never fetch for themselves
 - `src/utils/` — helpers and static data (genres lists, etc.)
