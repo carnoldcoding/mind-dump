@@ -11,6 +11,7 @@ import { backend } from "../../../../api/backend"
 import { useMediaUpload } from "./useMediaUpload"
 import { NumTextField } from "../../../../components/common/NumTextField"
 import { transformKeysToSnakeCase } from "../../../../utils/helpers"
+import { todayIso } from "../../../../utils/completionDate"
 import { gameGenres, movieGenres, bookGenres } from "../../../../utils/genres"
 import ModModal from "./ModModal"
 import type { Mod } from "./ModModal"
@@ -262,14 +263,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             return;
         }
 
-        // Auto-set dateCompleted when status flips to done
+        // Auto-set dateCompleted when status flips to done. ISO, because this
+        // is the value everything else orders by — see issue #18.
         if (field === 'status' && value === 'done' && previousStatus !== 'done') {
             setReview(prev => ({
                 ...prev,
                 status: value,
-                dateCompleted: new Date().toLocaleDateString('en-US', {
-                    month: '2-digit', day: '2-digit', year: 'numeric',
-                }),
+                dateCompleted: todayIso(),
             }));
             return;
         }
