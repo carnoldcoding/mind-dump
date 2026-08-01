@@ -19,17 +19,12 @@
          its own bounds, so anything overflowing outside it used to "pop
          in" instantly once the wipe finished instead of revealing with it. */
       padding-bottom: calc(1.75px + 1.25rem);
-      /* Below the desktop breakpoint the top bar has no nav items of its own
-         to give it height, so it gets an explicit one. 5rem, not 4rem: the
-         bottom 1.75px + 1.25rem of that is line and pattern, and at 4rem the
-         hamburger sitting in the remaining space ran into them.
-
-         1023.98px rather than 1024px so this matches Layout's getBreakpoint,
-         which calls exactly 1024 desktop — at 1024 the real desktop nav was
-         getting this height clamped onto it. */
-      @media screen and (max-width: 1023.98px) {
-        height: 5rem;
-      }
+      /* No height of its own on purpose. Both bars wear this class, and only
+         one of them wants a body: the mobile top bar has no nav items to give
+         it height, so it sets its own (NavigationMobile). The bottom bar is
+         nothing but the line and the pattern, and a height here made it an
+         opaque band the depth of a nav bar sitting along the bottom of every
+         phone screen. */
     }
 
     .nier-dot-pattern::before {
@@ -78,7 +73,10 @@
         top: 0;
         left: 0;
         width: 100vw;
-        height: 100vh;
+        /* lvh so this always reaches past the bottom of the visible area —
+           a fixed decorative layer must never leave a strip uncovered while
+           iOS animates its toolbars, and being fixed the overflow is free. */
+        height: 100lvh;
         background-image:
           linear-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
           linear-gradient(90deg, rgba(0, 0, 0, 0.03) 1px, transparent 1px);

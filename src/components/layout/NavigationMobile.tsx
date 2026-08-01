@@ -27,14 +27,17 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
             {isOpen ? '×' : '☰'}
         </button>
         <div className="fixed top-0 right-0 w-full z-99">
-            <div className={`nier-dot-pattern fixed top-0 w-screen bg-nier-50 z-40 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}></div>
+            {/* h-20 lives here rather than on .nier-dot-pattern because the
+                bottom bar wears that class too and wants no body at all. Of
+                these 5rem the bottom 1.75px + 1.25rem is line and pattern,
+                leaving the hamburger above room to sit clear of them. */}
+            <div className={`nier-dot-pattern fixed top-0 w-screen h-20 bg-nier-50 z-40 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}></div>
         </div>
-        {/* Reserves what the fixed bar covers — keep in step with the
-            nier-dot-pattern height in custom.css. */}
+        {/* Reserves what the fixed bar covers — keep in step with the bar. */}
         <div className="h-20"></div>
         
 
-        <nav className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-screen p
+        <nav className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-dvh p
             transition-all ease-in-out duration-300 overflow-hidden
             shadow-[-3px_5px_0_0] shadow-nier-shadow pt-15 z-100 ${isOpen ? 'w-60 p-5' : 'w-0 p0'}`}>
             {visibleNavItems.map(item => {

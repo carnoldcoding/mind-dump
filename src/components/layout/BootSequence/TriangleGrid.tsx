@@ -60,7 +60,7 @@ const TriangleGrid = () => {
 
   return (
     <svg
-      className="fixed inset-0 -z-30 w-screen h-screen"
+      className="fixed inset-0 -z-30"
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
       aria-hidden="true"

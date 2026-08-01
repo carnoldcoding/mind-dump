@@ -58,7 +58,10 @@ const LayoutContent = () => {
           <BackgroundAnimations />
           }
         <BottomBar />
-          <div className="min-h-screen">
+          {/* dvh, not vh: on iOS Safari 100vh is the viewport with the
+              toolbars retracted, so vh here left the document taller than
+              what's actually visible even with nothing to scroll to. */}
+          <div className="min-h-dvh">
 
             { breakpoint != 'desktop' ?
             <NavigationMobile

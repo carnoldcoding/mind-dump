@@ -8,7 +8,9 @@
         top: 0;
         left: 0;
         width: 100vw;
-        height: 100vh;
+        /* lvh for the same reason as #nier-grid::before — fixed, decorative,
+           and must stay covered while iOS resizes the visible viewport. */
+        height: 100lvh;
         pointer-events: none;
         /* Negative on purpose — page content uses position:relative with no
            explicit z-index (i.e. z-index:auto), which ranks below any
