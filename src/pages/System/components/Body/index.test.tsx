@@ -199,20 +199,14 @@ describe("Logging a set", () => {
         await waitFor(() => expect(mocked.getBodyEntries).toHaveBeenCalled());
     });
 
-    it("backdates through the date control and then returns to today", async () => {
+    // Backdating is no longer possible while logging — a set logged on the
+    // wrong day is fixed afterwards in the Entry editor.
+    it("offers no date control", async () => {
         await renderBody([movement("Bench Press")]);
 
-        fireEvent.click(screen.getByRole("button", { name: /today/i }));
-        fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-07-28" } });
-        fireEvent.change(screen.getByLabelText("Sets"), { target: { value: "3" } });
-        fireEvent.click(screen.getByRole("button", { name: /^log$/i }));
-
-        await waitFor(() => expect(mocked.addBodyEntry).toHaveBeenCalled());
-        expect(mocked.addBodyEntry).toHaveBeenCalledWith(
-            expect.objectContaining({ datetime: new Date(2026, 6, 28).toISOString() })
-        );
-
-        await waitFor(() => expect(screen.getByRole("button", { name: /today/i })).toBeDefined());
+        const bar = screen.getByRole("region", { name: /log/i });
+        expect(within(bar).queryByLabelText(/date/i)).toBeNull();
+        expect(within(bar).queryByRole("button", { name: /today/i })).toBeNull();
     });
 
     it("refuses to log when no values were entered", async () => {
@@ -252,6 +246,60 @@ describe("Goal", () => {
         expect(mocked.updateBodyEntry).toHaveBeenCalledWith(
             expect.objectContaining({ id: "m-Bench Press", goal: { sets: 3, reps: 8, weight: 205 } })
         );
+    });
+
+    it("can be changed from the log bar without opening the Movement editor", async () => {
+        await renderBody([movement("Bench Press", { goal: { sets: 3, reps: 8, weight: 185 } })]);
+
+        fireEvent.click(screen.getByRole("button", { name: /edit goal/i }));
+        fireEvent.change(screen.getByLabelText(/weight goal/i), { target: { value: "205" } });
+        fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+        await waitFor(() => expect(mocked.updateBodyEntry).toHaveBeenCalled());
+        expect(mocked.updateBodyEntry).toHaveBeenCalledWith({
+            id: "m-Bench Press",
+            goal: { sets: 3, reps: 8, weight: 205 },
+        });
+    });
+
+    it("seeds the log bar editor from the Movement's current goal", async () => {
+        await renderBody([movement("Bench Press", { goal: { sets: 3, reps: 8, weight: 185 } })]);
+
+        fireEvent.click(screen.getByRole("button", { name: /edit goal/i }));
+
+        expect((screen.getByLabelText(/set goal/i) as HTMLInputElement).value).toBe("3");
+        expect((screen.getByLabelText(/rep goal/i) as HTMLInputElement).value).toBe("8");
+        expect((screen.getByLabelText(/weight goal/i) as HTMLInputElement).value).toBe("185");
+    });
+
+    it("is removed when every field is cleared", async () => {
+        await renderBody([movement("Bench Press", { goal: { sets: 3, reps: 8, weight: 185 } })]);
+
+        fireEvent.click(screen.getByRole("button", { name: /edit goal/i }));
+        fireEvent.change(screen.getByLabelText(/set goal/i),    { target: { value: "" } });
+        fireEvent.change(screen.getByLabelText(/rep goal/i),    { target: { value: "" } });
+        fireEvent.change(screen.getByLabelText(/weight goal/i), { target: { value: "" } });
+        fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+        await waitFor(() => expect(mocked.updateBodyEntry).toHaveBeenCalled());
+        expect(mocked.updateBodyEntry).toHaveBeenCalledWith({ id: "m-Bench Press", goal: null });
+    });
+
+    it("invites a goal on a Movement that has none", async () => {
+        await renderBody([movement("Bench Press")]);
+
+        expect(screen.getByRole("button", { name: /set goal/i })).toBeDefined();
+    });
+
+    it("re-fetches so a changed goal reaches the chart without a reload", async () => {
+        await renderBody([movement("Bench Press", { goal: { sets: 3, reps: 8, weight: 185 } })]);
+        mocked.getBodyEntries.mockClear();
+
+        fireEvent.click(screen.getByRole("button", { name: /edit goal/i }));
+        fireEvent.change(screen.getByLabelText(/weight goal/i), { target: { value: "205" } });
+        fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+        await waitFor(() => expect(mocked.getBodyEntries).toHaveBeenCalled());
     });
 });
 

@@ -6,8 +6,8 @@ import { NumTextField } from "../../../../components/common/NumTextField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
 import { enterClass } from "../../../../utils/animations";
-import { fieldNumber, fieldValue } from "./entry";
-import type { Goal, Movement, MovementTag } from "./entry";
+import { buildGoal, fieldValue } from "./entry";
+import type { Movement, MovementTag } from "./entry";
 
 type Props = {
     movement: Movement;
@@ -42,15 +42,12 @@ const MovementEditModal = ({ movement, onClose, onSaved, onDelete }: Props) => {
         setSaving(true);
         setError("");
 
-        const goal: Goal = { sets: fieldNumber(setGoal), reps: fieldNumber(repGoal), weight: fieldNumber(weightGoal) };
-        const isEmpty = goal.sets == null && goal.reps == null && goal.weight == null;
-
         try {
             const payload = {
                 displayName: displayName.trim(),
                 tag,
                 notes,
-                goal: isEmpty ? null : goal,
+                goal: buildGoal(setGoal, repGoal, weightGoal),
             };
             if (movement.id) {
                 await backend.updateBodyEntry({ id: movement.id, ...payload });
