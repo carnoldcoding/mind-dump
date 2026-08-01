@@ -1,9 +1,14 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router";
 import { navItems } from "./NavItems";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
 import { useStageState } from "../../context/BootSequenceContext";
+import searchIcon from '../../assets/search.svg';
 
-const Navigation = () => {
+type NavigationProps = {
+    onOpenSearch: () => void;
+};
+
+const Navigation = ({ onOpenSearch }: NavigationProps) => {
     const location = useLocation();
     const { trusted } = useTrustedDevice();
     const { active: borderActive, animating: borderAnimating } = useStageState('borders');
@@ -65,6 +70,23 @@ const Navigation = () => {
                     </Link>
                 )
                 })}
+                {/* Not a tab — it goes nowhere. Deliberately narrower and
+                    quieter than the destinations beside it, so the bar doesn't
+                    read as having gained a fifth place to be (ADR-0003). */}
+                <button
+                    onClick={onOpenSearch}
+                    aria-label="Open search"
+                    title="Search (Ctrl+K)"
+                    className={`relative z-0 flex items-center gap-1 px-2 pt-2 pb-8 self-start cursor-pointer transition-all duration-300 ease-in-out ${!navActive ? 'invisible' : ''}`}
+                >
+                    <div className="absolute inset-x-0 top-0 -z-10 h-10 bg-nier-150/40 transition-all duration-300 ease-in-out" />
+                    <div className="bg-nier-text-dark h-5.5 w-5.5 flex items-center justify-center p-0.5">
+                        <img src={searchIcon} alt="" className="w-full h-full object-contain" />
+                    </div>
+                    <span className="uppercase text-sm text-nier-text-dark/60 leading-none tracking-wide hidden lg:inline">
+                        Ctrl+K
+                    </span>
+                </button>
             </nav>
             <div className="h-5"></div>
         </>

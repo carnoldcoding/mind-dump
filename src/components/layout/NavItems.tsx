@@ -1,5 +1,5 @@
-import searchIcon from '../../assets/search.svg';
-import searchLightIcon from '../../assets/search-light.svg';
+import homeIcon from '../../assets/home.svg';
+import homeLightIcon from '../../assets/home-light.svg';
 import gameAltIcon from '../../assets/game-alt.svg';
 import gameAltLightIcon from '../../assets/game-alt-light.svg';
 import monitorIcon from '../../assets/monitor.svg';
@@ -17,10 +17,13 @@ interface NavItem {
 }
 
 export const navItems: NavItem[] = [
+  // Now, not Search: the index route stopped being a search box (ADR-0003).
+  // Search is a pinned control in the bar rather than a destination, so it
+  // isn't in this list at all.
   {
-    iconActive: searchIcon,
-    icon: searchLightIcon,
-    label: "search",
+    iconActive: homeIcon,
+    icon: homeLightIcon,
+    label: "now",
     path: "/"
   },
   {

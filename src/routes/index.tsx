@@ -1,6 +1,6 @@
 import { createBrowserRouter } from "react-router";
 import Layout from "../components/layout/Layout";
-import Search from "../pages/Search";
+import Now from "../pages/Now";
 import System from "../pages/System";
 import Review from "../pages/Review";
 import { UnderConstruction } from "../components/common/UnderConstruction";
@@ -13,7 +13,7 @@ export const router = createBrowserRouter([
       children: [
         {
           index: true,
-          element: <Search />,
+          element: <Now />,
         },
         {
           path: ':category',

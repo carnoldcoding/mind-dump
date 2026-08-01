@@ -5,7 +5,7 @@ import { render, screen, cleanup, waitFor, act, fireEvent } from "@testing-libra
 // Router from the wrong one provides a context the pages never see.
 import { MemoryRouter, Route, Routes } from "react-router";
 import Review from "../pages/Review";
-import Search from "../pages/Search";
+import Now from "../pages/Now";
 import { ReviewList } from "../pages/System/components/ReviewPanel/ReviewList";
 import { backend } from "../api/backend";
 import { BootSequenceProvider } from "../context/BootSequenceContext";
@@ -57,7 +57,7 @@ const renderRoute = (path: string) =>
         <BootSequenceProvider>
             <MemoryRouter initialEntries={[path]}>
                 <Routes>
-                    <Route path="/search" element={<Search />} />
+                    <Route path="/" element={<Now />} />
                     <Route path="/reviews/:category" element={<Review />} />
                 </Routes>
             </MemoryRouter>
@@ -106,12 +106,12 @@ describe("the shared Review collection", () => {
         await screen.findByText("Nioh");
         cleanup();
 
-        // Navigating to another shelf, and then to Search — the same
+        // Navigating to another shelf, and then to Now — the same
         // collection each time, and no reason to ask for it again.
         await showCategory("cinema");
         cleanup();
 
-        renderRoute("/search");
+        renderRoute("/");
         await flushBoot();
 
         expect(mocked.getReviews).toHaveBeenCalledTimes(1);
