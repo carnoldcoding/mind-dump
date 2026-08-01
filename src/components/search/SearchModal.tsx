@@ -148,9 +148,9 @@ export const SearchModal = ({ onClose }: Props) => {
 
                                     <ul className="ml-10 mt-3 flex flex-col gap-2" aria-label={group.label}>
                                         {group.results.map(review => {
-                                            const isHighlighted = flat[highlighted]?.slug === review.slug;
+                                            const isHighlighted = flat[highlighted]?._id === review._id;
                                             return (
-                                                <li key={review.slug}>
+                                                <li key={`${review.type}-${review.slug}`}>
                                                     <button
                                                         onClick={() => openResult(review)}
                                                         aria-current={isHighlighted ? "true" : undefined}

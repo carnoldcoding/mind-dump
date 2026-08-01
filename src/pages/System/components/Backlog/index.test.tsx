@@ -123,8 +123,9 @@ describe("capture", () => {
         await waitFor(() => expect(mocked.getReviews).toHaveBeenCalledTimes(2));
     });
 
-    // Story 3: the question worth asking before capturing.
-    it("says when the thing is already in there, and refuses to add it twice", async () => {
+    // Story 3 asks to *know* whether it's already in there — not to be
+    // stopped. A remake shares its original's title and is worth having.
+    it("says when the thing is already in there, without refusing the capture", async () => {
         await showFolder([review("Nioh 3", { status: "done" })]);
 
         fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Nioh 3" } });
@@ -132,7 +133,21 @@ describe("capture", () => {
         expect(screen.getByText(/already captured/i)).toBeDefined();
 
         fireEvent.click(captureButton());
-        expect(mocked.saveReview).not.toHaveBeenCalled();
+        await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
+    });
+
+    it("does not write twice when Capture is pressed twice", async () => {
+        await showFolder([]);
+
+        fireEvent.change(screen.getByLabelText("Title"), { target: { value: "Silent Hill 2" } });
+        // The same element twice in one tick — a real double-press, before any
+        // re-render can swap the label or disable it.
+        const button = captureButton();
+        fireEvent.click(button);
+        fireEvent.click(button);
+
+        await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
+        expect(mocked.saveReview).toHaveBeenCalledTimes(1);
     });
 
     it("refuses an empty title", async () => {
@@ -201,6 +216,25 @@ describe("grooming", () => {
         expect(notStarted.queryByText("Finish")).toBeNull();
         expect(started.getByText("Finish")).toBeDefined();
         expect(started.queryByText("Start")).toBeNull();
+    });
+
+    // Story 16: the Reviews window shows finished work only now, so if the
+    // heavier fields aren't reachable here they aren't reachable anywhere.
+    it("opens the full editor on a queued Review", async () => {
+        await showFolder([review("Nioh 3", { status: "todo" })]);
+
+        fireEvent.click(screen.getByLabelText("Edit Nioh 3"));
+
+        // The editor loads the Review it was handed.
+        expect(await screen.findByDisplayValue("Nioh 3")).toBeDefined();
+    });
+
+    it("opens the full editor on a started Review too", async () => {
+        await showFolder([review("Frieren", { status: "active" })]);
+
+        fireEvent.click(screen.getByLabelText("Edit Frieren"));
+
+        expect(await screen.findByDisplayValue("Frieren")).toBeDefined();
     });
 
     it("leaves finished work alone", async () => {

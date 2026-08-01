@@ -4,7 +4,7 @@ import { ReviewGridCard } from "./ReviewGridCard"
 import { useState, useEffect, useMemo, useRef } from "react"
 import { createPortal } from "react-dom"
 import { backend } from "../../../../api/backend"
-import { useReviews, invalidateReviews } from "../../../../store/reviews"
+import { useReviews, invalidateReviews, isFinished } from "../../../../store/reviews"
 import { completedTime, byNewestCompleted, todayIso } from "../../../../utils/completionDate"
 import { rankByTitle } from "../../../../utils/rankByTitle"
 import { TextField } from "../../../../components/common/TextField"
@@ -41,7 +41,7 @@ export const ReviewList = () => {
     // The charts above are deliberately not narrowed this way; they still read
     // the whole collection.
     const posts = useMemo(
-        () => reviews.filter(r => r.status === 'done').sort(byNewestCompleted),
+        () => reviews.filter(isFinished).sort(byNewestCompleted),
         [reviews],
     );
 

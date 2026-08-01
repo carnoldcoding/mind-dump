@@ -10,22 +10,21 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
 import Loader from "../../components/common/Loader";
-import { useReviews, type Review } from "../../store/reviews";
-import { reviewPath } from "../../utils/categories";
+import { useReviews, isUnfinished, type Review } from "../../store/reviews";
+import { CATEGORIES, reviewPath } from "../../utils/categories";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
 import { enterClass } from "../../utils/animations";
 
-const CATEGORY_FILTERS = [
+// Derived from the one Category table, so a fourth Category appears here
+// without this file being touched. Labels are this surface's own.
+const CATEGORY_FILTERS: { key: string | null; label: string }[] = [
     { key: null, label: "All" },
-    { key: "game", label: "Games" },
-    { key: "cinema", label: "Cinema" },
-    { key: "book", label: "Books" },
-] as const;
-
-/** The Backlog is exactly the Reviews that aren't finished. */
-const isUnfinished = (review: Review): boolean =>
-    review.status === 'todo' || review.status === 'active';
+    ...CATEGORIES.map(c => ({
+        key: c.type as string,
+        label: c.path.charAt(0).toUpperCase() + c.path.slice(1),
+    })),
+];
 
 const BacklogRow = ({ review }: { review: Review }) => (
     <li>
@@ -99,22 +98,22 @@ const Backlog = () => {
                     ) : (
                         <>
                             {started.length > 0 && (
-                                <section className="flex flex-col gap-3" aria-label="Started">
+                                <section className="flex flex-col gap-3">
                                     <h2 className="text-2xl uppercase tracking-wide">Started</h2>
                                     <ul className="flex flex-col gap-2" aria-label="Started">
                                         {started.map(review => (
-                                            <BacklogRow key={review.slug} review={review} />
+                                            <BacklogRow key={`${review.type}-${review.slug}`} review={review} />
                                         ))}
                                     </ul>
                                 </section>
                             )}
 
                             {unstarted.length > 0 && (
-                                <section className="flex flex-col gap-3" aria-label="Not Started">
+                                <section className="flex flex-col gap-3">
                                     <h2 className="text-2xl uppercase tracking-wide">Not Started</h2>
                                     <ul className="flex flex-col gap-2" aria-label="Not Started">
                                         {unstarted.map(review => (
-                                            <BacklogRow key={review.slug} review={review} />
+                                            <BacklogRow key={`${review.type}-${review.slug}`} review={review} />
                                         ))}
                                     </ul>
                                 </section>
