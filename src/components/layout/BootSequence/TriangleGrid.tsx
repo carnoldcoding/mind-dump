@@ -60,7 +60,11 @@ const TriangleGrid = () => {
 
   return (
     <svg
-      className="fixed inset-0 -z-30 w-screen h-screen"
+      // Explicit size, unlike the settled <div> branch below: an <svg> is a
+      // replaced element, so inset-0 alone leaves it at the 300x150 default
+      // instead of stretching. lvh for the same reason as the other fixed
+      // decorative layers — never uncover a strip while iOS resizes.
+      className="fixed inset-0 w-screen h-lvh -z-30"
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
       aria-hidden="true"

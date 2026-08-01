@@ -15,19 +15,29 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
     return (
         <>
+        {/* Sits in the bar's solid upper band, clear of the line and pattern
+            strip along its bottom edge. h-11/w-11 is both a real tap target
+            and big enough to hold the text-4xl glyph it used to overflow. */}
         <button
                 onClick={onClose}
-                className="fixed top-4 right-4 z-101 text-nier-text-dark p-1 h-8 w-8 text-4xl flex items-center justify-center"
+                aria-label={isOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={isOpen}
+                className="fixed top-2 right-4 z-101 text-nier-text-dark h-11 w-11 text-4xl leading-none flex items-center justify-center"
             >
             {isOpen ? '×' : '☰'}
         </button>
         <div className="fixed top-0 right-0 w-full z-99">
-            <div className={`nier-dot-pattern fixed top-0 w-screen bg-nier-50 z-40 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}></div>
+            {/* h-20 lives here rather than on .nier-dot-pattern because the
+                bottom bar wears that class too and wants no body at all. Of
+                these 5rem the bottom 1.75px + 1.25rem is line and pattern,
+                leaving the hamburger above room to sit clear of them. */}
+            <div className={`nier-dot-pattern fixed top-0 w-screen h-20 bg-nier-50 z-40 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}></div>
         </div>
-        <div className="h-16"></div>
+        {/* Reserves what the fixed bar covers — keep in step with the bar. */}
+        <div className="h-20"></div>
         
 
-        <nav className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-screen p
+        <nav className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-dvh p
             transition-all ease-in-out duration-300 overflow-hidden
             shadow-[-3px_5px_0_0] shadow-nier-shadow pt-15 z-100 ${isOpen ? 'w-60 p-5' : 'w-0 p0'}`}>
             {visibleNavItems.map(item => {
