@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planDateMigration, toIsoDate } from "./migration";
+import { planDateMigration, toIsoDate, RELEASE_DATE } from "./migration";
 import type { ReviewDoc } from "./migration";
 
 const review = (slug: string, over: Partial<ReviewDoc> = {}): ReviewDoc => ({
@@ -152,5 +152,56 @@ describe("planDateMigration", () => {
 
     it("plans nothing for an empty collection", () => {
         expect(planDateMigration([]).isEmpty).toBe(true);
+    });
+});
+
+// Both dates on a Review were written US-first and migrate identically, so
+// the field is data rather than a second copy of the code.
+describe("planDateMigration on release_date", () => {
+    it("migrates the release date when asked for that field", () => {
+        const plan = planDateMigration(
+            [review("hobbit", { release_date: "09/21/1937" })],
+            RELEASE_DATE,
+        );
+
+        expect(plan.rewrites).toEqual([
+            { slug: "hobbit", title: "hobbit", from: "09/21/1937", to: "1937-09-21" },
+        ]);
+    });
+
+    it("leaves the completion date alone while doing it", () => {
+        const plan = planDateMigration(
+            [review("hobbit", { release_date: "09/21/1937", date_completed: "01/07/2026" })],
+            RELEASE_DATE,
+        );
+
+        expect(plan.rewrites).toHaveLength(1);
+        expect(plan.rewrites[0].to).toBe("1937-09-21");
+    });
+
+    it("defaults to the completion date when no field is named", () => {
+        const plan = planDateMigration([
+            review("hobbit", { release_date: "09/21/1937", date_completed: "01/07/2026" }),
+        ]);
+
+        expect(plan.rewrites[0].to).toBe("2026-01-07");
+    });
+
+    it("is idempotent on release dates too", () => {
+        const plan = planDateMigration(
+            [review("doom", { release_date: "2016-05-13" })],
+            RELEASE_DATE,
+        );
+
+        expect(plan.isEmpty).toBe(true);
+    });
+
+    it("folds a legacy camelCase releaseDate into the canonical key", () => {
+        const plan = planDateMigration(
+            [review("nioh", { release_date: undefined, releaseDate: "02/07/2017" })],
+            RELEASE_DATE,
+        );
+
+        expect(plan.rewrites[0].to).toBe("2017-02-07");
     });
 });

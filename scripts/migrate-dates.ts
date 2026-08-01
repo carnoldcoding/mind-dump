@@ -1,8 +1,10 @@
-// One-time migration of Review completion dates to one canonical key in one
-// canonical format: `date_completed`, ISO.
+// One-time migration of Review dates to one canonical format: ISO.
 //
 //   npm run migrate:dates              # dry run — prints the plan, writes nothing
 //   npm run migrate:dates -- --apply   # performs it
+//
+// Defaults to `date_completed`. Pass `--field release_date` for the other date
+// a Review carries; both were written US-first and migrate identically.
 //
 // Run this against the tailnet hostname: reads are public, but /api/posts/update_post
 // is gated (ADR-0001). Override with --api <url> or POSTS_API_URI.
@@ -10,8 +12,12 @@
 // The npm script bundles this through esbuild first — the dev container is on
 // Node 20, which can't run .ts directly.
 
-import { planDateMigration } from "../src/pages/System/components/ReviewPanel/migration.ts";
-import type { DatePlan, ReviewDoc } from "../src/pages/System/components/ReviewPanel/migration.ts";
+import {
+    planDateMigration,
+    COMPLETION_DATE,
+    RELEASE_DATE,
+} from "../src/pages/System/components/ReviewPanel/migration.ts";
+import type { DateField, DatePlan, ReviewDoc } from "../src/pages/System/components/ReviewPanel/migration.ts";
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
@@ -22,6 +28,19 @@ const apiFlag = args.indexOf("--api");
 const apiBase = (apiFlag !== -1 ? args[apiFlag + 1] : undefined) ?? process.env.POSTS_API_URI;
 if (!apiBase) {
     console.error("\nno target: pass --api <url> or set POSTS_API_URI\n");
+    process.exit(1);
+}
+
+const FIELDS: Record<string, DateField> = {
+    date_completed: COMPLETION_DATE,
+    release_date: RELEASE_DATE,
+};
+
+const fieldFlag = args.indexOf("--field");
+const fieldName = fieldFlag !== -1 ? args[fieldFlag + 1] : "date_completed";
+const field = FIELDS[fieldName];
+if (!field) {
+    console.error(`\nunknown field ${JSON.stringify(fieldName)}: expected one of ${Object.keys(FIELDS).join(", ")}\n`);
     process.exit(1);
 }
 
@@ -39,7 +58,7 @@ function report(plan: DatePlan) {
     console.log(apply ? "APPLYING\n" : "DRY RUN — no writes\n");
 
     if (plan.rewrites.length) {
-        console.log(`  rewrite completion date × ${plan.rewrites.length}`);
+        console.log(`  rewrite ${field.key} × ${plan.rewrites.length}`);
         for (const r of plan.rewrites) {
             console.log(`    ${r.from}  →  ${r.to}   ${r.title}`);
         }
@@ -63,22 +82,22 @@ function report(plan: DatePlan) {
 
 async function main() {
     const docs = await api<ReviewDoc[]>("/api/posts");
-    console.log(`\nfetched ${docs.length} Reviews from ${apiBase}\n`);
+    console.log(`\nfetched ${docs.length} Reviews from ${apiBase}, migrating ${field.key}\n`);
 
-    const plan = planDateMigration(docs);
+    const plan = planDateMigration(docs, field);
     report(plan);
 
     if (!plan.rewrites.length) return;
 
     if (!apply) {
-        console.log("re-run with --apply to perform this. Only date_completed is written.\n");
+        console.log(`re-run with --apply to perform this. Only ${field.key} is written.\n`);
         return;
     }
 
     // update_post is a $set keyed by slug, so this sends the one field it
     // means to change rather than writing whole documents back.
     for (const r of plan.rewrites) {
-        await api("/api/posts/update_post", { slug: r.slug, date_completed: r.to });
+        await api("/api/posts/update_post", { slug: r.slug, [field.key]: r.to });
         console.log(`  ~ ${r.to}  ${r.title}`);
     }
 

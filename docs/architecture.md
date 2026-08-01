@@ -20,7 +20,7 @@ How the frontend is put together. For domain vocabulary (Review, Movement, Entry
 - `npm run preview` — serve the production build locally
 - `npm run test` — Vitest (`vitest run`)
 - `npm run migrate:body` — one-time Body data migration, dry-run by default; `-- --apply` performs it. Point it at the tailnet hostname, since `/api/body` is gated. See [ADR-0002](./adr/0002-goal-as-movement-state.md)
-- `npm run migrate:dates` — one-time Review completion-date migration to canonical ISO, dry-run by default; `-- --apply` performs it. Needs `--api <url>` or `POSTS_API_URI` — there is no default target. Point it at the tailnet hostname: reads are public, but `/api/posts/update_post` is gated
+- `npm run migrate:dates` — one-time Review date migration to canonical ISO, dry-run by default; `-- --apply` performs it. Defaults to `date_completed`; `-- --field release_date` migrates the other one. Needs `--api <url>` or `POSTS_API_URI` — there is no default target. Point it at the tailnet hostname: reads are public, but `/api/posts/update_post` is gated. Both fields were applied against production on 2026-08-01 and the script is idempotent, so a re-run reports nothing to do
 
 ## Routing (`src/routes/index.tsx`)
 
@@ -51,7 +51,7 @@ The API is a separate repo (`mind-dump-backend`, Express) — not covered by thi
 
 `src/types/index.ts` (`GamePost`/`CinemaPost`/`BookPost`) doesn't match what the app actually reads/writes at runtime — e.g. `status`, `creator`, and `imagePath` (vs. `image_path`) are used in `ReviewPanel`/`ReviewModal` but aren't in the shared types. Treat the types file as incomplete, not authoritative, until it's reconciled.
 
-Date fields disagree with each other, too: `date_completed` is canonical ISO (`YYYY-MM-DD`) as of issue #18, but `release_date` is still stored US-first (`mm/dd/yyyy`). Anything comparing release dates has to convert first — use `toIsoDate` from `src/pages/System/components/ReviewPanel/migration.ts` rather than writing a second conversion. The editor's Release Date control is a native `<input type="date">`, which only understands ISO — it used to render blank for US-format dates and clear them on the next save. It now converts on the way in, so editing a Review leaves its release date canonical. Stored release dates remain a mix of both formats until every Review has been edited, or until a migration folds the rest in.
+Dates were the exception and no longer are: both `date_completed` and `release_date` are canonical ISO (`YYYY-MM-DD`) as of issue #18, migrated in place. Anything reading a date written before then should still go through `toIsoDate` from `src/pages/System/components/ReviewPanel/migration.ts` rather than growing a second conversion, but nothing in the collection needs it today. The editor's Release Date control is a native `<input type="date">`, which only understands ISO — it used to render blank for US-format dates and clear them on the next save.
 
 ## Directory conventions
 
