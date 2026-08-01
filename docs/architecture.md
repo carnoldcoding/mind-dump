@@ -8,7 +8,7 @@ How the frontend is put together. For domain vocabulary (Review, Movement, Entry
 - **Tailwind CSS v4**, configured CSS-first via `@theme` in `src/index.css` (not a `tailwind.config.js`) — defines the custom "nier" color palette (a NieR:Automata-inspired retro-terminal look, hence the naming)
 - **react-router v7** for routing (`createBrowserRouter`, `RouterProvider`)
 - **chart.js** / **react-chartjs-2** for the Body section's movement charts
-- **zustand** is a dependency but is currently **unused** — no store exists anywhere in `src/`. Don't assume global state management is in place.
+- **zustand** holds the Review collection in `src/store/reviews.ts` — fetched once per page-session, read by every surface, invalidated when System writes. It sits *above* the backend seam, not inside it. Contexts (`BootSequenceContext`, `TrustedDeviceContext`) remain for ambient state never written from a page; the store is for domain data. See [ADR-0005](./adr/0005-zustand-store-for-reviews.md).
 - **Vitest** (+ jsdom, `@testing-library/react`) is the test runner, added for `src/utils/animations.ts` and `src/hooks/usePanelReveal.ts`. Coverage is thin — most modules still have no tests.
 
 ## Commands
@@ -20,6 +20,7 @@ How the frontend is put together. For domain vocabulary (Review, Movement, Entry
 - `npm run preview` — serve the production build locally
 - `npm run test` — Vitest (`vitest run`)
 - `npm run migrate:body` — one-time Body data migration, dry-run by default; `-- --apply` performs it. Point it at the tailnet hostname, since `/api/body` is gated. See [ADR-0002](./adr/0002-goal-as-movement-state.md)
+- `npm run migrate:dates` — one-time Review completion-date migration to canonical ISO, dry-run by default; `-- --apply` performs it. Needs `--api <url>` or `POSTS_API_URI` — there is no default target. Point it at the tailnet hostname: reads are public, but `/api/posts/update_post` is gated
 
 ## Routing (`src/routes/index.tsx`)
 
@@ -50,12 +51,15 @@ The API is a separate repo (`mind-dump-backend`, Express) — not covered by thi
 
 `src/types/index.ts` (`GamePost`/`CinemaPost`/`BookPost`) doesn't match what the app actually reads/writes at runtime — e.g. `status`, `creator`, and `imagePath` (vs. `image_path`) are used in `ReviewPanel`/`ReviewModal` but aren't in the shared types. Treat the types file as incomplete, not authoritative, until it's reconciled.
 
+Date fields disagree with each other, too: `date_completed` is canonical ISO (`YYYY-MM-DD`) as of issue #18, but `release_date` is still stored US-first (`mm/dd/yyyy`). Anything comparing release dates has to convert first — use `toIsoDate` from `src/pages/System/components/ReviewPanel/migration.ts` rather than writing a second conversion. One consequence not yet fixed: the editor's Release Date control is a native `<input type="date">`, which renders blank for every Review whose release date is still US-format.
+
 ## Directory conventions
 
 - `src/pages/<PageName>/index.tsx` — one folder per route, with page-specific components in a nested `components/` folder
 - `src/components/common/` — generic form/UI primitives (TextField, Button, Card, etc.), used across pages
 - `src/components/layout/` — site chrome (Navigation, Layout, background animations)
 - `src/types/index.ts` — shared TypeScript types (see drift note above)
+- `src/store/` — zustand stores for domain data (`reviews.ts`). Surfaces read through the exported hook and never fetch for themselves
 - `src/utils/` — helpers and static data (genres lists, etc.)
 - `src/styles/` — extra CSS beyond Tailwind utilities (`animations.css`, `custom.css`) — look here for the `nier-enter`/`nier-modal-enter` transition classes used throughout modals and page transitions
 - `src/utils/animations.ts` — single seam for the `VITE_DISABLE_ANIMATIONS` dev flag (set in `.env.local`, build-time, restart the dev server to pick up a change). When set, panel-reveal and modal enter/backdrop animations resolve instantly instead of animating — useful when iterating on layout. Does not affect the boot sequence, `Navigation`'s entrance, the ambient background, or the loading spinner.

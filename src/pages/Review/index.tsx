@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Loader from "../../components/common/Loader";
 import { useReviews } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
+import { toIsoDate } from "../System/components/ReviewPanel/migration";
 import { rankByTitle } from "../../utils/rankByTitle";
 import { useParams } from "react-router";
 import { TextField } from "../../components/common/TextField";
@@ -71,32 +72,20 @@ const Review = () => {
         }))
     }
 
-    // Release dates are still stored US-first, so comparing them means
-    // converting first. Completion dates are not — they are canonical ISO
-    // (issue #18) and are compared directly.
-    const releaseDateToISO = (dateString: string): string | null => {
-        if (!dateString) return null;
-
-        if (dateString.includes('-') && dateString.split('-')[0].length === 4) {
-            return dateString;
-        }
-
-        const [month, day, year] = dateString.split('/');
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    };
-
-
     const filterReviews = (posts : any) => {
         return posts.filter((review: any) => {
-            // Date released filter
+            // Date released filter. Release dates are still stored US-first,
+            // so comparing them means converting first — through the same
+            // reader the migration uses, rather than a second, unvalidated
+            // copy of the conversion.
             if (filters.dateReleasedRange.start) {
-                const releaseDate = releaseDateToISO(review.release_date);
+                const releaseDate = toIsoDate(review.release_date);
                 if (releaseDate && new Date(releaseDate) < new Date(filters.dateReleasedRange.start)) {
                     return false;
                 }
             }
             if (filters.dateReleasedRange.end) {
-                const releaseDate = releaseDateToISO(review.release_date);
+                const releaseDate = toIsoDate(review.release_date);
                 if (releaseDate && new Date(releaseDate) > new Date(filters.dateReleasedRange.end)) {
                     return false;
                 }
@@ -209,7 +198,7 @@ const Review = () => {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2">
                 <Loader/>
             </div>)
-        if (error) return <div>Error: {error}</div>;
+        if (error) return <div>Error: Network error</div>;
         
         return (
           <section key={category} className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>

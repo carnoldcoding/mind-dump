@@ -9,8 +9,9 @@ type HasCompletionDate = { date_completed?: string };
  *
  * Deliberately no fall back to release date: a shelf ordered by "when I
  * finished it" that silently means "when it came out" for unfinished things is
- * the bug this replaces. Anything not finished sorts to the bottom of a
- * newest-first list, which is where it belongs.
+ * the bug this replaces. Anything unfinished has no completion date and so
+ * sorts as epoch — last in a newest-first list, first when the sort is
+ * flipped. Both are honest answers to "when was this finished".
  */
 export function completedTime(review: HasCompletionDate): number {
     const value = review.date_completed?.trim();
@@ -29,7 +30,8 @@ export const byNewestCompleted = (a: HasCompletionDate, b: HasCompletionDate): n
  * Local calendar date rather than UTC: "finished today" means the day it was
  * for the person clicking, who is the only person using this.
  */
-export function todayIso(now: Date = new Date()): string {
+export function todayIso(): string {
+    const now = new Date();
     const month = `${now.getMonth() + 1}`.padStart(2, "0");
     const day = `${now.getDate()}`.padStart(2, "0");
     return `${now.getFullYear()}-${month}-${day}`;

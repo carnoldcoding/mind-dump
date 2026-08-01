@@ -134,7 +134,9 @@ describe("the shared Review collection", () => {
 
         await showCategory("games");
 
-        expect(await screen.findByText(/error/i)).toBeDefined();
+        // Specific, not just /error/i: the message has to survive, and a
+        // looser match happily passed while the page rendered a bare "Error:".
+        expect(await screen.findByText(/network error/i)).toBeDefined();
     });
 });
 
@@ -153,6 +155,27 @@ describe("ordering by when I finished something", () => {
 
         expect(precedes("Finished Last", "Finished Between")).toBe(true);
         expect(precedes("Finished Between", "Finished First")).toBe(true);
+    });
+
+    // Story 5: the System list's "Date" sort is the one whose label was
+    // lying, so it gets its own test rather than riding on the grid's.
+    it("sorts the System list by completion date, not release date", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Old Game New Finish", { release_date: "01/01/1990", date_completed: "2026-07-05" }),
+            review("New Game Old Finish", { release_date: "12/12/2024", date_completed: "2026-01-05" }),
+        ]);
+
+        render(<ReviewList />);
+        await screen.findByText("Old Game New Finish");
+
+        fireEvent.click(screen.getByText("date"));
+
+        // Most recently finished first, which is the opposite of release order.
+        expect(precedes("Old Game New Finish", "New Game Old Finish")).toBe(true);
+
+        // Flipped, the oldest finish leads.
+        fireEvent.click(screen.getByText("date"));
+        expect(precedes("New Game Old Finish", "Old Game New Finish")).toBe(true);
     });
 });
 
