@@ -19,8 +19,16 @@
          its own bounds, so anything overflowing outside it used to "pop
          in" instantly once the wipe finished instead of revealing with it. */
       padding-bottom: calc(1.75px + 1.25rem);
-      @media screen and (max-width: 1024px) {
-        height: 4rem;
+      /* Below the desktop breakpoint the top bar has no nav items of its own
+         to give it height, so it gets an explicit one. 5rem, not 4rem: the
+         bottom 1.75px + 1.25rem of that is line and pattern, and at 4rem the
+         hamburger sitting in the remaining space ran into them.
+
+         1023.98px rather than 1024px so this matches Layout's getBreakpoint,
+         which calls exactly 1024 desktop — at 1024 the real desktop nav was
+         getting this height clamped onto it. */
+      @media screen and (max-width: 1023.98px) {
+        height: 5rem;
       }
     }
 

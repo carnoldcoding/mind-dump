@@ -14,8 +14,11 @@ const BottomBar = () => {
   if (!active) return null;
 
   return (
+    // bottom-0, not an offset: the bar's own reserved padding already holds
+    // the line and the pattern strip, so lifting it off the viewport edge only
+    // opened a gap of bare page background underneath it.
     <div
-      className={`fixed bottom-5 left-0 w-screen z-50 -scale-y-100 ${animating ? 'nier-boot-border-wipe-reverse' : ''}`}
+      className={`fixed bottom-0 left-0 w-screen z-50 -scale-y-100 ${animating ? 'nier-boot-border-wipe-reverse' : ''}`}
       aria-hidden="true"
     >
       <div className="nier-dot-pattern bg-nier-50 w-full" />

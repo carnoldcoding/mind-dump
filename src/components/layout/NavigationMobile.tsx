@@ -15,16 +15,23 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
     return (
         <>
+        {/* Sits in the bar's solid upper band, clear of the line and pattern
+            strip along its bottom edge. h-11/w-11 is both a real tap target
+            and big enough to hold the text-4xl glyph it used to overflow. */}
         <button
                 onClick={onClose}
-                className="fixed top-4 right-4 z-101 text-nier-text-dark p-1 h-8 w-8 text-4xl flex items-center justify-center"
+                aria-label={isOpen ? 'Close menu' : 'Open menu'}
+                aria-expanded={isOpen}
+                className="fixed top-2 right-4 z-101 text-nier-text-dark h-11 w-11 text-4xl leading-none flex items-center justify-center"
             >
             {isOpen ? '×' : '☰'}
         </button>
         <div className="fixed top-0 right-0 w-full z-99">
             <div className={`nier-dot-pattern fixed top-0 w-screen bg-nier-50 z-40 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}></div>
         </div>
-        <div className="h-16"></div>
+        {/* Reserves what the fixed bar covers — keep in step with the
+            nier-dot-pattern height in custom.css. */}
+        <div className="h-20"></div>
         
 
         <nav className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-screen p
