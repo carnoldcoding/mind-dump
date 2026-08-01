@@ -1,9 +1,11 @@
 import { ReviewPreview } from "./ReviewPreview"
 import { ReviewModal } from "./ReviewModal"
 import { ReviewGridCard } from "./ReviewGridCard"
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { createPortal } from "react-dom"
 import { backend } from "../../../../api/backend"
+import { useReviews, invalidateReviews } from "../../../../store/reviews"
+import { completedTime, byNewestCompleted, todayIso } from "../../../../utils/completionDate"
 import { rankByTitle } from "../../../../utils/rankByTitle"
 import { TextField } from "../../../../components/common/TextField"
 import { Button } from "../../../../components/common/Button"
@@ -22,7 +24,7 @@ export const ReviewList = () => {
     const [typeFilter,  setTypeFilter]  = useState<string | null>(null);
     const [isOpen,      setIsOpen]      = useState<boolean>(false);
     const [error,       setError]       = useState<string | null>(null);
-    const [posts,       setPosts]       = useState<any[]>([]);
+    const { reviews, error: loadError } = useReviews();
     const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
     const [editMode,    setEditMode]    = useState<any>(null);
     const [query,       setQuery]       = useState<string>('');
@@ -32,10 +34,12 @@ export const ReviewList = () => {
     type SortMetric = 'rating' | 'status' | 'date';
     const activeSortRef = useRef<{ metric: SortMetric; stateValue: boolean } | null>(null);
 
+    // Default order: most recently finished first.
+    const posts = useMemo(() => [...reviews].sort(byNewestCompleted), [reviews]);
+
     const applySort = (arr: any[], metric: string, stateValue: boolean): any[] => {
         const result = [...arr];
         const statusPriority = { TODO: 1, ACTIVE: 2, DONE: 3 } as any;
-        const toTime = (p: any) => { const d = p.date_completed || p.release_date; return d ? new Date(d).getTime() : 0; };
         if (metric === 'rating') {
             result.sort((a, b) => stateValue ? a.rating - b.rating : b.rating - a.rating);
         } else if (metric === 'title') {
@@ -45,7 +49,10 @@ export const ReviewList = () => {
         } else if (metric === 'status') {
             result.sort((a, b) => { const ap = statusPriority[a.status?.toUpperCase()] ?? 999; const bp = statusPriority[b.status?.toUpperCase()] ?? 999; return stateValue ? ap - bp : bp - ap; });
         } else if (metric === 'date') {
-            result.sort((a, b) => stateValue ? toTime(b) - toTime(a) : toTime(a) - toTime(b));
+            // "Date" here means when it was finished — the label's promise.
+            result.sort((a, b) => stateValue
+                ? completedTime(b) - completedTime(a)
+                : completedTime(a) - completedTime(b));
         }
         return result;
     };
@@ -65,17 +72,13 @@ export const ReviewList = () => {
         const post = posts.find((p: any) => p.slug === slug);
         if (!post || post.status === newStatus) return;
 
-        const today = new Date().toLocaleDateString('en-US', {
-            month: '2-digit', day: '2-digit', year: 'numeric',
-        });
-
         try {
             await backend.saveReview({
                 ...post,
                 status:         newStatus,
-                date_completed: newStatus === 'done' ? today : post.date_completed,
+                date_completed: newStatus === 'done' ? todayIso() : post.date_completed,
             }, true);
-            fetchPosts();
+            invalidateReviews();
         } catch (err) {
             console.error('Status update error:', err);
         }
@@ -100,23 +103,6 @@ export const ReviewList = () => {
             setError('Network error: ' + err.message);
         }
     };
-
-    const fetchPosts = async () => {
-        try {
-            setError(null);
-            const data = await backend.getReviews();
-            const toTime = (p: any) => {
-                const d = p.date_completed || p.release_date;
-                return d ? new Date(d).getTime() : 0;
-            };
-            const sorted = [...data].sort((a, b) => toTime(b) - toTime(a));
-            setPosts(sorted);
-        } catch {
-            setError('Network error');
-        }
-    };
-
-    useEffect(() => { fetchPosts(); }, []);
 
     // ── Derived ──────────────────────────────────────────────────────
     const displayPosts = typeFilter
@@ -155,7 +141,7 @@ export const ReviewList = () => {
                             key={post.slug}
                             review={post}
                             deletePost={deletePost}
-                            onDelete={fetchPosts}
+                            onDelete={invalidateReviews}
                             onEdit={handleEdit}
                             onStatusUpdate={updatePostStatus}
                         />
@@ -247,11 +233,13 @@ export const ReviewList = () => {
             <ReviewModal
                 isOpen={isOpen}
                 setIsOpen={setIsOpen}
-                onReviewAdded={fetchPosts}
+                onReviewAdded={invalidateReviews}
                 editingReview={editMode}
             />
 
-            {error && <p className="px-4 py-2 text-red-700 text-sm">{error}</p>}
+            {(error || loadError) && (
+                <p className="px-4 py-2 text-red-700 text-sm">{error ?? 'Network error'}</p>
+            )}
 
             {viewMode === 'grid' ? renderGrid() : renderList()}
 
