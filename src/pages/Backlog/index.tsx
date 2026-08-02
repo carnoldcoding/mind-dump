@@ -37,9 +37,7 @@ const Shelf = ({ label, items, marked = false }: {
     marked?: boolean;
 }) => (
     <section className="flex flex-col gap-3">
-        <h2 className="text-2xl uppercase tracking-wide">
-            {label} <span className="text-nier-text-dark/40 text-lg">· {items.length}</span>
-        </h2>
+        <h2 className="text-2xl uppercase tracking-wide">{label}</h2>
         <ul
             aria-label={label}
             className={`grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 ${

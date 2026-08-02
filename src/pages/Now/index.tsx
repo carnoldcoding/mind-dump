@@ -50,11 +50,8 @@ const Band = ({ title, action, children }: {
  * A sideways rail. Scrolls rather than wrapping, so a secondary band can never
  * grow tall enough to take the page over from the heroes above it.
  */
-const Rail = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <ul
-        aria-label={label}
-        className="flex gap-3 overflow-x-auto pb-1 [&>li]:w-32 [&>li]:sm:w-36 [&>li]:flex-shrink-0"
-    >
+const Rail = ({ children }: { children: React.ReactNode }) => (
+    <ul className="flex gap-3 overflow-x-auto pb-1 [&>li]:w-32 [&>li]:sm:w-36 [&>li]:flex-shrink-0">
         {children}
     </ul>
 );
@@ -113,10 +110,7 @@ const Now = () => {
                                 // three fit above the fold (story 3). Wider
                                 // screens give each hero more room rather than
                                 // more neighbours.
-                                <ul
-                                    aria-label="In Progress"
-                                    className="grid grid-cols-2 lg:grid-cols-3 gap-4"
-                                >
+                                <ul className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                                     {inProgress.map(({ review, label }) => (
                                         <li key={`${review.type}-${review.slug}`}>
                                             <ReviewCard review={review} caption={label} />
@@ -141,7 +135,7 @@ const Now = () => {
                         {queued.length === 0
                             ? <p className="text-nier-text-dark/50">Nothing queued up.</p>
                             : (
-                                <Rail label="Up Next">
+                                <Rail>
                                     {queued.slice(0, UP_NEXT_CAP).map(review => (
                                         <li key={`${review.type}-${review.slug}`}>
                                             <ReviewCard review={review} caption="Queued" />
@@ -155,7 +149,7 @@ const Now = () => {
                         {recentlyFinished.length === 0
                             ? <p className="text-nier-text-dark/50">Nothing finished yet.</p>
                             : (
-                                <Rail label="Recently Finished">
+                                <Rail>
                                     {recentlyFinished.map(review => (
                                         <li key={`${review.type}-${review.slug}`}>
                                             <ReviewCard review={review} caption={finishedCaption(review)} />

@@ -134,19 +134,33 @@ describe("the shelf as a grid", () => {
         expect(card.querySelector("img")?.getAttribute("src")).toBe("https://cdn.example/n.png");
     });
 
-    it("counts what is on each shelf", async () => {
+});
+
+describe("reaching the shelf without a mouse", () => {
+    // Story 22: every surface has to be usable without a mouse.
+    it("lets the keyboard reach and open a card", async () => {
         mocked.getReviews.mockResolvedValue([
-            review("A", { status: "todo" }),
-            review("B", { status: "todo" }),
-            review("C", { status: "active" }),
+            review("Nioh 3", { type: "game", status: "todo" }),
         ]);
 
         await showBacklog();
-        await screen.findByText("A");
+        await screen.findByText("Nioh 3");
 
-        // "Started" is a substring of "Not Started", so both need anchoring.
-        expect(screen.getByRole("heading", { name: /^Not Started/ }).textContent).toContain("2");
-        expect(screen.getByRole("heading", { name: /^Started/ }).textContent).toContain("1");
+        const card = screen.getByRole("link", { name: /Nioh 3/ });
+        card.focus();
+        expect(document.activeElement).toBe(card);
+        expect(card.getAttribute("href")).toBe("/games/nioh-3");
+    });
+
+    it("lets the keyboard reach the Category filters", async () => {
+        mocked.getReviews.mockResolvedValue([review("Nioh 3", { status: "todo" })]);
+
+        await showBacklog();
+        await screen.findByText("Nioh 3");
+
+        const filter = screen.getByRole("button", { name: "Books" });
+        filter.focus();
+        expect(document.activeElement).toBe(filter);
     });
 });
 

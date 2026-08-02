@@ -10,6 +10,7 @@ import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal } from "../../hooks/usePanelReveal";
 import { enterClass } from "../../utils/animations";
+import { ReviewCover } from "../../components/review/ReviewCover";
 type Mod = { name: string; author?: string; url?: string; notes?: string };
 
 const TYPE_ICON: Record<string, string> = {
@@ -139,25 +140,14 @@ const ReviewDetail = () => {
                     {/* ── Body ───────────────────────────────────────── */}
                     <div className={`p-4 flex flex-col md:flex-row gap-4 flex-1 min-h-0 ${contentReady ? '' : 'invisible'}`}>
 
-                        {/* Cover image. Wears the same treatment as every card
-                            on the site, so arriving here from one does not
-                            feel like leaving the site — tinted to the palette,
-                            resolving to full colour on hover or focus.
-
-                            `nier-card` is the state hook the treatment keys
-                            off; here it is a plain container rather than a
-                            link, since this page *is* the Review. */}
-                        <div className="nier-card h-56 md:h-full md:w-72 flex-shrink-0" tabIndex={0}>
-                            <div className="nier-cover nier-cover-fill">
-                                {data.image_path
-                                    ? (
-                                        <>
-                                            <img src={data.image_path} alt="" className="nier-cover-img" />
-                                            <div className="nier-cover-tint" />
-                                        </>
-                                    )
-                                    : <div className="nier-cover-empty" aria-hidden="true" />}
-                            </div>
+                        {/* The same cover every card wears, so arriving
+                            here from one does not feel like leaving the site.
+                            Hover-only: `.nier-card` is the state hook the
+                            treatment keys off, and making this focusable to
+                            get the focus half would add a tab stop that
+                            announces nothing and opens nothing. */}
+                        <div className="nier-card h-56 md:h-full md:w-72 flex-shrink-0">
+                            <ReviewCover imagePath={data.image_path} fill />
                         </div>
 
                         {/* Right column */}

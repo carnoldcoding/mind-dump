@@ -124,6 +124,23 @@ describe("the shape of the page", () => {
         expect(Boolean(position & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     });
 
+    // Story 22: every surface has to be usable without a mouse.
+    it("lets the keyboard reach and open a card", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Playing Now", { status: "active" }),
+        ]);
+
+        await showNow();
+
+        const card = screen.getByRole("link", { name: /Playing Now/ });
+        card.focus();
+        expect(document.activeElement).toBe(card);
+        // An anchor with an href activates on Enter without any handler of
+        // ours; the tag is what guarantees that.
+        expect(card.tagName).toBe("A");
+        expect(card.getAttribute("href")).toBe("/games/playing-now");
+    });
+
     it("shows every card as a card, cover and all", async () => {
         mocked.getReviews.mockResolvedValue([
             review("Playing Now", { status: "active", image_path: "https://cdn.example/a.png" }),
