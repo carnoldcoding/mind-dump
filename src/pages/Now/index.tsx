@@ -149,7 +149,7 @@ const Stat = ({ label, value }: { label: string; value: React.ReactNode }) => (
 const Detail = ({ review }: { review: Review }) => {
     const facts: [string, string][] = [
         ["Category", review.type],
-        ["Status", review.status],
+        ["Status", review.status ?? "—"],
         ["Released", review.release_date?.trim() || "—"],
         ["Creator", review.creator?.trim() || "—"],
         ...(review.status === "done"
