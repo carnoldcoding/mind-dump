@@ -123,9 +123,17 @@ describe("the shared Review collection", () => {
 
         await showCategory("games");
 
-        // Specific, not just /error/i: the message has to survive, and a
-        // looser match happily passed while the page rendered a bare "Error:".
-        expect(await screen.findByText(/network error/i)).toBeDefined();
+        // The shelf no longer throws the page away for a line of text. The
+        // panel is the thing that reports on itself, so the fault turns up
+        // where the panel says things: named in the caption bar, and in the
+        // diagnostic line that reads NO ERROR when there isn't one.
+        //
+        // Still specific rather than /error/i — the reason the old assertion
+        // was written that way holds. A looser match passed happily against a
+        // bare "Error:", and would pass just as happily against a diagnostic
+        // stuck on the wrong word.
+        expect(await screen.findByText(/did not answer/i)).toBeDefined();
+        expect(screen.getByText(/^error$/i)).toBeDefined();
     });
 });
 
