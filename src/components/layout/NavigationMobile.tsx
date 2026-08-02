@@ -2,58 +2,57 @@ import { Link, useLocation } from "react-router";
 import { navItems } from "./NavItems";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
 import { useStageState } from "../../context/BootSequenceContext";
-import searchIcon from '../../assets/search.svg';
+import { SearchPrompt } from '../search/SearchPrompt';
 
 interface NavigationMobileProps{
     isOpen: boolean;
     onClose: () => void;
-    onOpenSearch: () => void;
 }
 
-const NavigationMobile = ({ isOpen, onClose, onOpenSearch } : NavigationMobileProps) => {
+const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     const location = useLocation();
     const { trusted } = useTrustedDevice();
     const { active: borderActive, animating: borderAnimating } = useStageState('borders');
     const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
     return (
         <>
-        {/* Sits in the bar's solid upper band, clear of the line and pattern
-            strip along its bottom edge. h-11/w-11 is both a real tap target
-            and big enough to hold the text-4xl glyph it used to overflow. */}
-        <button
-                onClick={onClose}
-                aria-label={isOpen ? 'Close menu' : 'Open menu'}
-                aria-expanded={isOpen}
-                className="fixed top-2 right-4 z-101 text-nier-text-dark h-11 w-11 text-4xl leading-none flex items-center justify-center"
-            >
-            {isOpen ? '×' : '☰'}
-        </button>
-        {/* Beside the hamburger and sized to match it — this is the device
-            where Search has no keyboard shortcut to fall back on (story 11).
-            Stays put while the drawer is open: it shares the hamburger's
-            z-101 so it sits above the drawer, and hiding it would take Search
-            away exactly when someone has opened the menu looking for it. */}
-        <button
-            onClick={onOpenSearch}
-            aria-label="Open search"
-            className="fixed top-2 right-16 z-101 text-nier-text-dark h-11 w-11 flex items-center justify-center"
-        >
-            <img src={searchIcon} alt="" className="h-6 w-6 object-contain" />
-        </button>
-        <div className="fixed top-0 right-0 w-full z-99">
-            {/* h-20 lives here rather than on .nier-dot-pattern because the
-                bottom bar wears that class too and wants no body at all. Of
-                these 5rem the bottom 1.75px + 1.25rem is line and pattern,
-                leaving the hamburger above room to sit clear of them. */}
-            <div className={`nier-dot-pattern fixed top-0 w-screen h-20 bg-nier-50 z-40 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}></div>
-        </div>
+        {/* The bar itself, and the only fixed element up here: it holds the
+            prompt and the menu control as its own children, so they sit in it
+            rather than over it, and the results panel hangs off its real
+            bottom edge instead of off a coincidentally-matching height.
+
+            h-20 lives here rather than on .nier-dot-pattern because the bottom
+            bar wears that class too and wants no body at all. Of these 5rem
+            the bottom 1.75px + 1.25rem is line and pattern, leaving the row
+            above room to sit clear of them. */}
+        <header className={`nier-dot-pattern fixed top-0 left-0 w-screen h-20 bg-nier-50 z-101 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}>
+            <div className="flex items-center gap-2 h-[calc(5rem-1.25rem-1.75px)] px-4">
+                {/* Yields the row to the drawer rather than painting over it:
+                    an expanded prompt spanning the bar would otherwise sit on
+                    top of the menu the owner just opened. */}
+                {!isOpen && (
+                    <div className="flex-1 min-w-0">
+                        <SearchPrompt />
+                    </div>
+                )}
+
+                <button
+                    onClick={onClose}
+                    aria-label={isOpen ? 'Close menu' : 'Open menu'}
+                    aria-expanded={isOpen}
+                    className="ml-auto text-nier-text-dark h-11 w-11 text-4xl leading-none flex items-center justify-center flex-shrink-0"
+                >
+                    {isOpen ? '×' : '☰'}
+                </button>
+            </div>
+        </header>
         {/* Reserves what the fixed bar covers — keep in step with the bar. */}
         <div className="h-20"></div>
         
 
         <nav className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-dvh p
             transition-all ease-in-out duration-300 overflow-hidden
-            shadow-[-3px_5px_0_0] shadow-nier-shadow pt-15 z-100 ${isOpen ? 'w-60 p-5' : 'w-0 p0'}`}>
+            shadow-[-3px_5px_0_0] shadow-nier-shadow pt-24 z-100 ${isOpen ? 'w-60 p-5' : 'w-0 p0'}`}>
             {visibleNavItems.map(item => {
                 const isActive =
                 location.pathname === item.path ||

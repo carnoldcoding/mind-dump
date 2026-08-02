@@ -1,5 +1,6 @@
 ---
 status: accepted
+amended: 2026-08-02
 ---
 
 # Search is a modal, and the front page is Now
@@ -7,6 +8,16 @@ status: accepted
 Search was the index route. `/` rendered it, and the first nav tab pointed there with a magnifying-glass icon. It worked, it ranked results across all three Categories, and it went unused — not rarely, but never. A search box is the right shape for a collection you can't hold in your head; this collection is one person's, and they were there when every row went in.
 
 Meanwhile the site had no answer to "where am I". The Category pages are shelves of finished work. System is for authoring. Nothing showed what was being played, watched and read right now, which is the only thing that changes between one visit and the next.
+
+> **Amendment (2026-08-02).** Everything below still holds except the word
+> *modal*. Search is now a **prompt built into the nav bar**: it expands in
+> place and its results hang off the bar, rather than opening as an overlay
+> over the page. The reason is cohesion — this interface has no floating
+> elements, and an overlay was the one thing on the site that belonged to
+> nothing. The decisions that mattered are unchanged: Search stops being a
+> *place*, `/` belongs to Now, the open state lives in the URL as a bare
+> `?search` for the sake of the iOS back-swipe, and the typed query stays out
+> of the URL. Read "modal" below as "prompt".
 
 So the two swap. **Now** takes `/` — Reviews with Status `active` across every Category, a capped band of what's queued next, and what was finished most recently. **Search** stops being a place and becomes a modal, opened from a pinned control in the nav bar or `Cmd`/`Ctrl+K`, available on every page instead of on one page nobody visited.
 

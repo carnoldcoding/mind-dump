@@ -32,8 +32,12 @@ _Avoid_: Queue, Wishlist, To-read, Someday list
 How the Backlog labels the two Statuses it contains — `active` and `todo` respectively. UI copy, not a fourth and fifth Status: the underlying values are unchanged, and "Started" on the Backlog is the same thing as "In Progress" on Now. Both shelves exist so the overlap with Now reads as deliberate rather than as duplication.
 
 **Search**:
-Title lookup across every Category and every Status, opened from anywhere as a modal rather than visited as a page. Finds all Reviews, queued ones included, so it also answers whether something has already been captured.
+Title lookup across every Category and every Status, opened from anywhere as a prompt built into the nav bar rather than visited as a page. Its results hang off the bar rather than covering the page. Finds all Reviews, queued ones included, so it also answers whether something has already been captured.
 _Avoid_: Find, Filter, Query
+
+**Readout**:
+A figure shown in the footer band — how much is in progress, how much is queued, how much was finished this year, and the average rating of finished work. Always derived from Reviews already loaded, never stored and never entered, so a readout cannot be out of date. The footer carries them on every page.
+_Avoid_: stat, metric, score — nothing here is scored or tracked against a target.
 
 **Mod**:
 A game modification attached to a game Review — a name, optional author, URL, and notes. Only meaningful for `game`-category Reviews.
