@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { makeReview } from "../../test/reviews";
+import type { Review as ReviewRecord } from "../../store/reviews";
 import { render, screen, cleanup, act, fireEvent, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import Backlog from "./index";
@@ -12,20 +14,13 @@ vi.mock("../../api/backend", () => ({
 
 const mocked = vi.mocked(backend);
 
-const review = (title: string, over: Record<string, unknown> = {}) => ({
-    _id: `id-${title}`,
-    slug: title.toLowerCase().replace(/\s+/g, "-"),
-    title,
-    type: "game",
-    status: "todo",
-    rating: 0,
-    genres: [],
-    review: {},
-    image_path: "",
-    release_date: "1999-01-01",
-    date_completed: "",
-    ...over,
-});
+const review = (title: string, over: Partial<ReviewRecord> = {}) =>
+    makeReview(title, {
+        status: "todo",
+        rating: 0,
+        date_completed: "",
+        ...over,
+    });
 
 const flushBoot = async () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(4000); });

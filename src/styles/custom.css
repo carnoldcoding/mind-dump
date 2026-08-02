@@ -132,3 +132,104 @@
     }
   }
 }
+@layer utilities {
+    /*
+        Cover art treatment. At rest a cover is drained of its own colour and
+        pushed toward the site's beige/olive ramp, so a grid of them reads as
+        one designed surface rather than a wall of competing publisher key
+        art. On hover or keyboard focus it resolves to full colour.
+
+        The tint is a sibling overlay rather than a filter on the image,
+        because `sepia()` cannot reach the specific beige the palette uses —
+        greyscale first, then a `color` blend against the palette value, which
+        keeps the cover's luminance and takes only its hue from us.
+
+        `.nier-cover` is the frame; it owns the aspect ratio so a grid cell
+        holds its shape before the image arrives and does not reflow when it
+        does. Sizing comes from whatever contains it — the card fills its
+        cell, and a hero cell is simply bigger.
+    */
+    .nier-cover {
+        position: relative;
+        overflow: hidden;
+        aspect-ratio: 3 / 4;
+        background-color: var(--color-nier-150);
+    }
+
+    .nier-cover-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+        filter: grayscale(1) contrast(1.06) brightness(0.94);
+        transition: filter 220ms ease;
+    }
+
+    .nier-cover-tint {
+        position: absolute;
+        inset: 0;
+        background-color: var(--color-nier-50);
+        mix-blend-mode: color;
+        opacity: 0.62;
+        transition: opacity 220ms ease;
+        pointer-events: none;
+    }
+
+    /* Scoped to the card, not to Tailwind's bare `.group` marker: that class
+       is used on containers all over the app, and a global `.group:hover`
+       selector here would bloom covers from any of them.
+
+       `:focus-visible` and not `:focus-within` — the latter fires on a mouse
+       click too, which left the bloom stuck on after clicking a card. */
+    .nier-card:hover .nier-cover-img,
+    .nier-card:focus-visible .nier-cover-img {
+        filter: none;
+    }
+
+    .nier-card:hover .nier-cover-tint,
+    .nier-card:focus-visible .nier-cover-tint {
+        opacity: 0;
+    }
+
+    /* The facts worth having to hand and worth nothing on forty cards at
+       once: revealed with the bloom, over the foot of the cover so that
+       showing them cannot reflow the grid. */
+    .nier-cover-detail {
+        position: absolute;
+        inset-inline: 0;
+        bottom: 0;
+        padding: 0.35rem 0.5rem;
+        background-color: color-mix(in srgb, var(--color-nier-dark) 82%, transparent);
+        opacity: 0;
+        transition: opacity 220ms ease;
+        pointer-events: none;
+    }
+
+    .nier-card:hover .nier-cover-detail,
+    .nier-card:focus-visible .nier-cover-detail {
+        opacity: 1;
+    }
+
+    /* The cover a Review has before anything has been looked up for it.
+       Deliberately furniture rather than a broken slot: same frame, same
+       ratio, drawn from the pattern vocabulary the chrome already uses. */
+    .nier-cover-empty {
+        width: 100%;
+        height: 100%;
+        background-color: var(--color-nier-150);
+        background-image:
+            repeating-linear-gradient(
+                135deg,
+                transparent 0 6px,
+                color-mix(in srgb, var(--color-nier-dark) 18%, transparent) 6px 7px
+            );
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .nier-cover-img,
+        .nier-cover-tint,
+        .nier-cover-detail {
+            transition-duration: 1ms;
+        }
+    }
+}

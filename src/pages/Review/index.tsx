@@ -1,8 +1,8 @@
 import PageHeader from "../../components/common/PageHeader";
-import Card from "../../components/common/Card";
+import { ReviewCard } from "../../components/review/ReviewCard";
 import { useEffect, useMemo, useState } from "react";
 import Loader from "../../components/common/Loader";
-import { useReviews } from "../../store/reviews";
+import { useReviews, type Review as ReviewRecord } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
 import { toIsoDate } from "../System/components/ReviewPanel/migration";
 import { rankByTitle } from "../../utils/rankByTitle";
@@ -16,6 +16,15 @@ import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
 import { useDecodeText } from "../../hooks/useDecodeText";
 import { enterClass } from "../../utils/animations";
+
+// The Category shelf's contextual line. A finished Review has a rating and a
+// date it was finished; anything missing is simply left out rather than shown
+// as a blank or a zero.
+const shelfLine = (review: Pick<ReviewRecord, "rating" | "date_completed">): string =>
+    [
+        review.rating != null ? `${review.rating} ★` : null,
+        review.date_completed?.trim() || null,
+    ].filter(Boolean).join('  ·  ');
 
 const Review = () => {
     const location = useLocation();
@@ -389,12 +398,12 @@ const Review = () => {
                                         key={post._id}
                                         style={cardsReady ? ({ '--nier-card-delay': `${Math.min(i, 20) * 30}ms` } as React.CSSProperties) : undefined}
                                     >
-                                    <Card
-                                        {...post}
-                                        releaseDate={filters.dateReleasedRange.active}
-                                        completeDate={filters.dateCompletedRange.active}
-                                        ratingRange={filters.ratingRange.active}
-                                    />
+                                    {/* A shelf is finished work, so the line
+                                        is what finishing produced: the rating
+                                        and when it happened. Shown always,
+                                        rather than only while a filter is
+                                        active as it used to be. */}
+                                    <ReviewCard review={post} caption={shelfLine(post)} />
                                     </div>
                                 ))
                             : <h3>No Matching Reviews</h3>
