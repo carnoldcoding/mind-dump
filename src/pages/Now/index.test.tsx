@@ -103,7 +103,11 @@ describe("the in-progress band", () => {
 
         await showNow();
 
-        expect(screen.getByText("Nioh 3").closest("a")?.getAttribute("href")).toBe("/games/nioh-3");
+        // Scoped to the band: the detail pane names the selected Review too,
+        // so "the title on the page" is no longer one element.
+        expect(
+            within(band("In Progress")).getByText("Nioh 3").closest("a")?.getAttribute("href"),
+        ).toBe("/games/nioh-3");
     });
 });
 
@@ -119,8 +123,8 @@ describe("the shape of the page", () => {
 
         await showNow();
 
-        const position = screen.getByText("Playing Now")
-            .compareDocumentPosition(screen.getByText("Queued Thing"));
+        const position = within(band("In Progress")).getByText("Playing Now")
+            .compareDocumentPosition(within(band("Up Next")).getByText("Queued Thing"));
         expect(Boolean(position & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     });
 
