@@ -103,7 +103,11 @@ describe("the in-progress band", () => {
 
         await showNow();
 
-        expect(screen.getByText("Nioh 3").closest("a")?.getAttribute("href")).toBe("/games/nioh-3");
+        // Scoped to the band: the detail pane names the selected Review too,
+        // so "the title on the page" is no longer one element.
+        expect(
+            within(band("In Progress")).getByText("Nioh 3").closest("a")?.getAttribute("href"),
+        ).toBe("/games/nioh-3");
     });
 });
 
@@ -119,8 +123,8 @@ describe("the shape of the page", () => {
 
         await showNow();
 
-        const position = screen.getByText("Playing Now")
-            .compareDocumentPosition(screen.getByText("Queued Thing"));
+        const position = within(band("In Progress")).getByText("Playing Now")
+            .compareDocumentPosition(within(band("Up Next")).getByText("Queued Thing"));
         expect(Boolean(position & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
     });
 
@@ -150,6 +154,42 @@ describe("the shape of the page", () => {
 
         const card = screen.getByRole("link", { name: /Playing Now/ });
         expect(card.querySelector("img")?.getAttribute("src")).toBe("https://cdn.example/a.png");
+    });
+});
+
+// The panel has a field for saying how it is doing, so a failed fetch is
+// reported in it rather than replacing the whole page with a line of text.
+describe("the diagnostic", () => {
+    it("says NO ERROR when the collection loaded", async () => {
+        mocked.getReviews.mockResolvedValue([review("Nioh 3", { status: "active" })]);
+
+        await showNow();
+
+        expect(screen.getByText("No Error")).toBeDefined();
+    });
+
+    it("keeps the panel and reports the fault when the collection did not load", async () => {
+        mocked.getReviews.mockRejectedValue(new Error("boom"));
+
+        await showNow();
+
+        // The panel is still there — its sections, its diagnostic, its caption.
+        expect(band("In Progress")).toBeDefined();
+        expect(screen.getByText("Error")).toBeDefined();
+        expect(screen.queryByText("No Error")).toBeNull();
+        expect(screen.getByText(/collection unreachable/i)).toBeDefined();
+    });
+
+    // "Nothing" and "we never found out" are different claims, and a count of
+    // zero would assert the first one while meaning the second.
+    it("declines to claim a shelf is empty when nothing was fetched", async () => {
+        mocked.getReviews.mockRejectedValue(new Error("boom"));
+
+        await showNow();
+
+        expect(within(band("In Progress")).getByText(/unavailable/i)).toBeDefined();
+        expect(within(band("In Progress")).queryByText(/nothing in progress/i)).toBeNull();
+        expect(screen.getAllByText("— / —")).toHaveLength(3);
     });
 });
 
