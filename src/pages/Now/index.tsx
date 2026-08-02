@@ -199,7 +199,7 @@ const Detail = ({ review }: { review: Review }) => {
  * so the left number is always part of the right one, and `n / n` means a
  * Category with nothing left to start.
  */
-const Shelves = ({ reviews }: { reviews: Review[] }) => {
+const Shelves = ({ reviews, error }: { reviews: Review[]; error: boolean }) => {
     const shelves = ACTIVITIES.map(activity => {
         const all = reviews.filter(review => review.type === activity.type);
         return {
@@ -219,7 +219,13 @@ const Shelves = ({ reviews }: { reviews: Review[] }) => {
             </p>
             <div className="flex flex-col gap-1 px-2 py-2">
                 {shelves.map(shelf => (
-                    <Stat key={shelf.label} label={shelf.label} value={`${shelf.active} / ${shelf.backlog}`} />
+                    <Stat
+                        key={shelf.label}
+                        label={shelf.label}
+                        // Not 0 / 0: with nothing fetched, a zero would say the
+                        // shelf is clear when what is true is that we don't know.
+                        value={error ? "— / —" : `${shelf.active} / ${shelf.backlog}`}
+                    />
                 ))}
             </div>
             {/* The reference's row of empty slots. Furniture, and honest about
@@ -229,15 +235,24 @@ const Shelves = ({ reviews }: { reviews: Review[] }) => {
                     <span key={i} className="h-2 w-2 border border-nier-text-dark/40 mt-2" />
                 ))}
             </div>
-            <p className="text-[10px] uppercase tracking-[0.3em] text-nier-text-dark/50 text-center py-4">
-                No Error
+            {/* The reference's self-diagnostic line, and a real one: it says NO
+                ERROR because it is capable of saying something else. */}
+            <p className={`text-[10px] uppercase tracking-[0.3em] text-center py-4 ${
+                error ? 'text-nier-text-dark' : 'text-nier-text-dark/50'
+            }`}>
+                {error ? 'Error' : 'No Error'}
             </p>
         </div>
     );
 };
 
-/** What the caption bar says about the selection. */
-const captionFor = (review: Review | undefined): string => {
+/**
+ * What the caption bar says about the selection — or about why there isn't
+ * one. The bar carries the fault as well as the Shelves column, because the
+ * column is desktop-only and a phone would otherwise be told nothing.
+ */
+const captionFor = (review: Review | undefined, error: boolean): string => {
+    if (error) return "Collection unreachable — the API did not answer.";
     if (!review) return "Nothing to show.";
     if (review.status === "active") return `${review.title} — in progress`;
     if (review.status === "todo") return `${review.title} — queued`;
@@ -295,7 +310,16 @@ const Now = () => {
             <Loader />
         </div>
     );
-    if (error) return <div>Error: Network error</div>;
+
+    // A failed fetch no longer replaces the page with a line of text. The
+    // panel is the thing that reports on itself — it has a field for exactly
+    // this — and swapping it out for `Error: Network error` threw away the
+    // frame, the diagnostic and every other word on the page at the one
+    // moment the reader needs telling what happened.
+    //
+    // The sections say "unavailable" rather than "nothing", because with
+    // nothing fetched those are different claims and only one of them is true.
+    const emptyText = (nothing: string) => error ? "Unavailable." : nothing;
 
     const rowProps = (review: Review) => ({
         review,
@@ -335,7 +359,7 @@ const Now = () => {
                         </div>
 
                         <div className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4 pl-4">
-                            <Section title="In Progress" empty="Nothing in progress.">
+                            <Section title="In Progress" empty={emptyText("Nothing in progress.")}>
                                 {inProgress.length > 0 && inProgress.map(review => (
                                     <Row
                                         key={keyOf(review)}
@@ -345,7 +369,7 @@ const Now = () => {
                                 ))}
                             </Section>
 
-                            <Section title="Up Next" empty="Nothing queued up.">
+                            <Section title="Up Next" empty={emptyText("Nothing queued up.")}>
                                 {queued.length > 0 && queued.map(review => (
                                     <Row
                                         key={keyOf(review)}
@@ -355,7 +379,7 @@ const Now = () => {
                                 ))}
                             </Section>
 
-                            <Section title="Recently Finished" empty="Nothing finished yet.">
+                            <Section title="Recently Finished" empty={emptyText("Nothing finished yet.")}>
                                 {recentlyFinished.length > 0 && recentlyFinished.map(review => (
                                     <Row
                                         key={keyOf(review)}
@@ -376,7 +400,7 @@ const Now = () => {
                         )}
 
                         <div className="hidden md:block w-48 flex-shrink-0 overflow-y-auto bg-nier-100-lighter/40">
-                            <Shelves reviews={reviews} />
+                            <Shelves reviews={reviews} error={error} />
                         </div>
                     </div>
 
@@ -386,7 +410,7 @@ const Now = () => {
                     <div className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                         <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
-                            {captionFor(selected)}
+                            {captionFor(selected, error)}
                         </p>
                         <p className="ml-auto flex-shrink-0 text-xs uppercase tracking-wide text-nier-text-dark/50">
                             <span className="hidden sm:inline">↕ Select&nbsp;&nbsp;&nbsp;</span>◉ Open

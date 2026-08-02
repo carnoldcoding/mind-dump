@@ -157,6 +157,42 @@ describe("the shape of the page", () => {
     });
 });
 
+// The panel has a field for saying how it is doing, so a failed fetch is
+// reported in it rather than replacing the whole page with a line of text.
+describe("the diagnostic", () => {
+    it("says NO ERROR when the collection loaded", async () => {
+        mocked.getReviews.mockResolvedValue([review("Nioh 3", { status: "active" })]);
+
+        await showNow();
+
+        expect(screen.getByText("No Error")).toBeDefined();
+    });
+
+    it("keeps the panel and reports the fault when the collection did not load", async () => {
+        mocked.getReviews.mockRejectedValue(new Error("boom"));
+
+        await showNow();
+
+        // The panel is still there — its sections, its diagnostic, its caption.
+        expect(band("In Progress")).toBeDefined();
+        expect(screen.getByText("Error")).toBeDefined();
+        expect(screen.queryByText("No Error")).toBeNull();
+        expect(screen.getByText(/collection unreachable/i)).toBeDefined();
+    });
+
+    // "Nothing" and "we never found out" are different claims, and a count of
+    // zero would assert the first one while meaning the second.
+    it("declines to claim a shelf is empty when nothing was fetched", async () => {
+        mocked.getReviews.mockRejectedValue(new Error("boom"));
+
+        await showNow();
+
+        expect(within(band("In Progress")).getByText(/unavailable/i)).toBeDefined();
+        expect(within(band("In Progress")).queryByText(/nothing in progress/i)).toBeNull();
+        expect(screen.getAllByText("— / —")).toHaveLength(3);
+    });
+});
+
 describe("the up-next band", () => {
     it("caps what it shows and offers a way through to the Backlog", async () => {
         mocked.getReviews.mockResolvedValue(
