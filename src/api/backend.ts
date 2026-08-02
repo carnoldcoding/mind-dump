@@ -6,6 +6,24 @@ import type { AudioTrack } from "../types";
 
 type Params = Record<string, string | undefined>;
 
+/**
+ * One candidate from a metadata provider, already mapped onto the fields a
+ * Review carries — the backend translates each provider's vocabulary, so
+ * nothing here knows RAWG from TMDB.
+ */
+export type MetadataCandidate = {
+    sourceId: string | null;
+    title: string | null;
+    /** Canonical ISO, or a bare year where that is all the source knows. */
+    release_date: string | null;
+    creator: string | null;
+    genres: string[];
+    platforms: string[];
+    description: string | null;
+    /** The provider's own URL — not ours until a cover is stored. */
+    image: string | null;
+};
+
 function buildUrl(path: string, params?: Params, base: string = config.apiUri): string {
     const url = new URL(path, base);
     if (params) {
@@ -52,6 +70,30 @@ export const backend = {
         }),
     deleteReview: (slug: string) =>
         request<any>("/api/posts/remove_post", { ...gated, method: "POST", body: JSON.stringify({ slug }) }),
+
+    // ── Metadata lookup ───────────────────────────────────────────────
+    // Gated: these spend quota against third-party APIs and write to our own
+    // storage, so nothing public reaches them.
+    searchMetadata: (type: string, query: string) =>
+        request<{ results: MetadataCandidate[] }>("/api/metadata/search", {
+            ...gated,
+            params: { type, q: query },
+        }),
+    // The full record for one chosen candidate. RAWG and TMDB return thin
+    // search results — no developers, no director, no genre names — so this is
+    // where most of what a lookup is for actually arrives.
+    metadataDetails: (type: string, id: string) =>
+        request<{ result: MetadataCandidate | null }>("/api/metadata/details", {
+            ...gated,
+            params: { type, id },
+        }),
+    /** Copies a provider's cover onto our own storage, returning our URL. */
+    storeCover: (url: string) =>
+        request<{ url: string }>("/api/metadata/cover", {
+            ...gated,
+            method: "POST",
+            body: JSON.stringify({ url }),
+        }),
 
     // ── Body tracking ─────────────────────────────────────────────────
     getBodyEntries: () => request<any[]>("/api/body", gated),
