@@ -98,7 +98,7 @@ const Now = () => {
         <>
             <PageHeader name="NOW" />
             <div className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
-                <aside className={`absolute w-full h-full bg-nier-shadow top-0.5 left-0.5 ${enterClass('nier-enter')}`} />
+                <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
                 <article className={`relative bg-nier-100 p-4 flex flex-col gap-8 ${enterClass('nier-enter')} ${contentReady ? '' : 'invisible'}`}>
 
                     <Band title="In Progress">
