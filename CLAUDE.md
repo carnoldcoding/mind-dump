@@ -14,6 +14,11 @@ Read these before making non-trivial changes:
 - `npm run build-strict` — typecheck + build (use this, not `npm run build`, to catch type errors)
 - `npm run lint`
 - `npm run test` — Vitest
+- `node scripts/lint-budget.mjs` — the lint gate CI runs. Fails only if a branch *adds* eslint errors; the repo's existing 77 are recorded in `.eslint-budget`. Under budget, lower it with `--update`
+
+## CI
+
+Pull requests into `dev` and `main` run typecheck, tests and the lint budget on Node 24 — the version the API runs in production. There is no build step: `npm run build-strict` cannot run because `dist/assets` is root-owned from an old Docker build.
 
 ## Things that will surprise you
 

@@ -1,0 +1,45 @@
+# Runs on the way into dev and into main, on the Node version the API runs in
+# production — one runtime across both repos, so a version difference can never
+# be the reason something passes here and fails there.
+#
+# These are exactly the three checks that were run by hand on every branch
+# during the work that introduced them. Typecheck caught the most.
+#
+# No production build step: `npm run build-strict` cannot currently run at all,
+# because dist/assets is root-owned from an old Docker build and Vite cannot
+# clear it. Clear that and adding a build job is a few lines.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # First, because it is the check that catches the most and costs the
+      # least — and because a type error makes the test output harder to read.
+      - name: Typecheck
+        run: npx tsc -b --force
+
+      - name: Test
+        run: npx vitest run
+
+      # A budget rather than a zero: the repo carries errors it has always
+      # carried, and this fails only when a branch adds to them.
+      # See scripts/lint-budget.mjs.
+      - name: Lint budget
+        run: node scripts/lint-budget.mjs
