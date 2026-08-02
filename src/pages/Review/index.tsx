@@ -461,9 +461,9 @@ const Review = () => {
         // two things that have no row form — a bounded number and a pair of
         // dates — under section bars of their own.
         const filterColumn = (
-            <div className="flex flex-col gap-4 min-h-0 h-full">
+            <div className="flex flex-col gap-4 min-h-0 h-full overflow-y-auto">
                 <Group title="Genre">
-                    <ul className="flex flex-col gap-0.5 mt-1 pl-3 overflow-y-auto">
+                    <ul className="flex flex-col gap-0.5 mt-1 pl-3 max-h-52 min-h-0 overflow-y-auto">
                         {genreOptions.map(genre => (
                             <GenreRow
                                 key={genre}
@@ -559,7 +559,7 @@ const Review = () => {
 
                         {/* Permanent from lg up, where there is room beside the
                             grid for it. */}
-                        <div className="hidden lg:flex w-48 flex-shrink-0 flex-col">
+                        <div className="hidden lg:flex w-48 flex-shrink-0 flex-col min-h-0">
                             {filterColumn}
                         </div>
 
