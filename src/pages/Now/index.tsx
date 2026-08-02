@@ -5,16 +5,17 @@
 // Laid out as a NieR menu screen rather than as stacked bands of cards, which
 // is what the reference screenshots in ../../../screenshots actually do:
 //
-//   ┌ CURRENT VIEW PANEL ────────────────────────────────────────────┐
-//   │ ▌│ IN PROGRESS          │ ┌──────────┐ │ STATUS               │
-//   │ ▌│ ▪ Nioh 3     PLAYING │ │  cover   │ ├──────────────────────┤
-//   │ ▐│ ▪ Frieren   WATCHING │ └──────────┘ │ IN PROGRESS        3 │
-//   │ ▌│ UP NEXT              │ NIOH 3       │ QUEUED            12 │
-//   │ ▌│ ▪ Hollow Knight GAME │ CATEGORY game│ FINISHED 2026      9 │
-//   │ ▌│ RECENTLY FINISHED    │ STATUS active│ □□□□□□□□□□□          │
-//   │ ▌│ ▪ Doom          9 ★  │ RELEASED 2017│      NO ERROR        │
-//   │ ▌ Nioh 3 — in progress              ↕ SELECT   ◉ OPEN         │
-//   └────────────────────────────────────────────────────────────────┘
+//   ┌ CURRENT VIEW PANEL ─────────────────────────────────────────────┐
+//   │ ▌ IN PROGRESS            ┌──────────┐  SHELVES                  │
+//   │ ▌ ▪ Nioh 3      PLAYING  │  cover   │  ───────────────────────  │
+//   │ ▐ ▪ Frieren    WATCHING  └──────────┘        underway / all     │
+//   │ ▌ UP NEXT                NIOH 3          game          2 / 14   │
+//   │ ▌ ▪ Hollow Knight  GAME  category  game  cinema        1 / 9    │
+//   │ ▌ RECENTLY FINISHED      status    done  book          0 / 6    │
+//   │ ▌ ▪ Doom           9 ★   released  2017  □□□□□□□□□□□            │
+//   │ ▌                                             NO ERROR          │
+//   │ ▌ Nioh 3 — in progress                 ↕ SELECT     ◉ OPEN      │
+//   └─────────────────────────────────────────────────────────────────┘
 //
 // The list still leads with what's in progress, because that is the reason the
 // page exists; queued and finished follow it in the same column, visibly
@@ -31,7 +32,6 @@ import Loader from "../../components/common/Loader";
 import { ReviewCover } from "../../components/review/ReviewCover";
 import { useReviews, type Review } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
-import { readoutsFor } from "../../utils/readouts";
 import { reviewPath } from "../../utils/categories";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
@@ -185,35 +185,42 @@ const Detail = ({ review }: { review: Review }) => {
 };
 
 /**
- * The persistent status panel, lifted straight from the reference's ステータス
- * box — it never changes with selection, and it is the same numbers the footer
- * already carries, from the same pure function.
+ * The reference's ステータス box, in the one position it belongs.
+ *
+ * Deliberately NOT the site's readouts: the footer is already this site's
+ * status panel — same four numbers, same `readoutsFor`, on every page, as a
+ * landmark. Repeating them here would put the same figures on screen twice.
+ * So this answers what the footer cannot, which is what those totals are made
+ * of: how much of each Category is underway, against how much of it exists.
  */
-const Status = ({ reviews }: { reviews: Review[] }) => {
-    const readouts = readoutsFor(reviews);
-    const year = new Date().getFullYear();
+const Shelves = ({ reviews }: { reviews: Review[] }) => {
+    const shelves = ACTIVITIES.map(activity => {
+        const all = reviews.filter(review => review.type === activity.type);
+        return {
+            label: activity.type,
+            active: all.filter(review => review.status === 'active').length,
+            total: all.length,
+        };
+    });
 
     return (
         <div className="flex flex-col">
             <h2 className="bg-nier-dark text-nier-text-light text-xs uppercase tracking-widest px-2 py-1">
-                Status
+                Shelves
             </h2>
+            <p className="text-[10px] uppercase tracking-widest text-nier-text-dark/40 px-2 pt-2 text-right">
+                Underway / All
+            </p>
             <div className="flex flex-col gap-1 px-2 py-2">
-                <Stat label="In Progress" value={readouts.inProgress} />
-                <Stat label="Queued" value={readouts.queued} />
-            </div>
-            <div className="flex flex-col gap-1 px-2 py-2 border-t border-nier-150">
-                <Stat label={`Finished ${year}`} value={readouts.finishedThisYear} />
-                <Stat
-                    label="Avg Rating"
-                    value={readouts.averageRating != null ? `${readouts.averageRating.toFixed(1)} ★` : "—"}
-                />
+                {shelves.map(shelf => (
+                    <Stat key={shelf.label} label={shelf.label} value={`${shelf.active} / ${shelf.total}`} />
+                ))}
             </div>
             {/* The reference's row of empty slots. Furniture, and honest about
                 it: there is nothing to put in them. */}
-            <div aria-hidden="true" className="flex flex-wrap gap-1 px-2 pt-2">
+            <div aria-hidden="true" className="flex flex-wrap gap-1 px-2 pt-2 border-t border-nier-150">
                 {Array.from({ length: 11 }, (_, i) => (
-                    <span key={i} className="h-2 w-2 border border-nier-text-dark/40" />
+                    <span key={i} className="h-2 w-2 border border-nier-text-dark/40 mt-2" />
                 ))}
             </div>
             <p className="text-[10px] uppercase tracking-[0.3em] text-nier-text-dark/50 text-center py-4">
@@ -363,7 +370,7 @@ const Now = () => {
                         )}
 
                         <div className="hidden md:block w-48 flex-shrink-0 overflow-y-auto bg-nier-100-lighter/40">
-                            <Status reviews={reviews} />
+                            <Shelves reviews={reviews} />
                         </div>
                     </div>
 
