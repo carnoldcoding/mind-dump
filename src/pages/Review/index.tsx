@@ -30,6 +30,20 @@ const RATING_CELLS = Array.from({ length: RATING_MAX / RATING_STEP + 1 }, (_, i)
 // The Category shelf's contextual line. A finished Review has a rating and a
 // date it was finished; anything missing is simply left out rather than shown
 // as a blank or a zero.
+// Release dates are tracked in five-year spans. Decades were too coarse to
+// separate a 2021 release from a 2029 one, and a cell per year over a
+// collection reaching back to 1937 would be ninety of them.
+const RELEASE_SPAN = 5;
+
+/** The span a year belongs to, named by the year it opens. */
+const spanStart = (year: number): number =>
+    Math.floor(year / RELEASE_SPAN) * RELEASE_SPAN;
+
+/** `1995–99`, or `2000–04` — the closing year short, since the opening one
+ *  has already said which century it is. */
+const spanLabel = (start: number): string =>
+    `${start}–${`${start + RELEASE_SPAN - 1}`.slice(-2)}`;
+
 const shelfLine = (review: Pick<ReviewRecord, "rating" | "date_completed">): string =>
     [
         review.rating != null ? `${review.rating} ★` : null,
@@ -481,16 +495,20 @@ const Review = () => {
         return counts;
     }, [genreOptions, filteredPosts]);
 
-    // The decades the shelf actually covers, not a fixed span — a Category
-    // whose oldest thing is from 1994 has no business offering the 1930s.
-    const decades = useMemo(() => {
+    // The five-year spans the shelf actually covers, not a fixed range — a
+    // Category whose oldest thing is from 1994 has no business offering the
+    // 1930s.
+    const releaseSpans = useMemo(() => {
         const years = shelved
             .map(review => Number(toIsoDate(review.release_date ?? '')?.slice(0, 4)))
             .filter(year => Number.isFinite(year) && year > 0);
         if (years.length === 0) return [];
-        const first = Math.floor(Math.min(...years) / 10) * 10;
-        const last = Math.floor(Math.max(...years) / 10) * 10;
-        return Array.from({ length: (last - first) / 10 + 1 }, (_, i) => first + i * 10);
+        const first = spanStart(Math.min(...years));
+        const last = spanStart(Math.max(...years));
+        return Array.from(
+            { length: (last - first) / RELEASE_SPAN + 1 },
+            (_, i) => first + i * RELEASE_SPAN,
+        );
     }, [shelved]);
 
     // Every year between the first and last finish, gaps included: a track
@@ -525,7 +543,7 @@ const Review = () => {
     const releasedSpan = spanOf(
         filters.dateReleasedRange.start,
         filters.dateReleasedRange.end,
-        value => decades.indexOf(Math.floor(Number(value.slice(0, 4)) / 10) * 10),
+        value => releaseSpans.indexOf(spanStart(Number(value.slice(0, 4)))),
     );
 
     const finishedSpan = spanOf(
@@ -640,23 +658,29 @@ const Review = () => {
 
                 {/* Absent on a shelf with nothing dated on it — a track with
                     no domain is a control that cannot narrow anything. */}
-                {decades.length > 0 && (
+                {releaseSpans.length > 0 && (
                     <Group title="Released">
                         <Track
-                            cells={decades.map(decade => ({ key: `${decade}`, title: `${decade}s` }))}
+                            cells={releaseSpans.map(start => ({
+                                key: `${start}`,
+                                title: spanLabel(start),
+                            }))}
                             selection={releasedSpan}
-                            ticks={[`${decades[0]}s`, `${decades[decades.length - 1]}s`]}
+                            ticks={[
+                                `${releaseSpans[0]}`,
+                                `${releaseSpans[releaseSpans.length - 1] + RELEASE_SPAN - 1}`,
+                            ]}
                             readout={releasedSpan
                                 ? releasedSpan.min === releasedSpan.max
-                                    ? `${decades[releasedSpan.min]}s`
-                                    : `${decades[releasedSpan.min]}s — ${decades[releasedSpan.max]}s`
-                                : 'Any decade'}
-                            // A decade is a span, so its cell covers the whole
-                            // of it: the first day of the one to the last day
-                            // of the other.
+                                    ? spanLabel(releaseSpans[releasedSpan.min])
+                                    : `${releaseSpans[releasedSpan.min]} — ${releaseSpans[releasedSpan.max] + RELEASE_SPAN - 1}`
+                                : 'Any year'}
+                            // A cell is a span, so it covers the whole of it:
+                            // the first day of the one to the last day of the
+                            // other.
                             onChange={span => setRange('dateReleasedRange', [
-                                `${decades[span.min]}-01-01`,
-                                `${decades[span.max] + 9}-12-31`,
+                                `${releaseSpans[span.min]}-01-01`,
+                                `${releaseSpans[span.max] + RELEASE_SPAN - 1}-12-31`,
                             ])}
                             onClear={() => setRange('dateReleasedRange', ['', ''])}
                         />
