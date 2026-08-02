@@ -10,6 +10,7 @@ import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal } from "../../hooks/usePanelReveal";
 import { enterClass } from "../../utils/animations";
+import { ReviewCover } from "../../components/review/ReviewCover";
 type Mod = { name: string; author?: string; url?: string; notes?: string };
 
 const TYPE_ICON: Record<string, string> = {
@@ -139,11 +140,15 @@ const ReviewDetail = () => {
                     {/* ── Body ───────────────────────────────────────── */}
                     <div className={`p-4 flex flex-col md:flex-row gap-4 flex-1 min-h-0 ${contentReady ? '' : 'invisible'}`}>
 
-                        {/* Cover image */}
-                        <div
-                            className="h-56 md:h-full md:w-72 bg-cover bg-center bg-nier-150 flex-shrink-0"
-                            style={data.image_path ? { backgroundImage: `url(${data.image_path})` } : {}}
-                        />
+                        {/* The same cover every card wears, so arriving
+                            here from one does not feel like leaving the site.
+                            Hover-only: `.nier-card` is the state hook the
+                            treatment keys off, and making this focusable to
+                            get the focus half would add a tab stop that
+                            announces nothing and opens nothing. */}
+                        <div className="nier-card h-56 md:h-full md:w-72 flex-shrink-0">
+                            <ReviewCover imagePath={data.image_path} fill />
+                        </div>
 
                         {/* Right column */}
                         <div className="flex-1 flex flex-col gap-3 min-h-0">

@@ -13,6 +13,7 @@
 import { Link } from "react-router";
 import type { Review } from "../../store/reviews";
 import { reviewPath } from "../../utils/categories";
+import { ReviewCover } from "./ReviewCover";
 
 type Props = {
     review: Review;
@@ -39,20 +40,8 @@ export const ReviewCard = ({ review, caption }: Props) => {
             <div className="absolute w-full h-full bg-nier-shadow top-1 left-1" aria-hidden="true" />
 
             <article className="relative bg-nier-100-lighter border border-nier-150 group-hover:border-nier-dark group-focus-visible:border-nier-dark transition-colors duration-200">
-                <div className="nier-cover">
-                    {review.image_path
-                        ? (
-                            <>
-                                <img
-                                    src={review.image_path}
-                                    alt=""
-                                    loading="lazy"
-                                    className="nier-cover-img"
-                                />
-                                <div className="nier-cover-tint" />
-                            </>
-                        )
-                        : <div className="nier-cover-empty" aria-hidden="true" />}
+                <div className="relative">
+                    <ReviewCover imagePath={review.image_path} />
 
                     {detail.length > 0 && (
                         // Sits over the foot of the cover rather than growing

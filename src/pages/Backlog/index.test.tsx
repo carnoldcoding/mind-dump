@@ -121,6 +121,49 @@ describe("started and unstarted", () => {
     });
 });
 
+describe("the shelf as a grid", () => {
+    it("shows every unfinished Review as a card with its cover", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Nioh 3", { status: "todo", image_path: "https://cdn.example/n.png" }),
+        ]);
+
+        await showBacklog();
+        await screen.findByText("Nioh 3");
+
+        const card = screen.getByRole("link", { name: /Nioh 3/ });
+        expect(card.querySelector("img")?.getAttribute("src")).toBe("https://cdn.example/n.png");
+    });
+
+});
+
+describe("reaching the shelf without a mouse", () => {
+    // Story 22: every surface has to be usable without a mouse.
+    it("lets the keyboard reach and open a card", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Nioh 3", { type: "game", status: "todo" }),
+        ]);
+
+        await showBacklog();
+        await screen.findByText("Nioh 3");
+
+        const card = screen.getByRole("link", { name: /Nioh 3/ });
+        card.focus();
+        expect(document.activeElement).toBe(card);
+        expect(card.getAttribute("href")).toBe("/games/nioh-3");
+    });
+
+    it("lets the keyboard reach the Category filters", async () => {
+        mocked.getReviews.mockResolvedValue([review("Nioh 3", { status: "todo" })]);
+
+        await showBacklog();
+        await screen.findByText("Nioh 3");
+
+        const filter = screen.getByRole("button", { name: "Books" });
+        filter.focus();
+        expect(document.activeElement).toBe(filter);
+    });
+});
+
 describe("narrowing to one Category", () => {
     it("shows only that Category once filtered", async () => {
         mocked.getReviews.mockResolvedValue([
