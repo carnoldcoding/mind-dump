@@ -214,7 +214,7 @@ describe("capture by lookup", () => {
         fireEvent.change(screen.getByLabelText("Title"), { target: { value: "silent hill 2" } });
         await settleSearch();
 
-        const matches = within(screen.getByRole("list", { name: "Matches" })).getAllByRole("button");
+        const matches = within(screen.getByRole("listbox", { name: "Matches" })).getAllByRole("option");
         expect(matches).toHaveLength(2);
         expect(matches[0].textContent).toContain("2001");
         expect(matches[1].textContent).toContain("2024");
@@ -235,7 +235,7 @@ describe("capture by lookup", () => {
         fireEvent.change(screen.getByLabelText("Title"), { target: { value: "silent hill 2" } });
         await settleSearch();
 
-        const matches = within(screen.getByRole("list", { name: "Matches" })).getAllByRole("button");
+        const matches = within(screen.getByRole("listbox", { name: "Matches" })).getAllByRole("option");
         fireEvent.click(matches[1]);
 
         await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
@@ -255,7 +255,7 @@ describe("capture by lookup", () => {
 
         fireEvent.change(screen.getByLabelText("Title"), { target: { value: "nioh" } });
         await settleSearch();
-        fireEvent.click(within(screen.getByRole("list", { name: "Matches" })).getAllByRole("button")[0]);
+        fireEvent.click(within(screen.getByRole("listbox", { name: "Matches" })).getAllByRole("option")[0]);
 
         await waitFor(() => expect(mocked.metadataDetails).toHaveBeenCalledWith("game", "9767"));
     });
@@ -266,7 +266,7 @@ describe("capture by lookup", () => {
 
         fireEvent.change(screen.getByLabelText("Title"), { target: { value: "nio 2 typo" } });
         await settleSearch();
-        fireEvent.click(within(screen.getByRole("list", { name: "Matches" })).getAllByRole("button")[0]);
+        fireEvent.click(within(screen.getByRole("listbox", { name: "Matches" })).getAllByRole("option")[0]);
 
         await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
         expect(mocked.saveReview.mock.calls[0][0]).toMatchObject({ slug: "nioh-2" });
@@ -280,7 +280,7 @@ describe("capture by lookup", () => {
 
         fireEvent.change(screen.getByLabelText("Title"), { target: { value: "nioh" } });
         await settleSearch();
-        fireEvent.click(within(screen.getByRole("list", { name: "Matches" })).getAllByRole("button")[0]);
+        fireEvent.click(within(screen.getByRole("listbox", { name: "Matches" })).getAllByRole("option")[0]);
 
         await waitFor(() => expect(mocked.storeCover).toHaveBeenCalledWith("https://media.rawg.io/nioh.jpg"));
         expect(mocked.saveReview.mock.calls[0][0]).toMatchObject({
@@ -298,7 +298,7 @@ describe("capture by lookup", () => {
 
         fireEvent.change(screen.getByLabelText("Title"), { target: { value: "nioh" } });
         await settleSearch();
-        fireEvent.click(within(screen.getByRole("list", { name: "Matches" })).getAllByRole("button")[0]);
+        fireEvent.click(within(screen.getByRole("listbox", { name: "Matches" })).getAllByRole("option")[0]);
 
         await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
         expect(mocked.saveReview.mock.calls[0][0].image_path).toBeUndefined();
@@ -310,13 +310,119 @@ describe("capture by lookup", () => {
 
         fireEvent.change(screen.getByLabelText("Title"), { target: { value: "nioh" } });
         await settleSearch();
-        fireEvent.click(within(screen.getByRole("list", { name: "Matches" })).getAllByRole("button")[0]);
+        fireEvent.click(within(screen.getByRole("listbox", { name: "Matches" })).getAllByRole("option")[0]);
 
         await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
         const written = mocked.saveReview.mock.calls[0][0];
         // Absent, not null and not an empty array.
         expect(written).not.toHaveProperty("creator");
         expect(written).not.toHaveProperty("genres");
+    });
+});
+
+// Story 17: one interaction model for choosing from a list, matching the
+// Search prompt rather than inventing a second way.
+describe("choosing a match without a mouse", () => {
+    const candidate = (over = {}) => ({
+        sourceId: "1", title: "Nioh", release_date: "2017-02-07", creator: null,
+        genres: [], platforms: [], description: null, image: null, ...over,
+    });
+
+    const settleSearch = async () => {
+        await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    };
+
+    const typeTitle = async (value: string) => {
+        fireEvent.change(screen.getByLabelText("Title"), { target: { value } });
+        await settleSearch();
+    };
+
+    it("moves the highlight with the arrow keys", async () => {
+        mocked.searchMetadata.mockResolvedValue({
+            results: [candidate({ sourceId: "1", title: "Nioh" }), candidate({ sourceId: "2", title: "Nioh 2" })],
+        });
+        await showFolder([]);
+        await typeTitle("nioh");
+
+        const field = screen.getByLabelText("Title");
+        const options = () => within(screen.getByRole("listbox", { name: "Matches" })).getAllByRole("option");
+
+        // Nothing is chosen until the keyboard says so, so Enter can still
+        // record the title as typed.
+        expect(options().every(o => o.getAttribute("aria-selected") === "false")).toBe(true);
+
+        fireEvent.keyDown(field, { key: "ArrowDown" });
+        expect(options()[0].getAttribute("aria-selected")).toBe("true");
+
+        fireEvent.keyDown(field, { key: "ArrowDown" });
+        expect(options()[1].getAttribute("aria-selected")).toBe("true");
+
+        fireEvent.keyDown(field, { key: "ArrowUp" });
+        expect(options()[0].getAttribute("aria-selected")).toBe("true");
+    });
+
+    it("captures the highlighted match on Enter", async () => {
+        mocked.searchMetadata.mockResolvedValue({
+            results: [candidate({ sourceId: "1", title: "Nioh" }), candidate({ sourceId: "2", title: "Nioh 2" })],
+        });
+        await showFolder([]);
+        await typeTitle("nioh");
+
+        const field = screen.getByLabelText("Title");
+        fireEvent.keyDown(field, { key: "ArrowDown" });
+        fireEvent.keyDown(field, { key: "ArrowDown" });
+        fireEvent.keyDown(field, { key: "Enter" });
+
+        await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
+        expect(mocked.saveReview.mock.calls[0][0]).toMatchObject({ title: "Nioh 2" });
+    });
+
+    // The fast path for anything the provider does not know: type it, press
+    // Enter, without arrowing into a list of things you did not mean.
+    it("records the title as typed when nothing is highlighted", async () => {
+        mocked.searchMetadata.mockResolvedValue({ results: [candidate({ title: "Nioh" })] });
+        await showFolder([]);
+        await typeTitle("Something Else");
+
+        fireEvent.keyDown(screen.getByLabelText("Title"), { key: "Enter" });
+
+        await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
+        expect(mocked.saveReview.mock.calls[0][0]).toMatchObject({ title: "Something Else" });
+    });
+
+    it("dismisses the matches on Escape", async () => {
+        mocked.searchMetadata.mockResolvedValue({ results: [candidate()] });
+        await showFolder([]);
+        await typeTitle("nioh");
+
+        fireEvent.keyDown(screen.getByLabelText("Title"), { key: "Escape" });
+
+        expect(screen.queryByRole("listbox", { name: "Matches" })).toBeNull();
+    });
+});
+
+// Story 3, at the moment it actually helps: a remake and its original share a
+// title, so the list says which one you already have.
+describe("spotting what is already captured", () => {
+    const settleSearch = async () => {
+        await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    };
+
+    it("marks the match that is already in the collection", async () => {
+        mocked.searchMetadata.mockResolvedValue({
+            results: [
+                { sourceId: "1", title: "Nioh 3", release_date: "2026-02-12", creator: null, genres: [], platforms: [], description: null, image: null },
+                { sourceId: "2", title: "Onimusha", release_date: "2026-03-24", creator: null, genres: [], platforms: [], description: null, image: null },
+            ],
+        });
+        await showFolder([review("Nioh 3", { status: "todo" })]);
+
+        fireEvent.change(screen.getByLabelText("Title"), { target: { value: "ni" } });
+        await settleSearch();
+
+        const options = within(screen.getByRole("listbox", { name: "Matches" })).getAllByRole("option");
+        expect(options[0].textContent).toContain("Captured");
+        expect(options[1].textContent).not.toContain("Captured");
     });
 });
 
