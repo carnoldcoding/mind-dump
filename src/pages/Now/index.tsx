@@ -8,7 +8,6 @@
 // two or three things on the go are all above the fold.
 
 import { useMemo } from "react";
-import { Link } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
 import Loader from "../../components/common/Loader";
 import { ReviewCard } from "../../components/review/ReviewCard";
@@ -16,6 +15,8 @@ import { useReviews, type Review } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
+import { useDecodeText } from "../../hooks/useDecodeText";
+import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { enterClass } from "../../utils/animations";
 
 // How many queued Reviews the up-next rail shows before handing off to the
@@ -65,6 +66,8 @@ const Now = () => {
     const { active: contentActive } = useStageState('header');
     const panelStage = usePanelReveal(contentActive);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
+    const decodedPanelTitle = useDecodeText('NOW VIEW PANEL', contentReady);
+    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     // Flattened rather than kept in per-activity sections: the heroes lay out
     // as one grid so everything in progress is in view at once, and each card
@@ -100,64 +103,66 @@ const Now = () => {
             <PageHeader name="NOW" />
             <div className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
                 <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-                <article className={`relative bg-nier-100 p-4 flex flex-col gap-8 ${enterClass('nier-enter')} ${contentReady ? '' : 'invisible'}`}>
+                {/* A window, not a document: the frame takes the room that is
+                    actually there and the contents scroll inside it. 42rem is
+                    the most it wants; the cap is what is left below it. */}
+                <article
+                    ref={panelRef}
+                    style={maxHeight ? { maxHeight } : undefined}
+                    className={`nier-panel-frame relative bg-nier-100 flex flex-col h-[42rem] ${enterClass('nier-enter')} ${contentReady ? '' : 'invisible'}`}
+                >
+                    <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
+                        <h3 className={`text-nier-text-dark text-xl uppercase ${contentReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
+                    </div>
 
-                    <Band title="In Progress">
-                        {inProgress.length === 0
-                            ? <p className="text-nier-text-dark/50">Nothing in progress.</p>
-                            : (
-                                // Two per row on a phone, so a typical two or
-                                // three fit above the fold (story 3). Wider
-                                // screens give each hero more room rather than
-                                // more neighbours.
-                                <ul className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {inProgress.map(({ review, label }) => (
-                                        <li key={`${review.type}-${review.slug}`}>
-                                            <ReviewCard review={review} caption={label} />
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                    </Band>
+                    <div className="p-4 flex flex-col gap-8 overflow-y-auto flex-1">
 
-                    <Band
-                        title="Up Next"
-                        action={
-                            // A doorway rather than a dead end (story 5), and
-                            // one that stays open when nothing is queued: the
-                            // Backlog is everything unfinished, so it holds the
-                            // in-progress Reviews too (CONTEXT.md).
-                            <Link to="/backlog" className="text-sm uppercase tracking-wide underline hover:text-nier-text-dark/60">
-                                Open Backlog
-                            </Link>
-                        }
-                    >
-                        {queued.length === 0
-                            ? <p className="text-nier-text-dark/50">Nothing queued up.</p>
-                            : (
-                                <Rail>
-                                    {queued.slice(0, UP_NEXT_CAP).map(review => (
-                                        <li key={`${review.type}-${review.slug}`}>
-                                            <ReviewCard review={review} caption="Queued" />
-                                        </li>
-                                    ))}
-                                </Rail>
-                            )}
-                    </Band>
+                        <Band title="In Progress">
+                            {inProgress.length === 0
+                                ? <p className="text-nier-text-dark/50">Nothing in progress.</p>
+                                : (
+                                    // Two per row on a phone, so a typical two or
+                                    // three fit above the fold (story 3). Wider
+                                    // screens give each hero more room rather than
+                                    // more neighbours.
+                                    <ul className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {inProgress.map(({ review, label }) => (
+                                            <li key={`${review.type}-${review.slug}`}>
+                                                <ReviewCard review={review} caption={label} />
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                        </Band>
 
-                    <Band title="Recently Finished">
-                        {recentlyFinished.length === 0
-                            ? <p className="text-nier-text-dark/50">Nothing finished yet.</p>
-                            : (
-                                <Rail>
-                                    {recentlyFinished.map(review => (
-                                        <li key={`${review.type}-${review.slug}`}>
-                                            <ReviewCard review={review} caption={finishedCaption(review)} />
-                                        </li>
-                                    ))}
-                                </Rail>
-                            )}
-                    </Band>
+                        <Band title="Up Next">
+                            {queued.length === 0
+                                ? <p className="text-nier-text-dark/50">Nothing queued up.</p>
+                                : (
+                                    <Rail>
+                                        {queued.slice(0, UP_NEXT_CAP).map(review => (
+                                            <li key={`${review.type}-${review.slug}`}>
+                                                <ReviewCard review={review} caption="Queued" />
+                                            </li>
+                                        ))}
+                                    </Rail>
+                                )}
+                        </Band>
+
+                        <Band title="Recently Finished">
+                            {recentlyFinished.length === 0
+                                ? <p className="text-nier-text-dark/50">Nothing finished yet.</p>
+                                : (
+                                    <Rail>
+                                        {recentlyFinished.map(review => (
+                                            <li key={`${review.type}-${review.slug}`}>
+                                                <ReviewCard review={review} caption={finishedCaption(review)} />
+                                            </li>
+                                        ))}
+                                    </Rail>
+                                )}
+                        </Band>
+                    </div>
 
                 </article>
             </div>

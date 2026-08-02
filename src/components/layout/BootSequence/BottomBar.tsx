@@ -43,7 +43,7 @@ const BottomBar = () => {
       </div>
 
       <div className="bg-nier-50 w-full">
-        <div className="max-w-7xl mx-auto px-4 h-8 flex items-center gap-x-5 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 h-[var(--nier-footer-row)] flex items-center gap-x-5 overflow-hidden">
           {/* Entries drop rather than wrap as the viewport narrows, so the
               band keeps its single-line height on a phone. */}
           <Readout label="In Progress" value={readouts.inProgress} />

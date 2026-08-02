@@ -1,3 +1,27 @@
+/*
+    The footer is fixed, so nothing in the page reserves space for it and page
+    content slides underneath — at short viewports it looked as though the
+    footer had eaten the bottom of the panel.
+
+    Derived from the footer's own parts rather than a guessed number:
+      1.75px  the border rule
+      1.25rem the pattern strip
+      2rem    the readout row (h-8)
+    Both the footer and the page's bottom padding read this, so they cannot
+    drift apart.
+*/
+:root {
+    /* The readout row. BottomBar renders at exactly this height. */
+    --nier-footer-row: 2rem;
+    --nier-footer-height: calc(var(--nier-footer-row) + 1.25rem + 1.75px);
+
+    /* The narrowest and shortest a panel is ever allowed to be. The same
+       number for both, so a squeezed panel stays square-ish rather than
+       collapsing along one axis — and so every frame on the site bottoms out
+       at identical geometry. usePanelHeight reads the height half. */
+    --nier-panel-min: 20rem;
+}
+
 
 @layer utilities {
     .nier-dot-pattern {
@@ -133,6 +157,18 @@
   }
 }
 @layer utilities {
+    /* Clears the fixed footer, plus room to breathe so a panel's shadow and
+       the footer's rule are not touching. */
+    /* Every frame on the site wears this: one floor, so nothing collapses
+       into a sliver and panels stay recognisably the same object. */
+    .nier-panel-frame {
+        min-width: var(--nier-panel-min);
+    }
+
+    .nier-page-bottom {
+        padding-bottom: calc(var(--nier-footer-height) + 2rem);
+    }
+
     /*
         Cover art treatment. At rest a cover is drained of its own colour and
         pushed toward the site's beige/olive ramp, so a grid of them reads as
@@ -171,6 +207,11 @@
         display: block;
         filter: grayscale(1) contrast(1.06) brightness(0.94);
         transition: filter 220ms ease;
+    }
+
+    /* Opted out of the tint entirely — see ReviewCover's `full`. */
+    .nier-cover-img-full {
+        filter: none;
     }
 
     .nier-cover-tint {

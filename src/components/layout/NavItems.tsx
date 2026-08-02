@@ -1,7 +1,5 @@
 import homeIcon from '../../assets/home.svg';
 import homeLightIcon from '../../assets/home-light.svg';
-import homeAltIcon from '../../assets/home-alt.svg';
-import homeAltLightIcon from '../../assets/home-alt-light.svg';
 import gameAltIcon from '../../assets/game-alt.svg';
 import gameAltLightIcon from '../../assets/game-alt-light.svg';
 import monitorIcon from '../../assets/monitor.svg';
@@ -27,14 +25,6 @@ export const navItems: NavItem[] = [
     icon: homeLightIcon,
     label: "now",
     path: "/"
-  },
-  // Sixth slot. The desktop bar's fixed-width tabs want ~1280px to sit
-  // uncompressed and shrink below that, which ADR-0004 accepts.
-  {
-    iconActive: homeAltIcon,
-    icon: homeAltLightIcon,
-    label: "backlog",
-    path: "/backlog"
   },
   {
     iconActive: gameAltIcon,

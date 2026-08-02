@@ -163,22 +163,19 @@ describe("the up-next band", () => {
         const upNext = band("Up Next");
 
         expect(within(upNext).getAllByRole("listitem")).toHaveLength(5);
-        // The cap is a doorway, not a dead end (story 5).
-        expect(within(upNext).getByRole("link", { name: /backlog/i }).getAttribute("href")).toBe("/backlog");
     });
 
-    // The Backlog is everything unfinished, so it has contents even when
-    // nothing is queued — the way through has to stay open.
-    it("still offers the way through when nothing is queued", async () => {
-        mocked.getReviews.mockResolvedValue([
-            review("Nioh 3", { status: "active" }),
-        ]);
+    // The public Backlog is gone — it overlapped Now too heavily, and
+    // everything unfinished is now groomed from System instead. Nothing on a
+    // public page should offer a way to it.
+    it("offers no way through to a Backlog that no longer exists", async () => {
+        mocked.getReviews.mockResolvedValue(
+            Array.from({ length: 8 }, (_, i) => review(`Queued ${i}`, { status: "todo" })),
+        );
 
         await showNow();
-        const upNext = band("Up Next");
 
-        expect(within(upNext).getByText(/nothing queued/i)).toBeDefined();
-        expect(within(upNext).getByRole("link", { name: /backlog/i })).toBeDefined();
+        expect(screen.queryByRole("link", { name: /backlog/i })).toBeNull();
     });
 
     it("says so plainly when nothing is queued", async () => {

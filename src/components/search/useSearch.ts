@@ -6,10 +6,20 @@
 // That rationale is unchanged by Search being a prompt in the bar rather than
 // an overlay: back should collapse the prompt, not leave the page.
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router";
 
 const PARAM = "search";
+
+// Whether *this* session pushed the entry. Closing should pop it, leaving no
+// history behind — but a URL that arrived already carrying the param has
+// nothing of ours to pop, and popping it would walk the owner off the site.
+let pushedByUs = false;
+
+/** Tests only: module state outlives a single test the way a ref never did. */
+export function resetSearchHistoryState() {
+    pushedByUs = false;
+}
 
 /** A bare `?search`, not `?search=` — the param's presence is the whole value. */
 const withSearchParam = (search: string): string => {
@@ -30,22 +40,21 @@ export function useSearch() {
 
     const isOpen = new URLSearchParams(location.search).has(PARAM);
 
-    // Whether *this* session pushed the entry. Closing should pop it, leaving
-    // no history behind (story 21) — but a URL that arrived already carrying
-    // the param has nothing of ours to pop, and popping it would walk the
-    // owner off the site.
-    const pushedByUs = useRef(false);
+    // Module-level rather than a ref, because more than one component calls
+    // this hook — the nav tab opens and the modal closes. Per-component refs
+    // meant the closer never knew the opener had pushed, so it replaced
+    // instead of popping and left the entry behind.
 
     const open = useCallback(() => {
         if (new URLSearchParams(location.search).has(PARAM)) return;
-        pushedByUs.current = true;
+        pushedByUs = true;
         navigate({ pathname: location.pathname, search: withSearchParam(location.search) });
     }, [location.pathname, location.search, navigate]);
 
     const close = useCallback(() => {
         if (!new URLSearchParams(location.search).has(PARAM)) return;
-        if (pushedByUs.current) {
-            pushedByUs.current = false;
+        if (pushedByUs) {
+            pushedByUs = false;
             navigate(-1);
             return;
         }
@@ -58,7 +67,7 @@ export function useSearch() {
     // A back-swipe or Back press takes the param out of the URL on its own, so
     // the flag has to follow the URL rather than only the close button.
     useEffect(() => {
-        if (!isOpen) pushedByUs.current = false;
+        if (!isOpen) pushedByUs = false;
     }, [isOpen]);
 
     return { isOpen, open, close };

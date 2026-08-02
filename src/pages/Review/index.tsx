@@ -15,6 +15,7 @@ import { useLocation } from "react-router";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
 import { useDecodeText } from "../../hooks/useDecodeText";
+import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { enterClass } from "../../utils/animations";
 
 // The Category shelf's contextual line. A finished Review has a rating and a
@@ -63,6 +64,7 @@ const Review = () => {
     const titleReady = panelStageIndex(panelStage) >= panelStageIndex('title');
     const cardsReady = panelStageIndex(panelStage) >= panelStageIndex('cards');
     const decodedPanelTitle = useDecodeText(`${category ?? ''} VIEW PANEL`.toUpperCase(), titleReady);
+    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleFieldChange = (field: string, value: any) => {
         setFilters(prev => ({
@@ -215,8 +217,19 @@ const Review = () => {
                 nier-enter) makes an element establish its own
                 stacking context, which would trap a -z-1 child instead of
                 letting it render behind the whole article as intended. */}
-            <div className={`absolute w-full h-[42rem] mt-5 bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}></div>
-            <article className={`bg-nier-100 mt-5 relative flex flex-col h-[42rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
+            {/* No margin here, unlike the article it shadows. An absolutely
+                positioned box does not margin-collapse, so an `mt-5` to match
+                the article's kept its full 20px — while the article's own
+                collapsed out through this section, which has no padding or
+                border to stop it, leaving the article flush at the top. The
+                shadow ended up 22px low rather than 2px, at the bottom as much
+                as the top. `top-0.5` is the whole offset. */}
+            <div className={`absolute w-full h-[42rem] bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}></div>
+            <article
+                ref={panelRef}
+                style={maxHeight ? { maxHeight } : undefined}
+                className={`nier-panel-frame bg-nier-100 mt-5 relative flex flex-col h-[42rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
+            >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 className={`text-nier-text-dark text-xl uppercase ${titleReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
                     </div>

@@ -2,7 +2,9 @@ import { Link, useLocation } from "react-router";
 import { navItems } from "./NavItems";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
 import { useStageState } from "../../context/BootSequenceContext";
-import { SearchPrompt } from '../search/SearchPrompt';
+import { useSearch } from '../search/useSearch';
+import searchIcon from '../../assets/search.svg';
+import searchLightIcon from '../../assets/search-light.svg';
 
 interface NavigationMobileProps{
     isOpen: boolean;
@@ -13,6 +15,7 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     const location = useLocation();
     const { trusted } = useTrustedDevice();
     const { active: borderActive, animating: borderAnimating } = useStageState('borders');
+    const { isOpen: searchOpen, open: openSearch } = useSearch();
     const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
     return (
         <>
@@ -26,21 +29,12 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
             the bottom 1.75px + 1.25rem is line and pattern, leaving the row
             above room to sit clear of them. */}
         <header className={`nier-dot-pattern fixed top-0 left-0 w-screen h-20 bg-nier-50 z-101 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}>
-            <div className="flex items-center gap-2 h-[calc(5rem-1.25rem-1.75px)] px-4">
-                {/* Yields the row to the drawer rather than painting over it:
-                    an expanded prompt spanning the bar would otherwise sit on
-                    top of the menu the owner just opened. */}
-                {!isOpen && (
-                    <div className="flex-1 min-w-0">
-                        <SearchPrompt />
-                    </div>
-                )}
-
+            <div className="flex items-center justify-end h-[calc(5rem-1.25rem-1.75px)] px-4">
                 <button
                     onClick={onClose}
                     aria-label={isOpen ? 'Close menu' : 'Open menu'}
                     aria-expanded={isOpen}
-                    className="ml-auto text-nier-text-dark h-11 w-11 text-4xl leading-none flex items-center justify-center flex-shrink-0"
+                    className="text-nier-text-dark h-11 w-11 text-4xl leading-none flex items-center justify-center flex-shrink-0"
                 >
                     {isOpen ? '×' : '☰'}
                 </button>
@@ -96,6 +90,31 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
                     </Link>
                 )
                 })}
+
+                <button
+                    onClick={() => { openSearch(); onClose(); }}
+                    aria-expanded={searchOpen}
+                    className={`flex px-1 py-2 pt-2 w-45 items-center justify-start transition-all duration-300 ease-in-out cursor-pointer ${
+                        searchOpen
+                            ? 'bg-nier-text-dark -translate-x-1'
+                            : 'bg-nier-150/60 hover:bg-nier-150/80'
+                    }`}
+                >
+                    <div className={`h-5.5 w-5.5 flex items-center justify-center p-0.5 mr-1 ml-0.5 ${
+                        searchOpen ? 'bg-nier-text-light' : 'bg-nier-text-dark'
+                    }`}>
+                        <img
+                            src={searchOpen ? searchIcon : searchLightIcon}
+                            alt=""
+                            className="w-full h-full object-contain"
+                        />
+                    </div>
+                    <h3 className={`uppercase text-2xl leading-none ${
+                        searchOpen ? 'text-nier-text-light' : 'text-nier-text-dark'
+                    }`}>
+                        search
+                    </h3>
+                </button>
             </nav>
         </>
     )

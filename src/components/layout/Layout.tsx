@@ -7,6 +7,7 @@ import CornerLines from './BootSequence/CornerLines';
 import TriangleGrid from './BootSequence/TriangleGrid';
 import BottomBar from './BootSequence/BottomBar';
 import { BootSequenceProvider, useStageState } from '../../context/BootSequenceContext';
+import { SearchModal } from '../search/SearchModal';
 import type { BreakpointType } from '../../types';
 
 const Layout = () => {
@@ -71,11 +72,14 @@ const LayoutContent = () => {
             :
             <Navigation /> }
 
-              <main className={`max-w-7xl mx-auto px-2 py-8 ${!contentReady ? 'invisible' : ''}`}>
+              <main className={`max-w-7xl mx-auto px-2 pt-8 nier-page-bottom ${!contentReady ? 'invisible' : ''}`}>
                   <ScrollRestoration />
                   <Outlet />
               </main>
           </div>
+          {/* Reachable from every page, so it is mounted by the shell rather
+              than by any one of them. It renders nothing until opened. */}
+          <SearchModal />
       </div>
   );
 };

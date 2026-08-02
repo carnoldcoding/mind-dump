@@ -4,6 +4,7 @@ import BodyWindow from "./components/Body";
 import BacklogWindow from "./components/Backlog";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
+import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { enterClass } from "../../utils/animations";
 
 const FolderIcon = ({ selected }: { selected: boolean }) => (
@@ -33,6 +34,7 @@ const Desktop = () => {
     const [time, setTime] = useState("");
     const [date, setDate] = useState("");
     const [openApp, setOpenApp] = useState<string | null>(null);
+    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     useEffect(() => {
         const update = () => {
@@ -55,10 +57,17 @@ const Desktop = () => {
                 why: a transform on article would trap a child shadow in
                 the wrong stacking context. */}
             <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`} />
-            <article className={`bg-nier-50 relative border border-nier-150 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
+            {/* The screen. Title bar and taskbar are its fixed edges; the
+                desktop between them is what scrolls, so a window inside never
+                pushes the page. */}
+            <article
+                ref={panelRef}
+                style={maxHeight ? { maxHeight } : undefined}
+                className={`nier-panel-frame bg-nier-50 relative border border-nier-150 flex flex-col h-[42rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
+            >
 
                 {/* Title bar */}
-                <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 ${contentReady ? '' : 'invisible'}`}>
+                <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
                     <div className="flex items-center gap-3">
                         <span className="text-nier-text-dark text-sm uppercase tracking-widest font-semibold">
                             SYSTEM.OS
@@ -70,7 +79,7 @@ const Desktop = () => {
                 </div>
 
                 {/* Desktop area */}
-                <div className={`relative p-4 ${contentReady ? '' : 'invisible'}`}>
+                <div className={`relative p-4 flex-1 overflow-y-auto min-h-0 ${contentReady ? '' : 'invisible'}`}>
                     {/* Icons — own stacking context, sit beneath any open window */}
                     <div className="absolute top-4 left-4 flex gap-4 z-0">
                         {(["backlog", "reviews", "body"] as const).map(app => (
@@ -93,9 +102,6 @@ const Desktop = () => {
                         ))}
                     </div>
 
-                    {/* Spacer keeps desktop area tall when no window is open */}
-                    {!openApp && <div className="h-48" />}
-
                     {/* Open window — higher stacking context, only mounted when needed */}
                     {openApp === "backlog" && (
                         <div className="relative z-10">
@@ -115,7 +121,7 @@ const Desktop = () => {
                 </div>
 
                 {/* Taskbar */}
-                <div className={`h-8 bg-nier-150 border-t border-nier-dark/20 flex items-center justify-between px-4 ${contentReady ? '' : 'invisible'}`}>
+                <div className={`h-8 bg-nier-150 border-t border-nier-dark/20 flex items-center justify-between px-4 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
                     <span className="text-xs text-nier-text-dark uppercase tracking-widest opacity-50">
                         MIND DUMP OS
                     </span>

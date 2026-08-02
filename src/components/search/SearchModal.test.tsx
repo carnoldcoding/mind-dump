@@ -5,6 +5,7 @@ import Layout from "../layout/Layout";
 import Now from "../../pages/Now";
 import { backend } from "../../api/backend";
 import { resetReviewsStore } from "../../store/reviews";
+import { resetSearchHistoryState } from "./useSearch";
 import { TrustedDeviceProvider } from "../../context/TrustedDeviceContext";
 
 vi.mock("../../api/backend", () => ({
@@ -76,8 +77,11 @@ const renderApp = async (initialEntries: string[] = ["/"]) => {
     return { ...result, router };
 };
 
+// Search is a nav tab like any other — it just opens instead of going.
+const searchTab = () => screen.getByRole("button", { name: "search" });
+
 const openSearch = async () => {
-    fireEvent.click(screen.getByLabelText("Open search"));
+    fireEvent.click(searchTab());
     await act(async () => {});
 };
 
@@ -86,8 +90,8 @@ const type = async (value: string) => {
     await act(async () => {});
 };
 
-// The prompt is open when its field exists; the results are their own
-// labelled region hanging off the bar.
+// The modal is open when its field exists; the results are their own labelled
+// listbox inside it.
 const promptIsOpen = () => screen.queryByLabelText("Search Reviews") !== null;
 const results = () => screen.getByRole("listbox", { name: "Search results" });
 
@@ -95,6 +99,7 @@ beforeEach(() => {
     vi.stubEnv("VITE_DISABLE_ANIMATIONS", "true");
     vi.useFakeTimers({ shouldAdvanceTime: true });
     resetReviewsStore();
+    resetSearchHistoryState();
     vi.clearAllMocks();
     mocked.probeTrustedDevice.mockResolvedValue(false);
     mocked.getReviews.mockResolvedValue([

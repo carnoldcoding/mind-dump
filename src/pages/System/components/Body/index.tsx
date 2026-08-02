@@ -10,6 +10,7 @@ import EntryEditModal from "./EntryEditModal";
 import { partitionBodyDocs, describeEntry, docId } from "./entry";
 import type { BodyDoc, Entry } from "./entry";
 import { usePanelReveal, panelStageIndex } from "../../../../hooks/usePanelReveal";
+import { usePanelHeight } from "../../../../hooks/usePanelHeight";
 import { enterClass } from "../../../../utils/animations";
 
 type ActiveTab = "chart" | "history";
@@ -23,6 +24,7 @@ const BodyWindow = ({ onClose }: Props) => {
     // each time it's opened, so no resetKey is needed either.
     const panelStage = usePanelReveal(true);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
+    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLDivElement>();
 
     const [docs, setDocs]                         = useState<BodyDoc[]>([]);
     const [selectedName, setSelectedName]         = useState<string | null>(null);
@@ -115,17 +117,21 @@ const BodyWindow = ({ onClose }: Props) => {
                     Review/index.tsx for why: a transform on the panel would
                     trap a child shadow in the wrong stacking context. */}
                 <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-                <div className={`relative bg-nier-100 border border-nier-150 ${enterClass('nier-enter')}`}>
+                <div
+                    ref={panelRef}
+                    style={maxHeight ? { maxHeight } : undefined}
+                    className={`nier-panel-frame relative bg-nier-100 border border-nier-150 flex flex-col ${enterClass('nier-enter')}`}
+                >
 
                     {/* Window title bar */}
-                    <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 ${contentReady ? '' : 'invisible'}`}>
+                    <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
                         <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Body</h3>
                         <button onClick={onClose} aria-label="Close" className="text-sm px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none">
                             ✕
                         </button>
                     </div>
 
-                    <div className={`p-4 flex flex-col gap-4 ${contentReady ? '' : 'invisible'}`}>
+                    <div className={`p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0 ${contentReady ? '' : 'invisible'}`}>
 
                         <div className="flex gap-4 flex-col md:flex-row md:items-start">
                             <MovementList

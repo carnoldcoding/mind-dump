@@ -9,6 +9,7 @@ import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal } from "../../hooks/usePanelReveal";
+import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { enterClass } from "../../utils/animations";
 import { ReviewCover } from "../../components/review/ReviewCover";
 type Mod = { name: string; author?: string; url?: string; notes?: string };
@@ -55,6 +56,7 @@ const ReviewDetail = () => {
     // restarts on every review, not just the first mount of this route.
     const panelStage = usePanelReveal(contentActive, slug);
     const contentReady = panelStage !== 'box';
+    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleClose   = () => navigate(`/${parent}`);
     const filterByGenre = (genre: string) => navigate(`/${parent}?genre=${genre}`);
@@ -108,7 +110,11 @@ const ReviewDetail = () => {
             <div key={slug} className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
                 <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`} />
 
-                <article className={`bg-nier-100 relative flex flex-col md:h-[34rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
+                <article
+                    ref={panelRef}
+                    style={maxHeight ? { maxHeight } : undefined}
+                    className={`nier-panel-frame bg-nier-100 relative flex flex-col md:h-[34rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
+                >
 
                     {/* ── Header bar ─────────────────────────────────── */}
                     <div className={`h-10 bg-nier-150 flex items-stretch flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
@@ -140,14 +146,11 @@ const ReviewDetail = () => {
                     {/* ── Body ───────────────────────────────────────── */}
                     <div className={`p-4 flex flex-col md:flex-row gap-4 flex-1 min-h-0 ${contentReady ? '' : 'invisible'}`}>
 
-                        {/* The same cover every card wears, so arriving
-                            here from one does not feel like leaving the site.
-                            Hover-only: `.nier-card` is the state hook the
-                            treatment keys off, and making this focusable to
-                            get the focus half would add a tab stop that
-                            announces nothing and opens nothing. */}
-                        <div className="nier-card h-56 md:h-full md:w-72 flex-shrink-0">
-                            <ReviewCover imagePath={data.image_path} fill />
+                        {/* Full colour, not the card treatment: a grid tints
+                            its covers so it reads as one surface, but you have
+                            opened this one, and here the art is the point. */}
+                        <div className="h-56 md:h-full md:w-72 flex-shrink-0">
+                            <ReviewCover imagePath={data.image_path} fill full />
                         </div>
 
                         {/* Right column */}
