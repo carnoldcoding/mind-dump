@@ -13,21 +13,28 @@ import { useEffect, useRef, useState } from "react";
 /** Breathing room between a panel's bottom and the footer's rule. */
 const GAP_PX = 16;
 
-/** How tall the fixed footer is, read from the variable the footer itself uses. */
-function footerHeight(): number {
-    const declared = getComputedStyle(document.documentElement)
-        .getPropertyValue('--nier-footer-height')
-        .trim();
-    if (!declared) return 0;
+/** Fallback floor, used only if the shared variable cannot be read. */
+const FALLBACK_MIN_PX = 320;
 
-    // The variable is a calc() of rem and px, so let the browser resolve it
-    // rather than parsing it here.
+/**
+ * Resolves a CSS length variable to pixels.
+ *
+ * These are calc() expressions mixing rem and px, so the browser is asked to
+ * work them out rather than this parsing them — which would mean knowing the
+ * root font size and re-deriving arithmetic that already lives in the CSS.
+ */
+function cssPixels(variable: string, fallback: number): number {
+    const declared = getComputedStyle(document.documentElement)
+        .getPropertyValue(variable)
+        .trim();
+    if (!declared) return fallback;
+
     const probe = document.createElement('div');
     probe.style.cssText = `position:absolute;visibility:hidden;height:${declared}`;
     document.body.appendChild(probe);
     const height = probe.getBoundingClientRect().height;
     probe.remove();
-    return height;
+    return height || fallback;
 }
 
 /**
@@ -49,10 +56,13 @@ export function usePanelHeight<T extends HTMLElement>() {
             // Viewport-relative, and the page is not meant to scroll once this
             // has done its job — which is the state this measures in.
             const top = element.getBoundingClientRect().top;
-            const available = window.innerHeight - top - footerHeight() - GAP_PX;
+            const footer = cssPixels('--nier-footer-height', 0);
+            const floor = cssPixels('--nier-panel-min', FALLBACK_MIN_PX);
+            const available = window.innerHeight - top - footer - GAP_PX;
             // Never so short it becomes useless; below this the page may
-            // scroll, which beats a panel too small to show anything.
-            setMaxHeight(Math.max(available, 320));
+            // scroll, which beats a panel too small to show anything. The same
+            // floor the frames use for width, so both axes bottom out together.
+            setMaxHeight(Math.max(available, floor));
         };
 
         measure();

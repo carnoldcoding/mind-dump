@@ -23,8 +23,9 @@ const measured = () => screen.getByTestId('panel').getAttribute('data-max');
 
 beforeEach(() => {
     window.innerHeight = 900;
-    // The footer variable is declared in custom.css, which the test run does
-    // not load, so the probe measures 0 and the sums below are chrome-free.
+    // custom.css is not loaded by the test run, so both variables resolve to
+    // nothing and the hook falls back: no footer to subtract, and its own
+    // fallback floor. The sums below are therefore chrome-free on purpose.
 });
 
 afterEach(() => {
@@ -48,7 +49,8 @@ describe("sizing a panel to what is left below it", () => {
         expect(measured()).toBe('484');
     });
 
-    // A panel squeezed to nothing is worse than a page that scrolls.
+    // A panel squeezed to nothing is worse than a page that scrolls. The same
+    // floor the frames use for their width, so both axes bottom out together.
     it("refuses to shrink below a usable height", () => {
         atTop(800);
         render(<Panel />);

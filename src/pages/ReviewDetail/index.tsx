@@ -113,7 +113,7 @@ const ReviewDetail = () => {
                 <article
                     ref={panelRef}
                     style={maxHeight ? { maxHeight } : undefined}
-                    className={`bg-nier-100 relative flex flex-col md:h-[34rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
+                    className={`nier-panel-frame bg-nier-100 relative flex flex-col md:h-[34rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
                 >
 
                     {/* ── Header bar ─────────────────────────────────── */}

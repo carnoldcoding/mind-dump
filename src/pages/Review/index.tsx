@@ -228,7 +228,7 @@ const Review = () => {
             <article
                 ref={panelRef}
                 style={maxHeight ? { maxHeight } : undefined}
-                className={`bg-nier-100 mt-5 relative flex flex-col h-[42rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
+                className={`nier-panel-frame bg-nier-100 mt-5 relative flex flex-col h-[42rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
             >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 className={`text-nier-text-dark text-xl uppercase ${titleReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>

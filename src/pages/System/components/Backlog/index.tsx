@@ -198,7 +198,7 @@ const BacklogWindow = ({ onClose }: Props) => {
     return (
         <div className="relative">
             <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-            <div className={`relative bg-nier-100 border border-nier-150 ${enterClass('nier-enter')}`}>
+            <div className={`nier-panel-frame relative bg-nier-100 border border-nier-150 ${enterClass('nier-enter')}`}>
                 <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 ${contentReady ? '' : 'invisible'}`}>
                     <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Backlog</h3>
                     <button

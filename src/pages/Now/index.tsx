@@ -109,7 +109,7 @@ const Now = () => {
                 <article
                     ref={panelRef}
                     style={maxHeight ? { maxHeight } : undefined}
-                    className={`relative bg-nier-100 flex flex-col h-[42rem] ${enterClass('nier-enter')} ${contentReady ? '' : 'invisible'}`}
+                    className={`nier-panel-frame relative bg-nier-100 flex flex-col h-[42rem] ${enterClass('nier-enter')} ${contentReady ? '' : 'invisible'}`}
                 >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 className={`text-nier-text-dark text-xl uppercase ${contentReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>

@@ -14,6 +14,12 @@
     /* The readout row. BottomBar renders at exactly this height. */
     --nier-footer-row: 2rem;
     --nier-footer-height: calc(var(--nier-footer-row) + 1.25rem + 1.75px);
+
+    /* The narrowest and shortest a panel is ever allowed to be. The same
+       number for both, so a squeezed panel stays square-ish rather than
+       collapsing along one axis — and so every frame on the site bottoms out
+       at identical geometry. usePanelHeight reads the height half. */
+    --nier-panel-min: 20rem;
 }
 
 
@@ -153,6 +159,12 @@
 @layer utilities {
     /* Clears the fixed footer, plus room to breathe so a panel's shadow and
        the footer's rule are not touching. */
+    /* Every frame on the site wears this: one floor, so nothing collapses
+       into a sliver and panels stay recognisably the same object. */
+    .nier-panel-frame {
+        min-width: var(--nier-panel-min);
+    }
+
     .nier-page-bottom {
         padding-bottom: calc(var(--nier-footer-height) + 2rem);
     }
