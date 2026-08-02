@@ -19,7 +19,7 @@ The kind of Review — `games`, `cinema`, or `books`. Used in URLs and navigatio
 **Now**:
 The site's front page: what is being played, watched and read at this moment — every Review with Status `active`, across all Categories at once — with what's queued up next and what was finished most recently on either side of it. The only view that answers "where am I" rather than "what do I have".
 
-The nav tab reads **CURRENT**, not "Now" — three letters were too small a target for the eye in a bar of six-letter words. UI copy only, the same way the Backlog says "Started" for Status `active`: the page, the route and this term are all still Now.
+The page reads **CURRENT** wherever a reader sees it — the nav tab, the page header and the panel title. Three letters were too small a target for the eye in a bar of six-letter words. UI copy only, the same way the Backlog says "Started" for Status `active`: the route, the component and this term are all still Now.
 _Avoid_: Home, Dashboard, Index
 
 **Capture**:

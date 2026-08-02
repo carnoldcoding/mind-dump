@@ -66,7 +66,7 @@ const Now = () => {
     const { active: contentActive } = useStageState('header');
     const panelStage = usePanelReveal(contentActive);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const decodedPanelTitle = useDecodeText('NOW VIEW PANEL', contentReady);
+    const decodedPanelTitle = useDecodeText('CURRENT VIEW PANEL', contentReady);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     // Flattened rather than kept in per-activity sections: the heroes lay out
@@ -100,7 +100,8 @@ const Now = () => {
 
     return (
         <>
-            <PageHeader name="NOW" />
+            {/* Reads "current"; the page is still Now — see CONTEXT.md. */}
+            <PageHeader name="CURRENT" />
             <div className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
                 <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
                 {/* A window, not a document: the frame takes the room that is
