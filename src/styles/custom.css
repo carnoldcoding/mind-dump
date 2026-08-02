@@ -173,6 +173,11 @@
         transition: filter 220ms ease;
     }
 
+    /* Opted out of the tint entirely — see ReviewCover's `full`. */
+    .nier-cover-img-full {
+        filter: none;
+    }
+
     .nier-cover-tint {
         position: absolute;
         inset: 0;

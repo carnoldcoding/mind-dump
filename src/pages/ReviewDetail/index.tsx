@@ -140,14 +140,11 @@ const ReviewDetail = () => {
                     {/* ── Body ───────────────────────────────────────── */}
                     <div className={`p-4 flex flex-col md:flex-row gap-4 flex-1 min-h-0 ${contentReady ? '' : 'invisible'}`}>
 
-                        {/* The same cover every card wears, so arriving
-                            here from one does not feel like leaving the site.
-                            Hover-only: `.nier-card` is the state hook the
-                            treatment keys off, and making this focusable to
-                            get the focus half would add a tab stop that
-                            announces nothing and opens nothing. */}
-                        <div className="nier-card h-56 md:h-full md:w-72 flex-shrink-0">
-                            <ReviewCover imagePath={data.image_path} fill />
+                        {/* Full colour, not the card treatment: a grid tints
+                            its covers so it reads as one surface, but you have
+                            opened this one, and here the art is the point. */}
+                        <div className="h-56 md:h-full md:w-72 flex-shrink-0">
+                            <ReviewCover imagePath={data.image_path} fill full />
                         </div>
 
                         {/* Right column */}

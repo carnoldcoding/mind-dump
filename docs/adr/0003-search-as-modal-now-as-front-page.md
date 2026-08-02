@@ -9,15 +9,20 @@ Search was the index route. `/` rendered it, and the first nav tab pointed there
 
 Meanwhile the site had no answer to "where am I". The Category pages are shelves of finished work. System is for authoring. Nothing showed what was being played, watched and read right now, which is the only thing that changes between one visit and the next.
 
-> **Amendment (2026-08-02).** Everything below still holds except the word
-> *modal*. Search is now a **prompt built into the nav bar**: it expands in
-> place and its results hang off the bar, rather than opening as an overlay
-> over the page. The reason is cohesion — this interface has no floating
-> elements, and an overlay was the one thing on the site that belonged to
-> nothing. The decisions that mattered are unchanged: Search stops being a
-> *place*, `/` belongs to Now, the open state lives in the URL as a bare
-> `?search` for the sake of the iOS back-swipe, and the typed query stays out
-> of the URL. Read "modal" below as "prompt".
+> **Amendment (2026-08-02).** Everything below holds. Search is a **modal**,
+> as originally decided — an in-bar prompt was tried in between and reverted:
+> it read as a text field grafted onto a row of tabs, and expanding the chrome
+> in place made the bar jump.
+>
+> What changed is only how it is *reached*. Search is now a **nav tab shaped
+> exactly like the destinations**, which opens the modal instead of navigating,
+> and takes the active state while the modal is open — so the bar still says
+> where you are. The floating icon that prompted all of this is gone either
+> way.
+>
+> The rest is unchanged: Search is not a *place*, `/` belongs to Now, the open
+> state lives in the URL as a bare `?search` for the sake of the iOS
+> back-swipe, and the typed query stays out of the URL.
 
 So the two swap. **Now** takes `/` — Reviews with Status `active` across every Category, a capped band of what's queued next, and what was finished most recently. **Search** stops being a place and becomes a modal, opened from a pinned control in the nav bar or `Cmd`/`Ctrl+K`, available on every page instead of on one page nobody visited.
 

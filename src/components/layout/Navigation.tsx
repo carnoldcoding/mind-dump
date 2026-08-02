@@ -1,81 +1,60 @@
-import { Link, useLocation } from "react-router";
+import { useLocation } from "react-router";
 import { navItems } from "./NavItems";
+import { NavTab } from "./NavTab";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
 import { useStageState } from "../../context/BootSequenceContext";
-import { SearchPrompt } from '../search/SearchPrompt';
+import { useSearch } from "../search/useSearch";
+import searchIcon from '../../assets/search.svg';
+import searchLightIcon from '../../assets/search-light.svg';
 
 const Navigation = () => {
     const location = useLocation();
     const { trusted } = useTrustedDevice();
     const { active: borderActive, animating: borderAnimating } = useStageState('borders');
     const { active: navActive, animating: navAnimating } = useStageState('nav');
+    const { isOpen: searchOpen, open: openSearch } = useSearch();
     const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
+
+    const domino = (index: number) => ({
+        className: `${!navActive ? 'invisible' : ''} ${navAnimating ? 'nier-boot-nav-item' : ''}`,
+        style: navAnimating
+            ? ({ '--nier-nav-delay': `${index * 80}ms` } as React.CSSProperties)
+            : undefined,
+    });
+
     return (
         <>
             <nav className={`flex items-start justify-center pt-8 gap-10 fixed w-screen nier-dot-pattern bg-nier-50 z-50 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}>
-            {visibleNavItems.map((item, index) => {
-                const isActive =
-                location.pathname === item.path ||
-                location.pathname.startsWith(item.path + "/");
-                const dominoClassName = `${!navActive ? 'invisible' : ''} ${navAnimating ? 'nier-boot-nav-item' : ''}`;
-                const dominoStyle = navAnimating
-                    ? ({ '--nier-nav-delay': `${index * 80}ms` } as React.CSSProperties)
-                    : undefined;
-                return (
-                    isActive ?
-                    // Every tab (active or not) uses this SAME outer size, always —
-                    // nav's own height never changes on tab switch. Only the inner
-                    // background rectangle (absolutely positioned, so it doesn't
-                    // affect layout/reflow) grows to touch the line when active.
-                    <Link
+                {visibleNavItems.map((item, index) => (
+                    <NavTab
                         key={item.path}
                         to={item.path}
-                        className={`relative z-0 flex px-1 pt-2 pb-8 w-45 justify-start self-start transition-all duration-300 ease-in-out ${dominoClassName}`}
-                        style={dominoStyle}
-                    >
-                    <div className="absolute inset-x-0 top-0 -z-10 h-full bg-nier-text-dark transition-all duration-300 ease-in-out" />
-                    <div className="bg-nier-text-light h-5.5 w-5.5 flex items-center justify-center p-0.5 mr-1 ml-0.5 transition-all duration-300 ease-in-out">
-                        <img
-                            src={item.iconActive}
-                            alt={`${item.label} icon`}
-                            className="w-full h-full object-contain transition-all duration-300 ease-in-out"
-                        />
-                    </div>
-                    <h3 className="uppercase text-2xl text-nier-text-light leading-none transition-all duration-300 ease-in-out">
-                        {item.label}
-                    </h3>
-                    </Link>
-                    :
-                    <Link
-                        key={item.path}
-                        to={item.path}
-                        className={`relative z-0 flex px-1 pt-2 pb-8 w-45 justify-start self-start transition-all duration-300 ease-in-out ${dominoClassName}`}
-                        style={dominoStyle}
-                    >
-                    <div className="absolute inset-x-0 top-0 -z-10 h-10 bg-nier-150/70 transition-all duration-300 ease-in-out" />
-                    <div className="bg-nier-text-dark h-5.5 w-5.5 flex items-center justify-center p-0.5 mr-1 ml-0.5 transition-all duration-300 ease-in-out">
-                        <img
-                            src={item.icon}
-                            alt={`${item.label} icon`}
-                            className="w-full h-full object-contain transition-all duration-300 ease-in-out"
-                        />
-                    </div>
-                    <h3 className="uppercase text-2xl text-nier-text-dark leading-none transition-all duration-300 ease-in-out">
-                        {item.label}
-                    </h3>
-                    </Link>
-                )
-                })}
-                {/* On the bar's own rule rather than beside it: this is
-                    the one control here that goes nowhere, and it reads as
-                    part of the chrome instead of as a sixth destination. */}
-                <div className={`flex items-center self-start pt-2 pb-8 min-w-0 ${!navActive ? 'invisible' : ''}`}>
-                    <SearchPrompt />
-                </div>
+                        icon={item.icon}
+                        iconActive={item.iconActive}
+                        label={item.label}
+                        active={
+                            location.pathname === item.path ||
+                            location.pathname.startsWith(item.path + "/")
+                        }
+                        {...domino(index)}
+                    />
+                ))}
+
+                {/* A tab like any other, and the only one that opens rather
+                    than goes. It takes the active state while its modal is
+                    open, so the bar still says where you are. */}
+                <NavTab
+                    onClick={openSearch}
+                    icon={searchLightIcon}
+                    iconActive={searchIcon}
+                    label="search"
+                    active={searchOpen}
+                    {...domino(visibleNavItems.length)}
+                />
             </nav>
             <div className="h-5"></div>
         </>
-    )
-}
+    );
+};
 
 export default Navigation;

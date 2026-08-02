@@ -14,15 +14,26 @@ type Props = {
      * that already know the height they want.
      */
     fill?: boolean;
+    /**
+     * Skip the tint entirely. A card holds its art back until you point at it
+     * so a grid reads as one surface; a Review you have actually opened is the
+     * one place the art is the point, so it arrives in full colour.
+     */
+    full?: boolean;
 };
 
-export const ReviewCover = ({ imagePath, fill = false }: Props) => (
+export const ReviewCover = ({ imagePath, fill = false, full = false }: Props) => (
     <div className={`nier-cover ${fill ? 'nier-cover-fill' : ''}`}>
         {imagePath
             ? (
                 <>
-                    <img src={imagePath} alt="" loading="lazy" className="nier-cover-img" />
-                    <div className="nier-cover-tint" />
+                    <img
+                        src={imagePath}
+                        alt=""
+                        loading="lazy"
+                        className={full ? 'nier-cover-img nier-cover-img-full' : 'nier-cover-img'}
+                    />
+                    {!full && <div className="nier-cover-tint" />}
                 </>
             )
             : <div className="nier-cover-empty" aria-hidden="true" />}

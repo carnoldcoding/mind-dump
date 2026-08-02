@@ -26,13 +26,15 @@ _Avoid_: Add, Create, Quick-add
 
 **Backlog**:
 Everything unfinished, across all Categories at once — Reviews with Status `todo` or `active`. A Review joins it the moment it's captured and leaves it only when it goes `done`; nothing is added or removed by hand. Starting something doesn't take it off the list, because it isn't off the list until it's finished.
+
+Lives **only in System**. There was a public Backlog page; it overlapped Now too heavily once both showed cards, and Now is the page that matters to a reader ([ADR-0004](./docs/adr/0004-backlog-as-unfinished-work.md)).
 _Avoid_: Queue, Wishlist, To-read, Someday list
 
 **Started / Not Started**:
 How the Backlog labels the two Statuses it contains — `active` and `todo` respectively. UI copy, not a fourth and fifth Status: the underlying values are unchanged, and "Started" on the Backlog is the same thing as "In Progress" on Now. Both shelves exist so the overlap with Now reads as deliberate rather than as duplication.
 
 **Search**:
-Title lookup across every Category and every Status, opened from anywhere as a prompt built into the nav bar rather than visited as a page. Its results hang off the bar rather than covering the page. Finds all Reviews, queued ones included, so it also answers whether something has already been captured.
+Title lookup across every Category and every Status, opened as a modal from a nav tab rather than visited as a page. The tab looks like every other and takes the active state while the modal is open, so the bar still says where you are. Finds all Reviews, queued ones included, so it also answers whether something has already been captured — which matters more now that the Backlog is System-only.
 _Avoid_: Find, Filter, Query
 
 **Readout**:

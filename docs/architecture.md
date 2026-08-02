@@ -29,7 +29,6 @@ All routes render inside `Layout`:
 - `/` — Now (what's in progress, what's queued next, what was finished most recently)
 - `/:category` — Review (category browse/filter page for `games`/`cinema`/`books`)
 - `/:category/:slug` — ReviewDetail (single Review, full write-up)
-- `/backlog` — Backlog (everything unfinished, across all Categories; read-only). Declared *before* `/:category`, which would otherwise match "backlog" and hand it to the Category shelf
 - `/system` — System (password-gated admin dashboard)
 - `/journal` — placeholder (`UnderConstruction`), not linked from primary nav yet
 
@@ -61,7 +60,7 @@ Dates were the exception and no longer are: both `date_completed` and `release_d
 - `src/components/layout/` — site chrome (Navigation, Layout, background animations)
 - `src/pages/System/components/` — one folder per System window, mounted by the registry in `Desktop.tsx`: `Backlog/` (capture, grooming, Status transitions), `ReviewPanel/` + `ReviewsWindow.tsx` (finished work — critique, rating, media), `Body/`. The lifecycle boundary between the first two is [ADR-0004](./adr/0004-backlog-as-unfinished-work.md)
 - `src/components/review/` — how a Review is drawn. `ReviewCard` is the single card used by every surface that shows Reviews; it takes a Review and the one caption that surface wants, and nothing else. A feature folder rather than a `common/` primitive because it knows the domain: it reads Review fields and links to a Review's own address
-- `src/components/search/` — the Search prompt and the hook holding its open state. A feature folder rather than a `common/` primitive: Search is one thing with one home, and its hook is meaningless away from it. The prompt is rendered *by the nav bar* rather than by `Layout`, and owns its own open state, keyboard shortcut and results, so a nav renders it and passes it nothing ([ADR-0003](./adr/0003-search-as-modal-now-as-front-page.md))
+- `src/components/search/` — the Search modal and the hook holding its open state. A feature folder rather than a `common/` primitive: Search is one thing with one home, and its hook is meaningless away from it. `Layout` mounts the modal; the nav renders a tab that opens it. The hook is called from both, so its "did we push the history entry" flag is module-level — per-component refs meant the closer never knew the opener had pushed ([ADR-0003](./adr/0003-search-as-modal-now-as-front-page.md))
 - `src/types/index.ts` — shared TypeScript types (see drift note above)
 - `src/store/` — zustand stores for domain data (`reviews.ts`). Surfaces read through the exported hook and never fetch for themselves
 - `src/utils/` — helpers and static data (genres lists, etc.)

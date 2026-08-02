@@ -8,7 +8,6 @@
 // two or three things on the go are all above the fold.
 
 import { useMemo } from "react";
-import { Link } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
 import Loader from "../../components/common/Loader";
 import { ReviewCard } from "../../components/review/ReviewCard";
@@ -120,18 +119,7 @@ const Now = () => {
                             )}
                     </Band>
 
-                    <Band
-                        title="Up Next"
-                        action={
-                            // A doorway rather than a dead end (story 5), and
-                            // one that stays open when nothing is queued: the
-                            // Backlog is everything unfinished, so it holds the
-                            // in-progress Reviews too (CONTEXT.md).
-                            <Link to="/backlog" className="text-sm uppercase tracking-wide underline hover:text-nier-text-dark/60">
-                                Open Backlog
-                            </Link>
-                        }
-                    >
+                    <Band title="Up Next">
                         {queued.length === 0
                             ? <p className="text-nier-text-dark/50">Nothing queued up.</p>
                             : (

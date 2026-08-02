@@ -1,10 +1,26 @@
 ---
 status: accepted
+amended: 2026-08-02
 ---
 
 # The Backlog is everything unfinished, and it splits System in two
 
 There was no way to note down "I'd love to play that someday". A Review could be created with Status `todo`, but creating one meant a form built for finished work — slug, genres, developers, platforms, image path, a critique shape with nothing to put in it — so the thought cost more to record than it was worth. Nothing outside System listed queued items either: Category grids filter to `done`, and Search excluded `todo`.
+
+> **Amendment (2026-08-02).** The **public Backlog page is withdrawn.** Seen
+> next to Now with real cards, the two overlapped far more than this decision
+> anticipated: everything in progress appeared on both, at the same size, and
+> Now is the page that matters to a reader. The Backlog is now entirely a
+> System concern — the folder below is unchanged and still owns capture,
+> grooming and the Status transitions.
+>
+> What that costs: nothing public lists queued work any more, and queued
+> Reviews stop being publicly visible except through Search, which still finds
+> every Status. What it buys: one public answer to "where am I" instead of two
+> that disagreed about which mattered.
+>
+> Membership is still derived from Status and still stored nowhere. Everything
+> below about *what* the Backlog is holds; only where it is seen has changed.
 
 The Backlog is now a first-class feature. It is **every Review that isn't finished** — Status `todo` or `active` — seen as one shelf across all Categories.
 
