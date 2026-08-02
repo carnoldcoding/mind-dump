@@ -15,6 +15,18 @@ import { useDecodeText } from "../../hooks/useDecodeText";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { enterClass } from "../../utils/animations";
 
+// The rating scale, asserted in one place. Every rating stored is between 3
+// and 4.5 with a decimal, so the scale is five points and the useful grain is
+// a half — which is eleven cells, the same count as the reference's slot row.
+// The stepper this replaced clamped 0–10 in whole numbers and so could not
+// express a single value the collection actually holds.
+const RATING_MAX = 5;
+const RATING_STEP = 0.5;
+const RATING_CELLS = Array.from({ length: RATING_MAX / RATING_STEP + 1 }, (_, i) => ({
+    key: `${i * RATING_STEP}`,
+    title: `${i * RATING_STEP} ★`,
+}));
+
 // The Category shelf's contextual line. A finished Review has a rating and a
 // date it was finished; anything missing is simply left out rather than shown
 // as a blank or a zero.
@@ -179,50 +191,115 @@ const Group = ({ title, children }: { title: string; children: React.ReactNode }
     </section>
 );
 
-/** A `−  value  +` stepper. Bounded, and showing an em dash for "no bound
- *  set" rather than a 0, which would be a real rating. */
-const Stepper = ({ label, value, onChange }: {
-    label: string;
-    value: string;
-    onChange: (next: string) => void;
+/**
+ * A span selected on a segmented track — the one control this column uses for
+ * every bounded metric, replacing a pair of steppers and a pair of native date
+ * pickers.
+ *
+ * The reference has no slider and no date field, but it does have a bounded
+ * value drawn as segments: the HP bar, and the row of empty slots that the
+ * status column two columns to the right already carries as furniture. This
+ * makes that furniture into the control.
+ *
+ * Two clicks make a span. The first sets an anchor and selects one cell; the
+ * second closes the span between them, in either direction, so there is no
+ * "from" that has to be before a "to" and no way to enter an inverted range.
+ * A third click starts over. While the anchor is down, hovering outlines the
+ * span you would get, which is the only affordance this needs — the alternative
+ * is a legend explaining a control the reference would never have explained.
+ *
+ * Cells are points on the scale, not buckets: selecting one cell alone means
+ * exactly that value. Ranges are what this is for, and a bucket reading would
+ * make the two ends mean different things.
+ */
+const Track = ({ cells, selection, onChange, onClear, ticks, readout }: {
+    /** One entry per cell, in scale order. The value is the caller's to read. */
+    cells: { key: string; title: string }[];
+    /** Selected span as cell indices, or null for no bound set. */
+    selection: { min: number; max: number } | null;
+    onChange: (span: { min: number; max: number }) => void;
+    onClear: () => void;
+    /** Labels under the ends of the track. */
+    ticks: [string, string];
+    /** What the current span reads as, in the metric's own units. */
+    readout: string;
 }) => {
-    const step = (delta: number) => {
-        const current = parseFloat(value || '0');
-        onChange(Math.min(10, Math.max(0, current + delta)).toString());
+    const [anchor, setAnchor] = useState<number | null>(null);
+    const [hovered, setHovered] = useState<number | null>(null);
+
+    // While the anchor is down the track shows what you would get, not what
+    // you have — so the preview wins over the selection for those cells.
+    const preview = anchor !== null && hovered !== null
+        ? { min: Math.min(anchor, hovered), max: Math.max(anchor, hovered) }
+        : null;
+
+    const press = (index: number) => {
+        if (anchor === null) {
+            setAnchor(index);
+            onChange({ min: index, max: index });
+        } else {
+            onChange({ min: Math.min(anchor, index), max: Math.max(anchor, index) });
+            setAnchor(null);
+        }
     };
+
+    const stateOf = (index: number): 'filled' | 'preview' | 'empty' => {
+        if (preview && index >= preview.min && index <= preview.max) return 'preview';
+        if (!preview && selection && index >= selection.min && index <= selection.max) return 'filled';
+        return 'empty';
+    };
+
     return (
-        <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] uppercase tracking-wide text-nier-text-dark/50">{label}</span>
-            <div className="flex items-stretch h-6">
-                <button onClick={() => step(-1)} className="w-6 bg-nier-150/60 hover:bg-nier-150 flex items-center justify-center cursor-pointer text-sm leading-none transition-colors duration-150">−</button>
-                <div className="w-8 flex items-center justify-center bg-nier-100 border-y border-nier-150 text-xs select-none tabular-nums">
-                    {value || '—'}
-                </div>
-                <button onClick={() => step(1)} className="w-6 bg-nier-150/60 hover:bg-nier-150 flex items-center justify-center cursor-pointer text-sm leading-none transition-colors duration-150">+</button>
+        <div className="flex flex-col gap-1 pt-2">
+            <div className="flex items-baseline justify-between gap-2">
+                <span className={`text-[10px] uppercase tracking-wide tabular-nums ${
+                    selection ? 'text-nier-text-dark' : 'text-nier-text-dark/40'
+                }`}>
+                    {readout}
+                </span>
+                {selection && (
+                    <button
+                        onClick={() => { setAnchor(null); onClear(); }}
+                        aria-label="Clear this range"
+                        className="text-sm leading-none cursor-pointer text-nier-text-dark/50 hover:text-nier-text-dark transition-colors duration-150"
+                    >×</button>
+                )}
+            </div>
+
+            <div
+                className="flex gap-px h-5"
+                onMouseLeave={() => setHovered(null)}
+            >
+                {cells.map((cell, index) => {
+                    const state = stateOf(index);
+                    return (
+                        <button
+                            key={cell.key}
+                            title={cell.title}
+                            aria-label={cell.title}
+                            aria-pressed={state === 'filled'}
+                            onClick={() => press(index)}
+                            onMouseEnter={() => setHovered(index)}
+                            onFocus={() => setHovered(index)}
+                            className={`flex-1 min-w-0 cursor-pointer transition-colors duration-100 ${
+                                state === 'filled'
+                                    ? 'bg-nier-dark'
+                                    : state === 'preview'
+                                        ? 'bg-nier-dark/40 border border-nier-dark'
+                                        : 'border border-nier-text-dark/35 hover:bg-nier-150'
+                            }`}
+                        />
+                    );
+                })}
+            </div>
+
+            <div className="flex justify-between text-[9px] uppercase tracking-wide text-nier-text-dark/35">
+                <span>{ticks[0]}</span>
+                <span>{ticks[1]}</span>
             </div>
         </div>
     );
 };
-
-/** A `from → to` pair of dates, as two lines rather than a row of inputs. */
-const DateRange = ({ value, onChange }: {
-    value: { start: string; end: string };
-    onChange: (field: 'start' | 'end', next: string) => void;
-}) => (
-    <div className="flex flex-col gap-1">
-        {([['start', 'From'], ['end', 'To']] as const).map(([field, label]) => (
-            <div key={field} className="flex items-center gap-2">
-                <span className="text-[10px] uppercase tracking-wide text-nier-text-dark/50 w-7 flex-shrink-0">{label}</span>
-                <input
-                    type="date"
-                    value={value[field]}
-                    onChange={e => onChange(field, e.target.value)}
-                    className="flex-1 min-w-0 bg-nier-100 border border-nier-150 px-1.5 py-0.5 text-[11px] focus:outline focus:border-nier-dark"
-                />
-            </div>
-        ))}
-    </div>
-);
 
 const Review = () => {
     const location = useLocation();
@@ -353,9 +430,6 @@ const Review = () => {
         setFilteredPosts(shelved);
     }
 
-    if (!category) return null;
-
-    
     useEffect(()=>{
         clearFilters();
         setFilters((prev) => ({
@@ -375,8 +449,9 @@ const Review = () => {
     // Category comes from the URL in plural form; the `type` on a Review is
     // singular (see CONTEXT.md).
     const posts = useMemo(() => {
-        const type = category.toString().endsWith('s') ? category.slice(0, -1) : category;
-        return reviews.filter((review: any) => review.type === type);
+        if (!category) return [];
+        const type = category.endsWith('s') ? category.slice(0, -1) : category;
+        return reviews.filter(review => review.type === type);
     }, [reviews, category]);
 
     // A shelf is finished work (ADR-0004), and it is what every number on this
@@ -405,6 +480,69 @@ const Review = () => {
         }
         return counts;
     }, [genreOptions, filteredPosts]);
+
+    // The decades the shelf actually covers, not a fixed span — a Category
+    // whose oldest thing is from 1994 has no business offering the 1930s.
+    const decades = useMemo(() => {
+        const years = shelved
+            .map(review => Number(toIsoDate(review.release_date ?? '')?.slice(0, 4)))
+            .filter(year => Number.isFinite(year) && year > 0);
+        if (years.length === 0) return [];
+        const first = Math.floor(Math.min(...years) / 10) * 10;
+        const last = Math.floor(Math.max(...years) / 10) * 10;
+        return Array.from({ length: (last - first) / 10 + 1 }, (_, i) => first + i * 10);
+    }, [shelved]);
+
+    // Every year between the first and last finish, gaps included: a track
+    // that skipped an empty year would put two non-adjacent years side by
+    // side and let a span silently cover something it doesn't show.
+    const finishYears = useMemo(() => {
+        const years = shelved
+            .map(review => Number(review.date_completed?.trim().slice(0, 4)))
+            .filter(year => Number.isFinite(year) && year > 0);
+        if (years.length === 0) return [];
+        const first = Math.min(...years);
+        return Array.from({ length: Math.max(...years) - first + 1 }, (_, i) => first + i);
+    }, [shelved]);
+
+    // A span reads back off the filters rather than being held twice. The
+    // filters are what actually narrows the shelf, so anything that sets them
+    // — a `?genre=` link today, a saved view later — shows up on the tracks
+    // without needing to know they exist.
+    const spanOf = (from: string, to: string, indexOf: (value: string) => number) => {
+        if (!from || !to) return null;
+        const min = indexOf(from);
+        const max = indexOf(to);
+        return min < 0 || max < 0 ? null : { min, max };
+    };
+
+    const ratingSpan = spanOf(
+        filters.ratingRange.min,
+        filters.ratingRange.max,
+        value => Math.round(parseFloat(value) / RATING_STEP),
+    );
+
+    const releasedSpan = spanOf(
+        filters.dateReleasedRange.start,
+        filters.dateReleasedRange.end,
+        value => decades.indexOf(Math.floor(Number(value.slice(0, 4)) / 10) * 10),
+    );
+
+    const finishedSpan = spanOf(
+        filters.dateCompletedRange.start,
+        filters.dateCompletedRange.end,
+        value => finishYears.indexOf(Number(value.slice(0, 4))),
+    );
+
+    /** Both bounds at once: a track sets a span, never a single end. */
+    const setRange = (field: 'ratingRange' | 'dateReleasedRange' | 'dateCompletedRange',
+                      bounds: [string, string]) =>
+        setFilters(prev => ({
+            ...prev,
+            [field]: field === 'ratingRange'
+                ? { ...prev.ratingRange, min: bounds[0], max: bounds[1] }
+                : { ...prev[field], start: bounds[0], end: bounds[1] },
+        }));
 
     const toggleGenre = (genre: string) =>
         handleFieldChange(
@@ -438,6 +576,12 @@ const Review = () => {
         filters.dateCompletedRange.start, filters.dateReleasedRange.end])
 
 
+
+    // Below every hook, not above half of them. React counts hooks by call
+    // order, so a `return` in the middle of the list makes that order depend
+    // on the URL — which is what seven rules-of-hooks errors in this file were
+    // pointing at. Nothing above this line reads `category` without guarding.
+    if (!category) return null;
 
     const renderContent = () => {
         if (loading) return (
@@ -477,35 +621,71 @@ const Review = () => {
                 </Group>
 
                 <Group title="Rating">
-                    <div className="flex flex-col gap-1.5 pt-2">
-                        {(['min', 'max'] as const).map(bound => (
-                            <Stepper
-                                key={bound}
-                                label={bound}
-                                value={filters.ratingRange[bound]}
-                                onChange={next => handleNestedFieldChange('ratingRange', bound, next)}
-                            />
-                        ))}
-                    </div>
+                    <Track
+                        cells={RATING_CELLS}
+                        selection={ratingSpan}
+                        ticks={['0', `${RATING_MAX}`]}
+                        readout={ratingSpan
+                            ? ratingSpan.min === ratingSpan.max
+                                ? `${(ratingSpan.min * RATING_STEP).toFixed(1)} ★`
+                                : `${(ratingSpan.min * RATING_STEP).toFixed(1)} — ${(ratingSpan.max * RATING_STEP).toFixed(1)} ★`
+                            : 'Any rating'}
+                        onChange={span => setRange('ratingRange', [
+                            `${span.min * RATING_STEP}`,
+                            `${span.max * RATING_STEP}`,
+                        ])}
+                        onClear={() => setRange('ratingRange', ['', ''])}
+                    />
                 </Group>
 
-                <Group title="Released">
-                    <div className="pt-2">
-                        <DateRange
-                            value={filters.dateReleasedRange}
-                            onChange={(field, next) => handleNestedFieldChange('dateReleasedRange', field, next)}
+                {/* Absent on a shelf with nothing dated on it — a track with
+                    no domain is a control that cannot narrow anything. */}
+                {decades.length > 0 && (
+                    <Group title="Released">
+                        <Track
+                            cells={decades.map(decade => ({ key: `${decade}`, title: `${decade}s` }))}
+                            selection={releasedSpan}
+                            ticks={[`${decades[0]}s`, `${decades[decades.length - 1]}s`]}
+                            readout={releasedSpan
+                                ? releasedSpan.min === releasedSpan.max
+                                    ? `${decades[releasedSpan.min]}s`
+                                    : `${decades[releasedSpan.min]}s — ${decades[releasedSpan.max]}s`
+                                : 'Any decade'}
+                            // A decade is a span, so its cell covers the whole
+                            // of it: the first day of the one to the last day
+                            // of the other.
+                            onChange={span => setRange('dateReleasedRange', [
+                                `${decades[span.min]}-01-01`,
+                                `${decades[span.max] + 9}-12-31`,
+                            ])}
+                            onClear={() => setRange('dateReleasedRange', ['', ''])}
                         />
-                    </div>
-                </Group>
+                    </Group>
+                )}
 
-                <Group title="Finished">
-                    <div className="pt-2">
-                        <DateRange
-                            value={filters.dateCompletedRange}
-                            onChange={(field, next) => handleNestedFieldChange('dateCompletedRange', field, next)}
+                {/* Only once there is more than one year to choose between.
+                    Everything on the shelf having been finished in the same
+                    year makes this a control that cannot change the answer,
+                    and it comes back on its own when that stops being true. */}
+                {finishYears.length > 1 && (
+                    <Group title="Finished">
+                        <Track
+                            cells={finishYears.map(year => ({ key: `${year}`, title: `${year}` }))}
+                            selection={finishedSpan}
+                            ticks={[`${finishYears[0]}`, `${finishYears[finishYears.length - 1]}`]}
+                            readout={finishedSpan
+                                ? finishedSpan.min === finishedSpan.max
+                                    ? `${finishYears[finishedSpan.min]}`
+                                    : `${finishYears[finishedSpan.min]} — ${finishYears[finishedSpan.max]}`
+                                : 'Any year'}
+                            onChange={span => setRange('dateCompletedRange', [
+                                `${finishYears[span.min]}-01-01`,
+                                `${finishYears[span.max]}-12-31`,
+                            ])}
+                            onClear={() => setRange('dateCompletedRange', ['', ''])}
                         />
-                    </div>
-                </Group>
+                    </Group>
+                )}
 
                 {/* Only there when there is something to undo. A permanent
                     Clear on an unfiltered shelf is a control that does
