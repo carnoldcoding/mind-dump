@@ -100,7 +100,12 @@ describe("a Review on a Category shelf", () => {
         await showShelf();
         await screen.findByText("Nioh");
 
-        expect(screen.getByText(/9/)).toBeDefined();
+        // Scoped to the card: the panel has numbers of its own now — the genre
+        // rows carry match counts and the status column carries shelf totals —
+        // so a page-wide search for a digit is no longer one element. What
+        // this asserts, that the line is there with no filter active, is
+        // unchanged.
+        expect(card("Nioh").textContent).toContain("9");
     });
 
     it("opens the Review at its own address", async () => {
