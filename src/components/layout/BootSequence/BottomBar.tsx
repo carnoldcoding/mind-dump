@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useStageState } from '../../../context/BootSequenceContext';
-import { useReviews, isUnfinished } from '../../../store/reviews';
+import { useReviews } from '../../../store/reviews';
+import { readoutsFor } from '../../../utils/readouts';
 
 /**
  * The page footer: a band along the bottom of the viewport, bordered along its
@@ -11,37 +12,18 @@ import { useReviews, isUnfinished } from '../../../store/reviews';
  * left-to-right direction.
  *
  * It used to hold nothing at all, and was hidden from assistive technology on
- * that basis. It now carries the site's readouts, so it is content: permanent
- * chrome saying where the collection stands, on every page.
+ * that basis. It now carries the site's readouts, so it is content — a real
+ * landmark, saying where the collection stands, on every page.
  *
  * The -scale-y-100 flip is scoped to the border strip alone. It used to sit on
  * the whole bar — harmless while the bar was empty, and upside-down the moment
  * anything was put in it.
  */
-
-const currentYear = () => new Date().getFullYear();
-
 const BottomBar = () => {
   const { active, animating } = useStageState('borders');
   const { reviews } = useReviews();
 
-  // Every figure is derived from Reviews already in the store: nothing is
-  // entered, nothing is stored, and so nothing can be out of date.
-  const stats = useMemo(() => {
-    const finished = reviews.filter(r => r.status === 'done');
-    const rated = finished.filter(r => typeof r.rating === 'number' && r.rating > 0);
-    const year = `${currentYear()}`;
-
-    return {
-      inProgress: reviews.filter(r => r.status === 'active').length,
-      queued: reviews.filter(r => r.status === 'todo').length,
-      unfinished: reviews.filter(isUnfinished).length,
-      finishedThisYear: finished.filter(r => r.date_completed?.startsWith(year)).length,
-      averageRating: rated.length
-        ? (rated.reduce((total, r) => total + (r.rating ?? 0), 0) / rated.length).toFixed(1)
-        : null,
-    };
-  }, [reviews]);
+  const readouts = useMemo(() => readoutsFor(reviews), [reviews]);
 
   if (!active) return null;
 
@@ -49,8 +31,9 @@ const BottomBar = () => {
     // bottom-0, not an offset: the border strip's own reserved padding holds
     // the line and the pattern, so lifting it off the viewport edge only
     // opened a gap of bare page background underneath it.
-    <div
+    <footer
       className={`fixed bottom-0 left-0 w-screen z-50 ${animating ? 'nier-boot-border-wipe-reverse' : ''}`}
+      aria-label="Collection status"
     >
       {/* The class puts the line and pattern along its own bottom edge; the
           flip brings them to the top, so they read as the footer's top border
@@ -63,16 +46,23 @@ const BottomBar = () => {
         <div className="max-w-7xl mx-auto px-4 h-8 flex items-center gap-x-5 overflow-hidden">
           {/* Entries drop rather than wrap as the viewport narrows, so the
               band keeps its single-line height on a phone. */}
-          <Readout label="In Prog" value={stats.inProgress} />
-          <Readout label="Queued" value={stats.queued} />
-          <Readout label="Backlog" value={stats.unfinished} className="hidden sm:flex" />
-          <Readout label={`Done ${currentYear()}`} value={stats.finishedThisYear} className="hidden sm:flex" />
-          {stats.averageRating && (
-            <Readout label="Avg" value={stats.averageRating} className="hidden md:flex" />
+          <Readout label="In Progress" value={readouts.inProgress} />
+          <Readout label="Queued" value={readouts.queued} />
+          <Readout
+            label={`Finished ${new Date().getFullYear()}`}
+            value={readouts.finishedThisYear}
+            className="hidden sm:flex"
+          />
+          {readouts.averageRating !== null && (
+            <Readout
+              label="Avg Rating"
+              value={readouts.averageRating.toFixed(1)}
+              className="hidden md:flex"
+            />
           )}
         </div>
       </div>
-    </div>
+    </footer>
   );
 };
 

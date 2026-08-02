@@ -28,6 +28,10 @@ const GROUPS = [
     { type: "book", label: "BOOKS", icon: bookLight },
 ] as const;
 
+// Stable per Review: focus stays in the input while the arrow keys move the
+// highlight, so the active option can only be announced by id.
+const optionId = (review: Review) => `search-result-${review._id}`;
+
 // Status is a three-value lifecycle (CONTEXT.md); these are the words for it
 // on this surface. Anything unrecognised shows itself rather than nothing.
 const STATUS_LABEL: Record<string, string> = {
@@ -118,6 +122,8 @@ export const SearchPrompt = () => {
             <button
                 onClick={open}
                 aria-label="Open search"
+                aria-expanded={false}
+                aria-controls="search-results"
                 title="Search (Cmd/Ctrl+K)"
                 className="flex items-center gap-2 px-2 py-1 cursor-pointer text-nier-text-dark/60 hover:text-nier-text-dark transition-colors"
             >
@@ -128,12 +134,17 @@ export const SearchPrompt = () => {
     }
 
     return (
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-1 min-w-0" role="search">
             <span aria-hidden="true" className="text-lg leading-none text-nier-text-dark">&gt;</span>
             <input
                 ref={inputRef}
                 type="text"
                 aria-label="Search Reviews"
+                role="combobox"
+                aria-expanded={Boolean(query)}
+                aria-controls="search-results"
+                aria-autocomplete="list"
+                aria-activedescendant={flat[highlighted] ? optionId(flat[highlighted]) : undefined}
                 value={query}
                 onChange={event => setQuery(event.target.value)}
                 className="flex-1 min-w-0 bg-transparent border-b border-nier-dark/40 focus:border-nier-dark focus:outline-none py-1 uppercase tracking-wide text-nier-text-dark"
@@ -149,7 +160,8 @@ export const SearchPrompt = () => {
                 positioning parent is the bar itself. */}
             {query && (
                 <div
-                    role="region"
+                    id="search-results"
+                    role="listbox"
                     aria-label="Search results"
                     className="absolute left-0 right-0 top-full bg-nier-100 border-t border-nier-dark/30 shadow-[0_4px_0_0] shadow-nier-shadow max-h-[60vh] overflow-y-auto z-50"
                 >
@@ -161,14 +173,16 @@ export const SearchPrompt = () => {
                                     <h2 className="text-sm uppercase tracking-wide">{group.label}</h2>
                                 </div>
 
-                                <ul className="flex flex-col" aria-label={group.label}>
+                                <ul className="flex flex-col" role="group" aria-label={group.label}>
                                     {group.results.map(review => {
                                         const isHighlighted = flat[highlighted]?._id === review._id;
                                         return (
-                                            <li key={`${review.type}-${review.slug}`}>
+                                            <li key={`${review.type}-${review.slug}`} role="none">
                                                 <button
+                                                    id={optionId(review)}
+                                                    role="option"
+                                                    aria-selected={isHighlighted}
                                                     onClick={() => openResult(review)}
-                                                    aria-current={isHighlighted ? "true" : undefined}
                                                     className={`w-full flex gap-3 items-center px-2 py-1.5 cursor-pointer text-left ${
                                                         isHighlighted ? 'bg-nier-dark' : 'hover:bg-nier-150/60'
                                                     }`}

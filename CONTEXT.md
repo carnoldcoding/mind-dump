@@ -36,7 +36,7 @@ Title lookup across every Category and every Status, opened from anywhere as a p
 _Avoid_: Find, Filter, Query
 
 **Readout**:
-A figure shown in the footer band — how much is in progress, queued, unfinished, finished this year, and the average rating. Always derived from Reviews already loaded, never stored and never entered, so a readout cannot be out of date. The footer carries them on every page.
+A figure shown in the footer band — how much is in progress, how much is queued, how much was finished this year, and the average rating of finished work. Always derived from Reviews already loaded, never stored and never entered, so a readout cannot be out of date. The footer carries them on every page.
 _Avoid_: stat, metric, score — nothing here is scored or tracked against a target.
 
 **Mod**:

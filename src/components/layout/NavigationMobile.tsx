@@ -16,39 +16,43 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
     return (
         <>
-        {/* Sits in the bar's solid upper band, clear of the line and pattern
-            strip along its bottom edge. h-11/w-11 is both a real tap target
-            and big enough to hold the text-4xl glyph it used to overflow. */}
-        <button
-                onClick={onClose}
-                aria-label={isOpen ? 'Close menu' : 'Open menu'}
-                aria-expanded={isOpen}
-                className="fixed top-2 right-4 z-101 text-nier-text-dark h-11 w-11 text-4xl leading-none flex items-center justify-center"
-            >
-            {isOpen ? '×' : '☰'}
-        </button>
-        {/* Seated in the bar rather than pinned over it. The bar is the
-            positioning parent, so the results panel hangs off the bar's
-            bottom edge exactly as it does on the desktop. */}
-        <div className="fixed top-0 left-0 right-16 h-20 z-101 flex items-center px-4 pointer-events-none">
-            <div className="pointer-events-auto flex-1 min-w-0">
-                <SearchPrompt />
+        {/* The bar itself, and the only fixed element up here: it holds the
+            prompt and the menu control as its own children, so they sit in it
+            rather than over it, and the results panel hangs off its real
+            bottom edge instead of off a coincidentally-matching height.
+
+            h-20 lives here rather than on .nier-dot-pattern because the bottom
+            bar wears that class too and wants no body at all. Of these 5rem
+            the bottom 1.75px + 1.25rem is line and pattern, leaving the row
+            above room to sit clear of them. */}
+        <header className={`nier-dot-pattern fixed top-0 left-0 w-screen h-20 bg-nier-50 z-101 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}>
+            <div className="flex items-center gap-2 h-[calc(5rem-1.25rem-1.75px)] px-4">
+                {/* Yields the row to the drawer rather than painting over it:
+                    an expanded prompt spanning the bar would otherwise sit on
+                    top of the menu the owner just opened. */}
+                {!isOpen && (
+                    <div className="flex-1 min-w-0">
+                        <SearchPrompt />
+                    </div>
+                )}
+
+                <button
+                    onClick={onClose}
+                    aria-label={isOpen ? 'Close menu' : 'Open menu'}
+                    aria-expanded={isOpen}
+                    className="ml-auto text-nier-text-dark h-11 w-11 text-4xl leading-none flex items-center justify-center flex-shrink-0"
+                >
+                    {isOpen ? '×' : '☰'}
+                </button>
             </div>
-        </div>
-        <div className="fixed top-0 right-0 w-full z-99 relative">
-            {/* h-20 lives here rather than on .nier-dot-pattern because the
-                bottom bar wears that class too and wants no body at all. Of
-                these 5rem the bottom 1.75px + 1.25rem is line and pattern,
-                leaving the hamburger above room to sit clear of them. */}
-            <div className={`nier-dot-pattern fixed top-0 w-screen h-20 bg-nier-50 z-40 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}></div>
-        </div>
+        </header>
         {/* Reserves what the fixed bar covers — keep in step with the bar. */}
         <div className="h-20"></div>
         
 
         <nav className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-dvh p
             transition-all ease-in-out duration-300 overflow-hidden
-            shadow-[-3px_5px_0_0] shadow-nier-shadow pt-15 z-100 ${isOpen ? 'w-60 p-5' : 'w-0 p0'}`}>
+            shadow-[-3px_5px_0_0] shadow-nier-shadow pt-24 z-100 ${isOpen ? 'w-60 p-5' : 'w-0 p0'}`}>
             {visibleNavItems.map(item => {
                 const isActive =
                 location.pathname === item.path ||

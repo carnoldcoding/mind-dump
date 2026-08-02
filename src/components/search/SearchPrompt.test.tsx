@@ -89,7 +89,7 @@ const type = async (value: string) => {
 // The prompt is open when its field exists; the results are their own
 // labelled region hanging off the bar.
 const promptIsOpen = () => screen.queryByLabelText("Search Reviews") !== null;
-const results = () => screen.getByRole("region", { name: "Search results" });
+const results = () => screen.getByRole("listbox", { name: "Search results" });
 
 beforeEach(() => {
     vi.stubEnv("VITE_DISABLE_ANIMATIONS", "true");
@@ -221,7 +221,7 @@ describe("results", () => {
         // Not an empty panel — no panel. The results are a consequence of a
         // query, so with no query there is nothing hanging off the bar.
         // (Reviews are visible on the page behind, which is not this.)
-        expect(screen.queryByRole("region", { name: "Search results" })).toBeNull();
+        expect(screen.queryByRole("listbox", { name: "Search results" })).toBeNull();
     });
 
     it("groups matches by Category", async () => {
@@ -229,8 +229,8 @@ describe("results", () => {
         await openSearch();
         await type("n");
 
-        expect(within(within(results()).getByRole("list", { name: "GAMES" })).getByText("Nioh")).toBeDefined();
-        expect(within(within(results()).getByRole("list", { name: "CINEMA" })).getByText("Inception")).toBeDefined();
+        expect(within(within(results()).getByRole("group", { name: "GAMES" })).getByText("Nioh")).toBeDefined();
+        expect(within(within(results()).getByRole("group", { name: "CINEMA" })).getByText("Inception")).toBeDefined();
     });
 
     // The behaviour change from the old page, which excluded `todo` and so
@@ -289,12 +289,12 @@ describe("keyboard navigation", () => {
 
         // Ranked: "Nioh" then "Nioh 3", both games.
         const firstResult = within(results()).getByText("Nioh").closest("button")!;
-        expect(firstResult.getAttribute("aria-current")).toBe("true");
+        expect(firstResult.getAttribute("aria-selected")).toBe("true");
 
         fireEvent.keyDown(window, { key: "ArrowDown" });
         await act(async () => {});
 
-        expect(within(results()).getByText("Nioh 3").closest("button")!.getAttribute("aria-current")).toBe("true");
+        expect(within(results()).getByText("Nioh 3").closest("button")!.getAttribute("aria-selected")).toBe("true");
 
         fireEvent.keyDown(window, { key: "Enter" });
         await act(async () => {});
@@ -312,7 +312,7 @@ describe("keyboard navigation", () => {
         await act(async () => {});
 
         // Up from the first lands on the last.
-        expect(within(results()).getByText("Nioh 3").closest("button")!.getAttribute("aria-current")).toBe("true");
+        expect(within(results()).getByText("Nioh 3").closest("button")!.getAttribute("aria-selected")).toBe("true");
     });
 
     // Opening a result replaces the ?search entry rather than popping it and
@@ -359,25 +359,24 @@ describe("the footer readouts", () => {
 
         await renderApp();
 
-        const footer = screen.getByText("In Prog").closest("div")!;
-        expect(footer.textContent).toContain("In Prog2");
+        const footer = screen.getByRole("contentinfo", { name: "Collection status" });
+        expect(footer.textContent).toContain("In Progress2");
         expect(footer.textContent).toContain("Queued1");
     });
 
-    it("counts the Backlog as everything unfinished", async () => {
+    it("counts only what was finished this calendar year", async () => {
         mocked.getReviews.mockResolvedValue([
-            review("A", { status: "active" }),
-            review("C", { status: "todo" }),
-            review("D", { status: "done", date_completed: "2026-05-18" }),
+            review("A", { status: "done", date_completed: "2026-01-05" }),
+            review("B", { status: "done", date_completed: "2026-11-30" }),
+            review("C", { status: "done", date_completed: "2025-12-31" }),
         ]);
 
         await renderApp();
 
-        // Started and unstarted together, per ADR-0004.
-        expect(screen.getByText("Backlog").parentElement?.textContent).toContain("2");
+        expect(screen.getByText(/Finished 2026/).parentElement?.textContent).toContain("2");
     });
 
-    it("averages only the Reviews that carry a rating", async () => {
+    it("averages the finished Reviews", async () => {
         mocked.getReviews.mockResolvedValue([
             review("A", { status: "done", rating: 8, date_completed: "2026-01-01" }),
             review("B", { status: "done", rating: 10, date_completed: "2026-01-02" }),
@@ -386,15 +385,15 @@ describe("the footer readouts", () => {
 
         await renderApp();
 
-        expect(screen.getByText("Avg").parentElement?.textContent).toContain("9.0");
+        expect(screen.getByText("Avg Rating").parentElement?.textContent).toContain("9.0");
     });
 
-    it("says nothing about an average when nothing is rated", async () => {
+    it("says nothing about an average when nothing is finished", async () => {
         mocked.getReviews.mockResolvedValue([review("C", { status: "todo", rating: 0 })]);
 
         await renderApp();
 
-        expect(screen.queryByText("Avg")).toBeNull();
+        expect(screen.queryByText("Avg Rating")).toBeNull();
     });
 
     it("is present on more than the front page", async () => {
@@ -402,6 +401,6 @@ describe("the footer readouts", () => {
 
         await renderApp(["/games"]);
 
-        expect(screen.getByText("In Prog")).toBeDefined();
+        expect(screen.getByText("In Progress")).toBeDefined();
     });
 });
