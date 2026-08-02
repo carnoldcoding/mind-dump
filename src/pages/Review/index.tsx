@@ -215,7 +215,7 @@ const Review = () => {
                 nier-enter) makes an element establish its own
                 stacking context, which would trap a -z-1 child instead of
                 letting it render behind the whole article as intended. */}
-            <div className={`absolute w-full h-[42rem] mt-5 bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}></div>
+            <div className={`absolute w-full h-[42rem] mt-5 bg-nier-shadow top-0.5 left-0.5 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}></div>
             <article className={`bg-nier-100 mt-5 relative flex flex-col h-[42rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 className={`text-nier-text-dark text-xl uppercase ${titleReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
@@ -382,7 +382,7 @@ const Review = () => {
                                 </div>
                             </div>
 
-                            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
+                            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-0.5 left-0.5" />
                         </div>
                     )}
 

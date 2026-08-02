@@ -1,3 +1,21 @@
+/*
+    The footer is fixed, so nothing in the page reserves space for it and page
+    content slides underneath — at short viewports it looked as though the
+    footer had eaten the bottom of the panel.
+
+    Derived from the footer's own parts rather than a guessed number:
+      1.75px  the border rule
+      1.25rem the pattern strip
+      2rem    the readout row (h-8)
+    Both the footer and the page's bottom padding read this, so they cannot
+    drift apart.
+*/
+:root {
+    /* The readout row. BottomBar renders at exactly this height. */
+    --nier-footer-row: 2rem;
+    --nier-footer-height: calc(var(--nier-footer-row) + 1.25rem + 1.75px);
+}
+
 
 @layer utilities {
     .nier-dot-pattern {
@@ -133,6 +151,12 @@
   }
 }
 @layer utilities {
+    /* Clears the fixed footer, plus room to breathe so a panel's shadow and
+       the footer's rule are not touching. */
+    .nier-page-bottom {
+        padding-bottom: calc(var(--nier-footer-height) + 2rem);
+    }
+
     /*
         Cover art treatment. At rest a cover is drained of its own colour and
         pushed toward the site's beige/olive ramp, so a grid of them reads as

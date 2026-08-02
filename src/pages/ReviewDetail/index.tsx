@@ -106,7 +106,7 @@ const ReviewDetail = () => {
             <PageHeader name={data.title} />
 
             <div key={slug} className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
-                <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`} />
+                <aside className={`absolute w-full h-full bg-nier-shadow top-0.5 left-0.5 ${contentActive ? enterClass('nier-enter') : 'invisible'}`} />
 
                 <article className={`bg-nier-100 relative flex flex-col md:h-[34rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}>
 

@@ -72,7 +72,7 @@ const LayoutContent = () => {
             :
             <Navigation /> }
 
-              <main className={`max-w-7xl mx-auto px-2 py-8 ${!contentReady ? 'invisible' : ''}`}>
+              <main className={`max-w-7xl mx-auto px-2 pt-8 nier-page-bottom ${!contentReady ? 'invisible' : ''}`}>
                   <ScrollRestoration />
                   <Outlet />
               </main>
