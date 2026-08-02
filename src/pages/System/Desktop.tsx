@@ -63,7 +63,7 @@ const Desktop = () => {
             <article
                 ref={panelRef}
                 style={maxHeight ? { maxHeight } : undefined}
-                className={`nier-panel-frame bg-nier-50 relative border border-nier-150 flex flex-col ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
+                className={`nier-panel-frame bg-nier-50 relative border border-nier-150 flex flex-col h-[42rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
             >
 
                 {/* Title bar */}
@@ -101,9 +101,6 @@ const Desktop = () => {
                             </button>
                         ))}
                     </div>
-
-                    {/* Spacer keeps desktop area tall when no window is open */}
-                    {!openApp && <div className="h-48" />}
 
                     {/* Open window — higher stacking context, only mounted when needed */}
                     {openApp === "backlog" && (
