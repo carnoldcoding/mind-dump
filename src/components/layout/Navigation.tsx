@@ -2,13 +2,9 @@ import { Link, useLocation } from "react-router";
 import { navItems } from "./NavItems";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
 import { useStageState } from "../../context/BootSequenceContext";
-import searchIcon from '../../assets/search.svg';
+import { SearchPrompt } from '../search/SearchPrompt';
 
-type NavigationProps = {
-    onOpenSearch: () => void;
-};
-
-const Navigation = ({ onOpenSearch }: NavigationProps) => {
+const Navigation = () => {
     const location = useLocation();
     const { trusted } = useTrustedDevice();
     const { active: borderActive, animating: borderAnimating } = useStageState('borders');
@@ -70,20 +66,12 @@ const Navigation = ({ onOpenSearch }: NavigationProps) => {
                     </Link>
                 )
                 })}
-                {/* Not a tab — it goes nowhere. Deliberately narrower and
-                    quieter than the destinations beside it, so the bar doesn't
-                    read as having gained a fifth place to be (ADR-0003). */}
-                <button
-                    onClick={onOpenSearch}
-                    aria-label="Open search"
-                    title="Search (Cmd/Ctrl+K)"
-                    className={`relative z-0 flex items-center gap-1 px-2 pt-2 pb-8 self-start cursor-pointer transition-all duration-300 ease-in-out ${!navActive ? 'invisible' : ''}`}
-                >
-                    <div className="absolute inset-x-0 top-0 -z-10 h-10 bg-nier-150/40 transition-all duration-300 ease-in-out" />
-                    <div className="bg-nier-text-dark h-5.5 w-5.5 flex items-center justify-center p-0.5">
-                        <img src={searchIcon} alt="" className="w-full h-full object-contain" />
-                    </div>
-                </button>
+                {/* On the bar's own rule rather than beside it: this is
+                    the one control here that goes nowhere, and it reads as
+                    part of the chrome instead of as a sixth destination. */}
+                <div className={`flex items-center self-start pt-2 pb-8 min-w-0 ${!navActive ? 'invisible' : ''}`}>
+                    <SearchPrompt />
+                </div>
             </nav>
             <div className="h-5"></div>
         </>

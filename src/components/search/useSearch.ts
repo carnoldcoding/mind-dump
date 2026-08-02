@@ -1,8 +1,10 @@
-// Search's open state lives in the URL, which is unlike every other modal in
-// this codebase — all of those are local state behind `createPortal`. The
-// reason is iOS: the back-swipe is the dismiss gesture on a phone, and a modal
-// outside history turns that gesture into "leave the page entirely". See
-// ADR-0003.
+// Search's open state lives in the URL, which is unlike every other mode in
+// this codebase — the rest are local state behind `createPortal`. The reason
+// is iOS: the back-swipe is the dismiss gesture on a phone, and a mode outside
+// history turns that gesture into "leave the page entirely". See ADR-0003.
+//
+// That rationale is unchanged by Search being a prompt in the bar rather than
+// an overlay: back should collapse the prompt, not leave the page.
 
 import { useCallback, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -22,7 +24,7 @@ const withoutSearchParam = (search: string): string => {
     return rest ? `?${rest}` : "";
 };
 
-export function useSearchModal() {
+export function useSearch() {
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -62,7 +64,7 @@ export function useSearchModal() {
     return { isOpen, open, close };
 }
 
-/** Cmd/Ctrl+K from anywhere. Split out so Layout can own the one listener. */
+/** Cmd/Ctrl+K from anywhere. Owned by the prompt, which is always mounted. */
 export function useSearchShortcut(open: () => void) {
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {

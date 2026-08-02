@@ -7,8 +7,6 @@ import CornerLines from './BootSequence/CornerLines';
 import TriangleGrid from './BootSequence/TriangleGrid';
 import BottomBar from './BootSequence/BottomBar';
 import { BootSequenceProvider, useStageState } from '../../context/BootSequenceContext';
-import { SearchModal } from '../search/SearchModal';
-import { useSearchModal, useSearchShortcut } from '../search/useSearchModal';
 import type { BreakpointType } from '../../types';
 
 const Layout = () => {
@@ -28,10 +26,6 @@ const LayoutContent = () => {
   // stage the header decode waits for, so the body doesn't render ahead of
   // the background/nav construction finishing.
   const { active: contentReady } = useStageState('header');
-  // Search is available from every page, so it is mounted here rather than by
-  // any one of them. Its open state is the URL's, not this component's.
-  const { isOpen: searchOpen, open: openSearch, close: closeSearch } = useSearchModal();
-  useSearchShortcut(openSearch);
 
   const getBreakpoint = (width: number) : BreakpointType => {
     if (width < 768) return 'mobile';
@@ -73,17 +67,15 @@ const LayoutContent = () => {
             <NavigationMobile
               isOpen={isSidebarOpen}
               onClose={toggleSidebar}
-              onOpenSearch={openSearch}
             />
             :
-            <Navigation onOpenSearch={openSearch} /> }
+            <Navigation /> }
 
               <main className={`max-w-7xl mx-auto px-2 py-8 ${!contentReady ? 'invisible' : ''}`}>
                   <ScrollRestoration />
                   <Outlet />
               </main>
           </div>
-          {searchOpen && <SearchModal onClose={closeSearch} />}
       </div>
   );
 };

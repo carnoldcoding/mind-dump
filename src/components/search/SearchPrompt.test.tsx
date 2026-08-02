@@ -86,7 +86,10 @@ const type = async (value: string) => {
     await act(async () => {});
 };
 
-const modal = () => screen.getByRole("dialog", { name: "Search" });
+// The prompt is open when its field exists; the results are their own
+// labelled region hanging off the bar.
+const promptIsOpen = () => screen.queryByLabelText("Search Reviews") !== null;
+const results = () => screen.getByRole("region", { name: "Search results" });
 
 beforeEach(() => {
     vi.stubEnv("VITE_DISABLE_ANIMATIONS", "true");
@@ -121,7 +124,7 @@ describe("opening and closing Search", () => {
 
         await openSearch();
 
-        expect(modal()).toBeDefined();
+        expect(promptIsOpen()).toBe(true);
         expect(url()).toBe("/?search");
     });
 
@@ -131,13 +134,13 @@ describe("opening and closing Search", () => {
         fireEvent.keyDown(window, { key: "k", ctrlKey: true });
         await act(async () => {});
 
-        expect(modal()).toBeDefined();
+        expect(promptIsOpen()).toBe(true);
     });
 
-    it("opens already showing the modal at a URL that carries the param", async () => {
+    it("opens already showing the prompt at a URL that carries the param", async () => {
         await renderApp(["/?search"]);
 
-        expect(modal()).toBeDefined();
+        expect(promptIsOpen()).toBe(true);
     });
 
     it("closes on Escape and takes the param back off the URL", async () => {
@@ -147,18 +150,18 @@ describe("opening and closing Search", () => {
         fireEvent.keyDown(window, { key: "Escape" });
         await act(async () => {});
 
-        expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+        expect(promptIsOpen()).toBe(false);
         expect(url()).toBe("/");
     });
 
-    it("closes from its own button", async () => {
+    it("closes from its own control", async () => {
         await renderApp();
         await openSearch();
 
         fireEvent.click(screen.getByLabelText("Close search"));
         await act(async () => {});
 
-        expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+        expect(promptIsOpen()).toBe(false);
     });
 
     // Story 21: closing should leave no entry behind, so pressing back again
@@ -180,11 +183,11 @@ describe("opening and closing Search", () => {
     it("closes when the browser goes back", async () => {
         const { router } = await renderApp();
         await openSearch();
-        expect(modal()).toBeDefined();
+        expect(promptIsOpen()).toBe(true);
 
         await act(async () => { router.navigate(-1); });
 
-        expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+        expect(promptIsOpen()).toBe(false);
         expect(url()).toBe("/");
     });
 
@@ -215,7 +218,10 @@ describe("results", () => {
         await renderApp();
         await openSearch();
 
-        expect(within(modal()).queryByText("Nioh")).toBeNull();
+        // Not an empty panel — no panel. The results are a consequence of a
+        // query, so with no query there is nothing hanging off the bar.
+        // (Reviews are visible on the page behind, which is not this.)
+        expect(screen.queryByRole("region", { name: "Search results" })).toBeNull();
     });
 
     it("groups matches by Category", async () => {
@@ -223,8 +229,8 @@ describe("results", () => {
         await openSearch();
         await type("n");
 
-        expect(within(within(modal()).getByRole("list", { name: "GAMES" })).getByText("Nioh")).toBeDefined();
-        expect(within(within(modal()).getByRole("list", { name: "CINEMA" })).getByText("Inception")).toBeDefined();
+        expect(within(within(results()).getByRole("list", { name: "GAMES" })).getByText("Nioh")).toBeDefined();
+        expect(within(within(results()).getByRole("list", { name: "CINEMA" })).getByText("Inception")).toBeDefined();
     });
 
     // The behaviour change from the old page, which excluded `todo` and so
@@ -234,7 +240,7 @@ describe("results", () => {
         await openSearch();
         await type("nioh 3");
 
-        const result = within(modal()).getByText("Nioh 3").closest("button");
+        const result = within(results()).getByText("Nioh 3").closest("button");
         expect(result).not.toBeNull();
         expect(result!.textContent).toContain("QUEUED");
     });
@@ -244,8 +250,8 @@ describe("results", () => {
         await openSearch();
         await type("i");
 
-        expect(within(modal()).getByText("Nioh").closest("button")!.textContent).toContain("FINISHED");
-        expect(within(modal()).getByText("Inception").closest("button")!.textContent).toContain("IN PROGRESS");
+        expect(within(results()).getByText("Nioh").closest("button")!.textContent).toContain("FINISHED");
+        expect(within(results()).getByText("Inception").closest("button")!.textContent).toContain("IN PROGRESS");
     });
 
     // "Nothing matches" is a claim about the collection, and answering
@@ -259,11 +265,11 @@ describe("results", () => {
         await openSearch();
         await type("nioh");
 
-        expect(within(modal()).queryByText(/nothing matches/i)).toBeNull();
+        expect(within(results()).queryByText(/nothing matches/i)).toBeNull();
 
         await act(async () => { release([review("Nioh")]); });
 
-        expect(within(modal()).getByText("Nioh")).toBeDefined();
+        expect(within(results()).getByText("Nioh")).toBeDefined();
     });
 
     it("says so when nothing matches", async () => {
@@ -271,7 +277,7 @@ describe("results", () => {
         await openSearch();
         await type("zzzz");
 
-        expect(within(modal()).getByText(/nothing matches/i)).toBeDefined();
+        expect(within(results()).getByText(/nothing matches/i)).toBeDefined();
     });
 });
 
@@ -282,19 +288,19 @@ describe("keyboard navigation", () => {
         await type("nioh");
 
         // Ranked: "Nioh" then "Nioh 3", both games.
-        const firstResult = within(modal()).getByText("Nioh").closest("button")!;
+        const firstResult = within(results()).getByText("Nioh").closest("button")!;
         expect(firstResult.getAttribute("aria-current")).toBe("true");
 
         fireEvent.keyDown(window, { key: "ArrowDown" });
         await act(async () => {});
 
-        expect(within(modal()).getByText("Nioh 3").closest("button")!.getAttribute("aria-current")).toBe("true");
+        expect(within(results()).getByText("Nioh 3").closest("button")!.getAttribute("aria-current")).toBe("true");
 
         fireEvent.keyDown(window, { key: "Enter" });
         await act(async () => {});
 
         expect(url()).toBe("/games/nioh-3");
-        expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+        expect(promptIsOpen()).toBe(false);
     });
 
     it("wraps the highlight around the ends of the list", async () => {
@@ -306,7 +312,7 @@ describe("keyboard navigation", () => {
         await act(async () => {});
 
         // Up from the first lands on the last.
-        expect(within(modal()).getByText("Nioh 3").closest("button")!.getAttribute("aria-current")).toBe("true");
+        expect(within(results()).getByText("Nioh 3").closest("button")!.getAttribute("aria-current")).toBe("true");
     });
 
     // Opening a result replaces the ?search entry rather than popping it and
@@ -325,7 +331,7 @@ describe("keyboard navigation", () => {
         await act(async () => { router.navigate(-1); });
 
         expect(url()).toBe("/");
-        expect(screen.queryByRole("dialog", { name: "Search" })).toBeNull();
+        expect(promptIsOpen()).toBe(false);
     });
 
     it("opens a result when it is clicked", async () => {
@@ -333,9 +339,69 @@ describe("keyboard navigation", () => {
         await openSearch();
         await type("hobbit");
 
-        fireEvent.click(within(modal()).getByText("The Hobbit"));
+        fireEvent.click(within(results()).getByText("The Hobbit"));
         await act(async () => {});
 
         expect(url()).toBe("/books/the-hobbit");
+    });
+});
+
+// The footer stopped being decorative chrome and became content. It is
+// exercised here because this suite already renders the whole app shell.
+describe("the footer readouts", () => {
+    it("counts what is in progress and what is queued", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("A", { status: "active" }),
+            review("B", { status: "active" }),
+            review("C", { status: "todo" }),
+            review("D", { status: "done", date_completed: "2026-05-18" }),
+        ]);
+
+        await renderApp();
+
+        const footer = screen.getByText("In Prog").closest("div")!;
+        expect(footer.textContent).toContain("In Prog2");
+        expect(footer.textContent).toContain("Queued1");
+    });
+
+    it("counts the Backlog as everything unfinished", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("A", { status: "active" }),
+            review("C", { status: "todo" }),
+            review("D", { status: "done", date_completed: "2026-05-18" }),
+        ]);
+
+        await renderApp();
+
+        // Started and unstarted together, per ADR-0004.
+        expect(screen.getByText("Backlog").parentElement?.textContent).toContain("2");
+    });
+
+    it("averages only the Reviews that carry a rating", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("A", { status: "done", rating: 8, date_completed: "2026-01-01" }),
+            review("B", { status: "done", rating: 10, date_completed: "2026-01-02" }),
+            review("C", { status: "todo", rating: 0 }),
+        ]);
+
+        await renderApp();
+
+        expect(screen.getByText("Avg").parentElement?.textContent).toContain("9.0");
+    });
+
+    it("says nothing about an average when nothing is rated", async () => {
+        mocked.getReviews.mockResolvedValue([review("C", { status: "todo", rating: 0 })]);
+
+        await renderApp();
+
+        expect(screen.queryByText("Avg")).toBeNull();
+    });
+
+    it("is present on more than the front page", async () => {
+        mocked.getReviews.mockResolvedValue([review("A", { status: "active" })]);
+
+        await renderApp(["/games"]);
+
+        expect(screen.getByText("In Prog")).toBeDefined();
     });
 });
