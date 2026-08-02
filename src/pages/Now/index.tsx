@@ -8,10 +8,10 @@
 //   ┌ CURRENT VIEW PANEL ─────────────────────────────────────────────┐
 //   │ ▌ IN PROGRESS            ┌──────────┐  SHELVES                  │
 //   │ ▌ ▪ Nioh 3      PLAYING  │  cover   │  ───────────────────────  │
-//   │ ▐ ▪ Frieren    WATCHING  └──────────┘        underway / all     │
-//   │ ▌ UP NEXT                NIOH 3          game          2 / 14   │
-//   │ ▌ ▪ Hollow Knight  GAME  category  game  cinema        1 / 9    │
-//   │ ▌ RECENTLY FINISHED      status    done  book          0 / 6    │
+//   │ ▐ ▪ Frieren    WATCHING  └──────────┘    underway / backlog     │
+//   │ ▌ UP NEXT                NIOH 3          game           2 / 5   │
+//   │ ▌ ▪ Hollow Knight  GAME  category  game  cinema         1 / 3   │
+//   │ ▌ RECENTLY FINISHED      status    done  book           0 / 6   │
 //   │ ▌ ▪ Doom           9 ★   released  2017  □□□□□□□□□□□            │
 //   │ ▌                                             NO ERROR          │
 //   │ ▌ Nioh 3 — in progress                 ↕ SELECT     ◉ OPEN      │
@@ -30,7 +30,7 @@ import { useMemo, useState } from "react";
 import PageHeader from "../../components/common/PageHeader";
 import Loader from "../../components/common/Loader";
 import { ReviewCover } from "../../components/review/ReviewCover";
-import { useReviews, type Review } from "../../store/reviews";
+import { useReviews, isUnfinished, type Review } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
 import { reviewPath } from "../../utils/categories";
 import { useStageState } from "../../context/BootSequenceContext";
@@ -191,7 +191,13 @@ const Detail = ({ review }: { review: Review }) => {
  * status panel — same four numbers, same `readoutsFor`, on every page, as a
  * landmark. Repeating them here would put the same figures on screen twice.
  * So this answers what the footer cannot, which is what those totals are made
- * of: how much of each Category is underway, against how much of it exists.
+ * of: how much of each Category is underway, against how much of it is still
+ * unfinished.
+ *
+ * Underway is a subset of the Backlog rather than a separate pile — starting
+ * something does not take it off the list of things not yet done (ADR-0004) —
+ * so the left number is always part of the right one, and `n / n` means a
+ * Category with nothing left to start.
  */
 const Shelves = ({ reviews }: { reviews: Review[] }) => {
     const shelves = ACTIVITIES.map(activity => {
@@ -199,7 +205,7 @@ const Shelves = ({ reviews }: { reviews: Review[] }) => {
         return {
             label: activity.type,
             active: all.filter(review => review.status === 'active').length,
-            total: all.length,
+            backlog: all.filter(isUnfinished).length,
         };
     });
 
@@ -209,11 +215,11 @@ const Shelves = ({ reviews }: { reviews: Review[] }) => {
                 Shelves
             </h2>
             <p className="text-[10px] uppercase tracking-widest text-nier-text-dark/40 px-2 pt-2 text-right">
-                Underway / All
+                Underway / Backlog
             </p>
             <div className="flex flex-col gap-1 px-2 py-2">
                 {shelves.map(shelf => (
-                    <Stat key={shelf.label} label={shelf.label} value={`${shelf.active} / ${shelf.total}`} />
+                    <Stat key={shelf.label} label={shelf.label} value={`${shelf.active} / ${shelf.backlog}`} />
                 ))}
             </div>
             {/* The reference's row of empty slots. Furniture, and honest about
