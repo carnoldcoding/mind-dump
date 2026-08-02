@@ -2,7 +2,7 @@ import PageHeader from "../../components/common/PageHeader";
 import { ReviewCard } from "../../components/review/ReviewCard";
 import { useEffect, useMemo, useState } from "react";
 import Loader from "../../components/common/Loader";
-import { useReviews } from "../../store/reviews";
+import { useReviews, type Review as ReviewRecord } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
 import { toIsoDate } from "../System/components/ReviewPanel/migration";
 import { rankByTitle } from "../../utils/rankByTitle";
@@ -20,7 +20,7 @@ import { enterClass } from "../../utils/animations";
 // The Category shelf's contextual line. A finished Review has a rating and a
 // date it was finished; anything missing is simply left out rather than shown
 // as a blank or a zero.
-const shelfLine = (review: { rating?: number; date_completed?: string }): string =>
+const shelfLine = (review: Pick<ReviewRecord, "rating" | "date_completed">): string =>
     [
         review.rating != null ? `${review.rating} ★` : null,
         review.date_completed?.trim() || null,
@@ -403,7 +403,7 @@ const Review = () => {
                                         and when it happened. Shown always,
                                         rather than only while a filter is
                                         active as it used to be. */}
-                                    <ReviewCard review={post} line={shelfLine(post)} />
+                                    <ReviewCard review={post} caption={shelfLine(post)} />
                                     </div>
                                 ))
                             : <h3>No Matching Reviews</h3>

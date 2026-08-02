@@ -175,18 +175,39 @@
         pointer-events: none;
     }
 
-    /* Hover and focus resolve to the same state on purpose: navigating by
-       keyboard should not be a dimmer experience than navigating by mouse. */
-    .group:hover .nier-cover-img,
-    .group:focus-visible .nier-cover-img,
-    .group:focus-within .nier-cover-img {
+    /* Scoped to the card, not to Tailwind's bare `.group` marker: that class
+       is used on containers all over the app, and a global `.group:hover`
+       selector here would bloom covers from any of them.
+
+       `:focus-visible` and not `:focus-within` — the latter fires on a mouse
+       click too, which left the bloom stuck on after clicking a card. */
+    .nier-card:hover .nier-cover-img,
+    .nier-card:focus-visible .nier-cover-img {
         filter: none;
     }
 
-    .group:hover .nier-cover-tint,
-    .group:focus-visible .nier-cover-tint,
-    .group:focus-within .nier-cover-tint {
+    .nier-card:hover .nier-cover-tint,
+    .nier-card:focus-visible .nier-cover-tint {
         opacity: 0;
+    }
+
+    /* The facts worth having to hand and worth nothing on forty cards at
+       once: revealed with the bloom, over the foot of the cover so that
+       showing them cannot reflow the grid. */
+    .nier-cover-detail {
+        position: absolute;
+        inset-inline: 0;
+        bottom: 0;
+        padding: 0.35rem 0.5rem;
+        background-color: color-mix(in srgb, var(--color-nier-dark) 82%, transparent);
+        opacity: 0;
+        transition: opacity 220ms ease;
+        pointer-events: none;
+    }
+
+    .nier-card:hover .nier-cover-detail,
+    .nier-card:focus-visible .nier-cover-detail {
+        opacity: 1;
     }
 
     /* The cover a Review has before anything has been looked up for it.
@@ -206,7 +227,8 @@
 
     @media (prefers-reduced-motion: reduce) {
         .nier-cover-img,
-        .nier-cover-tint {
+        .nier-cover-tint,
+        .nier-cover-detail {
             transition-duration: 1ms;
         }
     }

@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { makeReview } from "../../test/reviews";
+import type { Review as ReviewRecord } from "../../store/reviews";
 import { render, screen, cleanup, act } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import Review from "./index";
@@ -12,29 +14,22 @@ vi.mock("../../api/backend", () => ({
 
 const mocked = vi.mocked(backend);
 
-const review = (title: string, over: Record<string, unknown> = {}) => ({
-    _id: `id-${title}`,
-    slug: title.toLowerCase().replace(/\s+/g, "-"),
-    title,
-    type: "game",
-    status: "done",
-    rating: 8,
-    genres: [],
-    review: {},
-    image_path: "https://cdn.example/cover.png",
-    release_date: "2017-02-07",
-    date_completed: "2026-05-18",
-    ...over,
-});
+const review = (title: string, over: Partial<ReviewRecord> = {}) =>
+    makeReview(title, {
+        image_path: "https://cdn.example/cover.png",
+        release_date: "2017-02-07",
+        date_completed: "2026-05-18",
+        ...over,
+    });
 
 const flushBoot = async () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(4000); });
 };
 
-const showShelf = async (category = "games") => {
+const showShelf = async () => {
     const result = render(
         <BootSequenceProvider>
-            <MemoryRouter initialEntries={[`/${category}`]}>
+            <MemoryRouter initialEntries={["/games"]}>
                 <Routes>
                     <Route path="/:category" element={<Review />} />
                 </Routes>
@@ -45,8 +40,9 @@ const showShelf = async (category = "games") => {
     return result;
 };
 
-// A card is a link wrapping everything it shows, so the link is the card.
-const card = (title: string) => screen.getByText(title).closest("a")!;
+// A card is a link wrapping everything it shows, so the link is the card —
+// and finding it by its accessible name is what a screen reader does too.
+const card = (title: string) => screen.getByRole("link", { name: new RegExp(title, "i") });
 
 beforeEach(() => {
     vi.stubEnv("VITE_DISABLE_ANIMATIONS", "true");
@@ -116,15 +112,46 @@ describe("a Review on a Category shelf", () => {
         expect(card("Nioh").getAttribute("href")).toBe("/games/nioh");
     });
 
-    it("is reachable by keyboard", async () => {
+    it("is reachable by keyboard, under a name that says what it is", async () => {
         mocked.getReviews.mockResolvedValue([review("Nioh")]);
 
         await showShelf();
         await screen.findByText("Nioh");
 
-        // An anchor with an href is focusable; asserting the tag is what keeps
-        // a future refactor to <div onClick> from silently breaking keyboard use.
+        // Found by role and name above, so this asserts the accessible name
+        // exists at all; the tag check keeps a refactor to <div onClick> from
+        // silently costing keyboard users the card.
         expect(card("Nioh").tagName).toBe("A");
+        expect(card("Nioh")).toHaveProperty("href");
+    });
+
+    // Story 7: detail is worth having to hand and worth nothing on forty
+    // cards at once, so it rides along with the card and is revealed on focus.
+    it("carries its year, creator and genre for focus to reveal", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Nioh", {
+                release_date: "2017-02-07",
+                creator: "Team Ninja",
+                genres: ["Action RPG", "Soulslike"],
+            }),
+        ]);
+
+        await showShelf();
+        await screen.findByText("Nioh");
+
+        expect(card("Nioh").textContent).toContain("2017");
+        expect(card("Nioh").textContent).toContain("Team Ninja");
+        expect(card("Nioh").textContent).toContain("Action RPG");
+    });
+
+    it("leaves out detail it does not have", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Nioh", { release_date: "", creator: "", genres: [] }),
+        ]);
+
+        await showShelf();
+
+        expect(await screen.findByText("Nioh")).toBeDefined();
     });
 });
 
@@ -142,7 +169,7 @@ describe("a Review with no cover yet", () => {
         expect(card("Silent Hill 2").querySelector("img")).toBeNull();
     });
 
-    it("leaves out the line rather than showing a blank or a zero", async () => {
+    it("leaves out the caption rather than showing a blank or a zero", async () => {
         mocked.getReviews.mockResolvedValue([
             review("Silent Hill 2", { rating: undefined, date_completed: "" }),
         ]);
@@ -150,6 +177,9 @@ describe("a Review with no cover yet", () => {
         await showShelf();
         await screen.findByText("Silent Hill 2");
 
-        expect(card("Silent Hill 2").textContent?.trim()).toBe("Silent Hill 2");
+        // Nothing where the rating and finish date would be — not a bare
+        // star, not a zero, not an empty separator.
+        expect(card("Silent Hill 2").textContent).not.toContain("★");
+        expect(card("Silent Hill 2").textContent).not.toContain("·");
     });
 });

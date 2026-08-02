@@ -23,6 +23,8 @@ export type Review = {
     genres?: string[];
     image_path?: string;
     release_date?: string;
+    /** Whoever made it — a game's developer, a film's director, a book's author. */
+    creator?: string;
     /** Canonical completion date: ISO `YYYY-MM-DD`, empty until finished. */
     date_completed?: string;
     [key: string]: unknown;

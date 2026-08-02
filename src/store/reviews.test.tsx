@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { makeReview } from "../test/reviews";
+import type { Review as ReviewRecord } from "./reviews";
 import { render, screen, cleanup, waitFor, act, fireEvent } from "@testing-library/react";
 // From "react-router", not "react-router-dom": the pages import their hooks
 // from the former, and the two resolve to separate module instances here — a
@@ -31,20 +33,7 @@ vi.mock("../api/backend", () => ({
 
 const mocked = vi.mocked(backend);
 
-const review = (title: string, over: Record<string, unknown> = {}) => ({
-    _id: `id-${title}`,
-    slug: title.toLowerCase().replace(/\s+/g, "-"),
-    title,
-    type: "game",
-    status: "done",
-    rating: 8,
-    genres: [],
-    review: {},
-    image_path: "",
-    release_date: "01/01/1999",
-    date_completed: "2026-01-01",
-    ...over,
-});
+const review = (title: string, over: Partial<ReviewRecord> = {}) => makeReview(title, over);
 
 // Boot gates every public page's first reveal behind a chain of timers. Fake
 // timers plus a flush gets a test past it without waiting three real seconds.

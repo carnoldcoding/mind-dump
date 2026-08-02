@@ -57,9 +57,10 @@ Dates were the exception and no longer are: both `date_completed` and `release_d
 ## Directory conventions
 
 - `src/pages/<PageName>/index.tsx` — one folder per route, with page-specific components in a nested `components/` folder
-- `src/components/common/` — generic form/UI primitives (TextField, Button, Card, etc.), used across pages
+- `src/components/common/` — generic form/UI primitives (TextField, Button, SelectField, etc.), used across pages. Nothing domain-shaped lives here
 - `src/components/layout/` — site chrome (Navigation, Layout, background animations)
 - `src/pages/System/components/` — one folder per System window, mounted by the registry in `Desktop.tsx`: `Backlog/` (capture, grooming, Status transitions), `ReviewPanel/` + `ReviewsWindow.tsx` (finished work — critique, rating, media), `Body/`. The lifecycle boundary between the first two is [ADR-0004](./adr/0004-backlog-as-unfinished-work.md)
+- `src/components/review/` — how a Review is drawn. `ReviewCard` is the single card used by every surface that shows Reviews; it takes a Review and the one caption that surface wants, and nothing else. A feature folder rather than a `common/` primitive because it knows the domain: it reads Review fields and links to a Review's own address
 - `src/components/search/` — the Search modal and the hook holding its open state. A feature folder rather than a `common/` primitive: Search is one thing with one home, mounted by `Layout` so it is reachable from every page, and its hook is meaningless away from it ([ADR-0003](./adr/0003-search-as-modal-now-as-front-page.md))
 - `src/types/index.ts` — shared TypeScript types (see drift note above)
 - `src/store/` — zustand stores for domain data (`reviews.ts`). Surfaces read through the exported hook and never fetch for themselves
