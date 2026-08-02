@@ -101,12 +101,15 @@ const Now = () => {
             <PageHeader name="NOW" />
             <div className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
                 <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-                <article className={`relative bg-nier-100 flex flex-col ${enterClass('nier-enter')} ${contentReady ? '' : 'invisible'}`}>
+                {/* A fixed height with the scrolling inside it, like the
+                    Category shelf: the panel behaves as a window on a screen
+                    rather than as a document that grows the page. */}
+                <article className={`relative bg-nier-100 flex flex-col h-[42rem] ${enterClass('nier-enter')} ${contentReady ? '' : 'invisible'}`}>
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 className={`text-nier-text-dark text-xl uppercase ${contentReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
                     </div>
 
-                    <div className="p-4 flex flex-col gap-8">
+                    <div className="p-4 flex flex-col gap-8 overflow-y-auto flex-1">
 
                         <Band title="In Progress">
                             {inProgress.length === 0
