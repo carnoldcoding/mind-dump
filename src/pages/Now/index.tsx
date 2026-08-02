@@ -16,6 +16,7 @@ import { byNewestCompleted } from "../../utils/completionDate";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
 import { useDecodeText } from "../../hooks/useDecodeText";
+import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { enterClass } from "../../utils/animations";
 
 // How many queued Reviews the up-next rail shows before handing off to the
@@ -66,6 +67,7 @@ const Now = () => {
     const panelStage = usePanelReveal(contentActive);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
     const decodedPanelTitle = useDecodeText('NOW VIEW PANEL', contentReady);
+    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     // Flattened rather than kept in per-activity sections: the heroes lay out
     // as one grid so everything in progress is in view at once, and each card
@@ -101,10 +103,14 @@ const Now = () => {
             <PageHeader name="NOW" />
             <div className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
                 <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-                {/* A fixed height with the scrolling inside it, like the
-                    Category shelf: the panel behaves as a window on a screen
-                    rather than as a document that grows the page. */}
-                <article className={`relative bg-nier-100 flex flex-col h-[42rem] ${enterClass('nier-enter')} ${contentReady ? '' : 'invisible'}`}>
+                {/* A window, not a document: the frame takes the room that is
+                    actually there and the contents scroll inside it. 42rem is
+                    the most it wants; the cap is what is left below it. */}
+                <article
+                    ref={panelRef}
+                    style={maxHeight ? { maxHeight } : undefined}
+                    className={`relative bg-nier-100 flex flex-col h-[42rem] ${enterClass('nier-enter')} ${contentReady ? '' : 'invisible'}`}
+                >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 className={`text-nier-text-dark text-xl uppercase ${contentReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
                     </div>
