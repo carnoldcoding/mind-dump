@@ -139,11 +139,26 @@ const ReviewDetail = () => {
                     {/* ── Body ───────────────────────────────────────── */}
                     <div className={`p-4 flex flex-col md:flex-row gap-4 flex-1 min-h-0 ${contentReady ? '' : 'invisible'}`}>
 
-                        {/* Cover image */}
-                        <div
-                            className="h-56 md:h-full md:w-72 bg-cover bg-center bg-nier-150 flex-shrink-0"
-                            style={data.image_path ? { backgroundImage: `url(${data.image_path})` } : {}}
-                        />
+                        {/* Cover image. Wears the same treatment as every card
+                            on the site, so arriving here from one does not
+                            feel like leaving the site — tinted to the palette,
+                            resolving to full colour on hover or focus.
+
+                            `nier-card` is the state hook the treatment keys
+                            off; here it is a plain container rather than a
+                            link, since this page *is* the Review. */}
+                        <div className="nier-card h-56 md:h-full md:w-72 flex-shrink-0" tabIndex={0}>
+                            <div className="nier-cover nier-cover-fill">
+                                {data.image_path
+                                    ? (
+                                        <>
+                                            <img src={data.image_path} alt="" className="nier-cover-img" />
+                                            <div className="nier-cover-tint" />
+                                        </>
+                                    )
+                                    : <div className="nier-cover-empty" aria-hidden="true" />}
+                            </div>
+                        </div>
 
                         {/* Right column */}
                         <div className="flex-1 flex flex-col gap-3 min-h-0">

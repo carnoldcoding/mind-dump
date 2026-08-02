@@ -121,6 +121,35 @@ describe("started and unstarted", () => {
     });
 });
 
+describe("the shelf as a grid", () => {
+    it("shows every unfinished Review as a card with its cover", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Nioh 3", { status: "todo", image_path: "https://cdn.example/n.png" }),
+        ]);
+
+        await showBacklog();
+        await screen.findByText("Nioh 3");
+
+        const card = screen.getByRole("link", { name: /Nioh 3/ });
+        expect(card.querySelector("img")?.getAttribute("src")).toBe("https://cdn.example/n.png");
+    });
+
+    it("counts what is on each shelf", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("A", { status: "todo" }),
+            review("B", { status: "todo" }),
+            review("C", { status: "active" }),
+        ]);
+
+        await showBacklog();
+        await screen.findByText("A");
+
+        // "Started" is a substring of "Not Started", so both need anchoring.
+        expect(screen.getByRole("heading", { name: /^Not Started/ }).textContent).toContain("2");
+        expect(screen.getByRole("heading", { name: /^Started/ }).textContent).toContain("1");
+    });
+});
+
 describe("narrowing to one Category", () => {
     it("shows only that Category once filtered", async () => {
         mocked.getReviews.mockResolvedValue([

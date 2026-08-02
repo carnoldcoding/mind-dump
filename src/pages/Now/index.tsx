@@ -1,20 +1,25 @@
 // The front page: what is being played, watched and read at this moment. The
 // only view that answers "where am I" rather than "what do I have" — see
 // CONTEXT.md and ADR-0003.
+//
+// In progress leads as heroes, because it is the reason the page exists. What
+// is queued and what was finished follow as rails: present, browsable, and
+// visibly secondary. On a phone the heroes sit two to a row so that a typical
+// two or three things on the go are all above the fold.
 
 import { useMemo } from "react";
 import { Link } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
 import Loader from "../../components/common/Loader";
+import { ReviewCard } from "../../components/review/ReviewCard";
 import { useReviews, type Review } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
-import { reviewPath } from "../../utils/categories";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
 import { enterClass } from "../../utils/animations";
 
-// How many queued Reviews the up-next band shows before handing off to the
-// Backlog, and how many finished ones the last band carries.
+// How many queued Reviews the up-next rail shows before handing off to the
+// Backlog, and how many finished ones the last rail carries.
 const UP_NEXT_CAP = 5;
 const RECENTLY_FINISHED_CAP = 5;
 
@@ -26,25 +31,6 @@ const ACTIVITIES = [
     { type: "cinema", label: "WATCHING" },
     { type: "book", label: "READING" },
 ] as const;
-
-const ReviewRow = ({ review, trailing }: { review: Review; trailing?: string }) => (
-    <li>
-        <Link
-            to={reviewPath(review)}
-            className="flex items-center gap-3 px-3 py-2 bg-nier-150/60 hover:bg-nier-dark group transition-colors duration-150"
-        >
-            <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light flex-shrink-0" />
-            <p className="text-lg leading-none flex-1 truncate group-hover:text-nier-text-light">
-                {review.title}
-            </p>
-            {trailing && (
-                <span className="text-sm text-nier-text-dark/50 group-hover:text-nier-text-light/70 flex-shrink-0">
-                    {trailing}
-                </span>
-            )}
-        </Link>
-    </li>
-);
 
 const Band = ({ title, action, children }: {
     title: string;
@@ -60,26 +46,42 @@ const Band = ({ title, action, children }: {
     </section>
 );
 
+/**
+ * A sideways rail. Scrolls rather than wrapping, so a secondary band can never
+ * grow tall enough to take the page over from the heroes above it.
+ */
+const Rail = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <ul
+        aria-label={label}
+        className="flex gap-3 overflow-x-auto pb-1 [&>li]:w-32 [&>li]:sm:w-36 [&>li]:flex-shrink-0"
+    >
+        {children}
+    </ul>
+);
+
+// Absence, not falsiness — a finished thing rated 0 was rated.
+const finishedCaption = (review: Review): string | undefined =>
+    review.rating != null ? `${review.rating} ★` : undefined;
+
 const Now = () => {
     const { reviews, loading, error } = useReviews();
     const { active: contentActive } = useStageState('header');
     const panelStage = usePanelReveal(contentActive);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
 
+    // Flattened rather than kept in per-activity sections: the heroes lay out
+    // as one grid so everything in progress is in view at once, and each card
+    // says which activity it is rather than sitting under a heading.
     const inProgress = useMemo(
-        () => ACTIVITIES
-            .map(activity => ({
-                ...activity,
-                items: reviews.filter(r => r.status === 'active' && r.type === activity.type),
-            }))
-            .filter(activity => activity.items.length > 0),
+        () => ACTIVITIES.flatMap(activity =>
+            reviews
+                .filter(r => r.status === 'active' && r.type === activity.type)
+                .map(review => ({ review, label: activity.label })),
+        ),
         [reviews],
     );
 
-    const queued = useMemo(
-        () => reviews.filter(r => r.status === 'todo'),
-        [reviews],
-    );
+    const queued = useMemo(() => reviews.filter(r => r.status === 'todo'), [reviews]);
 
     const recentlyFinished = useMemo(
         () => reviews
@@ -107,20 +109,20 @@ const Now = () => {
                         {inProgress.length === 0
                             ? <p className="text-nier-text-dark/50">Nothing in progress.</p>
                             : (
-                                <div className="flex flex-col gap-5">
-                                    {inProgress.map(activity => (
-                                        <div key={activity.type} className="flex flex-col gap-2">
-                                            <h3 className="text-sm uppercase tracking-wide text-nier-text-dark/50">
-                                                {activity.label}
-                                            </h3>
-                                            <ul className="flex flex-col gap-2" aria-label={activity.label}>
-                                                {activity.items.map(review => (
-                                                    <ReviewRow key={`${review.type}-${review.slug}`} review={review} />
-                                                ))}
-                                            </ul>
-                                        </div>
+                                // Two per row on a phone, so a typical two or
+                                // three fit above the fold (story 3). Wider
+                                // screens give each hero more room rather than
+                                // more neighbours.
+                                <ul
+                                    aria-label="In Progress"
+                                    className="grid grid-cols-2 lg:grid-cols-3 gap-4"
+                                >
+                                    {inProgress.map(({ review, label }) => (
+                                        <li key={`${review.type}-${review.slug}`}>
+                                            <ReviewCard review={review} caption={label} />
+                                        </li>
                                     ))}
-                                </div>
+                                </ul>
                             )}
                     </Band>
 
@@ -130,10 +132,7 @@ const Now = () => {
                             // A doorway rather than a dead end (story 5), and
                             // one that stays open when nothing is queued: the
                             // Backlog is everything unfinished, so it holds the
-                            // in-progress Reviews too (CONTEXT.md). Counting
-                            // the queued ones here would understate it.
-                            //
-                            // The Backlog route itself is issue #20.
+                            // in-progress Reviews too (CONTEXT.md).
                             <Link to="/backlog" className="text-sm uppercase tracking-wide underline hover:text-nier-text-dark/60">
                                 Open Backlog
                             </Link>
@@ -142,11 +141,13 @@ const Now = () => {
                         {queued.length === 0
                             ? <p className="text-nier-text-dark/50">Nothing queued up.</p>
                             : (
-                                <ul className="flex flex-col gap-2" aria-label="Up Next">
+                                <Rail label="Up Next">
                                     {queued.slice(0, UP_NEXT_CAP).map(review => (
-                                        <ReviewRow key={`${review.type}-${review.slug}`} review={review} />
+                                        <li key={`${review.type}-${review.slug}`}>
+                                            <ReviewCard review={review} caption="Queued" />
+                                        </li>
                                     ))}
-                                </ul>
+                                </Rail>
                             )}
                     </Band>
 
@@ -154,17 +155,13 @@ const Now = () => {
                         {recentlyFinished.length === 0
                             ? <p className="text-nier-text-dark/50">Nothing finished yet.</p>
                             : (
-                                <ul className="flex flex-col gap-2" aria-label="Recently Finished">
+                                <Rail label="Recently Finished">
                                     {recentlyFinished.map(review => (
-                                        <ReviewRow
-                                            key={`${review.type}-${review.slug}`}
-                                            review={review}
-                                            // Absence, not falsiness — a
-                                            // finished thing rated 0 was rated.
-                                            trailing={review.rating != null ? `${review.rating} ★` : undefined}
-                                        />
+                                        <li key={`${review.type}-${review.slug}`}>
+                                            <ReviewCard review={review} caption={finishedCaption(review)} />
+                                        </li>
                                     ))}
-                                </ul>
+                                </Rail>
                             )}
                     </Band>
 

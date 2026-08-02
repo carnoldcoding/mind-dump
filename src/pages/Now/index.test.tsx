@@ -58,7 +58,10 @@ afterEach(() => {
 });
 
 describe("the in-progress band", () => {
-    it("shows what is being played, watched and read, grouped by activity", async () => {
+    // Each hero says what you are doing with it, rather than sitting under a
+    // heading — so playing, watching and reading still read as different
+    // activities with everything in one grid (story 2).
+    it("says what is being played, watched and read", async () => {
         mocked.getReviews.mockResolvedValue([
             review("Nioh 3", { type: "game", status: "active" }),
             review("Frieren", { type: "cinema", status: "active" }),
@@ -68,19 +71,19 @@ describe("the in-progress band", () => {
         await showNow();
         const inProgress = band("In Progress");
 
-        expect(within(within(inProgress).getByRole("list", { name: "PLAYING" })).getByText("Nioh 3")).toBeDefined();
-        expect(within(within(inProgress).getByRole("list", { name: "WATCHING" })).getByText("Frieren")).toBeDefined();
-        expect(within(within(inProgress).getByRole("list", { name: "READING" })).getByText("Project Hail Mary")).toBeDefined();
+        expect(within(inProgress).getByRole("link", { name: /Nioh 3/ }).textContent).toContain("PLAYING");
+        expect(within(inProgress).getByRole("link", { name: /Frieren/ }).textContent).toContain("WATCHING");
+        expect(within(inProgress).getByRole("link", { name: /Project Hail Mary/ }).textContent).toContain("READING");
     });
 
-    it("leaves out a Category with nothing in progress", async () => {
+    it("says nothing about a Category with nothing in progress", async () => {
         mocked.getReviews.mockResolvedValue([
             review("Nioh 3", { type: "game", status: "active" }),
         ]);
 
         await showNow();
 
-        expect(screen.queryByRole("list", { name: "WATCHING" })).toBeNull();
+        expect(within(band("In Progress")).queryByText("WATCHING")).toBeNull();
     });
 
     it("says so plainly when nothing is in progress", async () => {
@@ -101,6 +104,35 @@ describe("the in-progress band", () => {
         await showNow();
 
         expect(screen.getByText("Nioh 3").closest("a")?.getAttribute("href")).toBe("/games/nioh-3");
+    });
+});
+
+describe("the shape of the page", () => {
+    // Story 1: in progress is the reason the page exists, so it leads. The
+    // rails are present and visibly secondary.
+    it("puts what is in progress before what is queued or finished", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Playing Now", { status: "active" }),
+            review("Queued Thing", { status: "todo" }),
+            review("Finished Thing", { status: "done", date_completed: "2026-05-18" }),
+        ]);
+
+        await showNow();
+
+        const position = screen.getByText("Playing Now")
+            .compareDocumentPosition(screen.getByText("Queued Thing"));
+        expect(Boolean(position & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    });
+
+    it("shows every card as a card, cover and all", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Playing Now", { status: "active", image_path: "https://cdn.example/a.png" }),
+        ]);
+
+        await showNow();
+
+        const card = screen.getByRole("link", { name: /Playing Now/ });
+        expect(card.querySelector("img")?.getAttribute("src")).toBe("https://cdn.example/a.png");
     });
 });
 
@@ -172,7 +204,9 @@ describe("the recently-finished band", () => {
 
         await showNow();
 
-        expect(within(band("Recently Finished")).getByText(/9/)).toBeDefined();
+        expect(
+            within(band("Recently Finished")).getByRole("link", { name: /Doom/ }).textContent,
+        ).toContain("9 ★");
     });
 
     // Absence and zero are different things: unrated work stores a 0, and so
@@ -184,7 +218,9 @@ describe("the recently-finished band", () => {
 
         await showNow();
 
-        expect(within(band("Recently Finished")).getByText(/0/)).toBeDefined();
+        expect(
+            within(band("Recently Finished")).getByRole("link", { name: /Bad Game/ }).textContent,
+        ).toContain("0 ★");
     });
 
     it("says so plainly when nothing is finished", async () => {

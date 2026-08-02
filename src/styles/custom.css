@@ -156,6 +156,14 @@
         background-color: var(--color-nier-150);
     }
 
+    /* For places that already know the size they want — the Review detail
+       page gives its cover a fixed height, and the card's 3:4 ratio would
+       fight it. */
+    .nier-cover-fill {
+        aspect-ratio: auto;
+        height: 100%;
+    }
+
     .nier-cover-img {
         width: 100%;
         height: 100%;

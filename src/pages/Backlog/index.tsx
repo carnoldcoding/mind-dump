@@ -7,11 +7,11 @@
 // (ADR-0004). Read-only, like every public page.
 
 import { useMemo, useState } from "react";
-import { Link } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
 import Loader from "../../components/common/Loader";
+import { ReviewCard } from "../../components/review/ReviewCard";
 import { useReviews, isUnfinished, type Review } from "../../store/reviews";
-import { CATEGORIES, reviewPath } from "../../utils/categories";
+import { CATEGORIES } from "../../utils/categories";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
 import { enterClass } from "../../utils/animations";
@@ -26,21 +26,33 @@ const CATEGORY_FILTERS: { key: string | null; label: string }[] = [
     })),
 ];
 
-const BacklogRow = ({ review }: { review: Review }) => (
-    <li>
-        <Link
-            to={reviewPath(review)}
-            className="flex items-center gap-3 px-3 py-2 bg-nier-150/60 hover:bg-nier-dark group transition-colors duration-150"
+/**
+ * A shelf section. Started work leads in its own grid and is framed to say so,
+ * because the overlap with Now has to read as deliberate rather than as
+ * duplication (story 7).
+ */
+const Shelf = ({ label, items, marked = false }: {
+    label: string;
+    items: Review[];
+    marked?: boolean;
+}) => (
+    <section className="flex flex-col gap-3">
+        <h2 className="text-2xl uppercase tracking-wide">
+            {label} <span className="text-nier-text-dark/40 text-lg">· {items.length}</span>
+        </h2>
+        <ul
+            aria-label={label}
+            className={`grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 ${
+                marked ? '[&>li]:ring-1 [&>li]:ring-nier-dark/40 [&>li]:ring-offset-2 [&>li]:ring-offset-nier-100' : ''
+            }`}
         >
-            <div className="h-4 w-4 bg-nier-dark group-hover:bg-nier-text-light flex-shrink-0" />
-            <p className="text-lg leading-none flex-1 truncate group-hover:text-nier-text-light">
-                {review.title}
-            </p>
-            <span className="text-xs uppercase tracking-wide text-nier-text-dark/40 group-hover:text-nier-text-light/60 flex-shrink-0">
-                {review.type}
-            </span>
-        </Link>
-    </li>
+            {items.map(review => (
+                <li key={`${review.type}-${review.slug}`}>
+                    <ReviewCard review={review} caption={review.type} />
+                </li>
+            ))}
+        </ul>
+    </section>
 );
 
 const Backlog = () => {
@@ -98,25 +110,10 @@ const Backlog = () => {
                     ) : (
                         <>
                             {started.length > 0 && (
-                                <section className="flex flex-col gap-3">
-                                    <h2 className="text-2xl uppercase tracking-wide">Started</h2>
-                                    <ul className="flex flex-col gap-2" aria-label="Started">
-                                        {started.map(review => (
-                                            <BacklogRow key={`${review.type}-${review.slug}`} review={review} />
-                                        ))}
-                                    </ul>
-                                </section>
+                                <Shelf label="Started" items={started} marked />
                             )}
-
                             {unstarted.length > 0 && (
-                                <section className="flex flex-col gap-3">
-                                    <h2 className="text-2xl uppercase tracking-wide">Not Started</h2>
-                                    <ul className="flex flex-col gap-2" aria-label="Not Started">
-                                        {unstarted.map(review => (
-                                            <BacklogRow key={`${review.type}-${review.slug}`} review={review} />
-                                        ))}
-                                    </ul>
-                                </section>
+                                <Shelf label="Not Started" items={unstarted} />
                             )}
                         </>
                     )}
