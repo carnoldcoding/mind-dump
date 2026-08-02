@@ -5,7 +5,7 @@
 // — critique, rating, screenshots — belongs to the Reviews window, which a
 // Review reaches by being finished here.
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { backend } from "../../../../api/backend";
 import {
     useReviews,
@@ -14,22 +14,15 @@ import {
     type Review,
     type ReviewStatus,
 } from "../../../../store/reviews";
-import { CATEGORIES } from "../../../../utils/categories";
 import { todayIso } from "../../../../utils/completionDate";
-import { generateSlug } from "../../../../utils/slug";
 import { usePanelReveal, panelStageIndex } from "../../../../hooks/usePanelReveal";
 import { enterClass } from "../../../../utils/animations";
-import { TextField } from "../../../../components/common/TextField";
-import { SelectField } from "../../../../components/common/SelectField";
-import { Button } from "../../../../components/common/Button";
 import { ReviewModal } from "../ReviewPanel/ReviewModal";
+import { Capture } from "./Capture";
 
 type Props = {
     onClose: () => void;
 };
-
-// Derived, so a fourth Category never needs adding here as well.
-const CATEGORY_OPTIONS = CATEGORIES.map(c => c.type);
 
 const TYPE_ICON: Record<string, string> = {
     game: 'game-controller-sharp',
@@ -120,12 +113,6 @@ const BacklogWindow = ({ onClose }: Props) => {
     const panelStage = usePanelReveal(true);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
 
-    const [title, setTitle] = useState('');
-    const [type, setType] = useState('game');
-    const [saving, setSaving] = useState(false);
-    // A ref rather than the `saving` state: two presses in the same tick share
-    // one render's closure, so the state guard would still be false for both.
-    const inFlight = useRef(false);
     const [error, setError] = useState<string | null>(null);
     const [justFinished, setJustFinished] = useState<string | null>(null);
     const [editing, setEditing] = useState<Review | null>(null);
@@ -138,36 +125,9 @@ const BacklogWindow = ({ onClose }: Props) => {
     const started = useMemo(() => unfinished.filter(r => r.status === 'active'), [unfinished]);
     const unstarted = useMemo(() => unfinished.filter(r => r.status === 'todo'), [unfinished]);
 
-    // Story 3: knowing whether it's already in there is the question worth
-    // answering before capturing, so it's answered against the whole
-    // collection rather than only the unfinished part.
-    const slug = generateSlug(title);
-    const duplicate = slug
-        ? reviews.find(r => r.slug === slug || r.title.toLowerCase() === title.trim().toLowerCase())
-        : undefined;
-
     const openEdit = (review: Review) => {
         setEditing(review);
         setEditorOpen(true);
-    };
-
-    const capture = async () => {
-        if (inFlight.current || !title.trim()) return;
-        inFlight.current = true;
-        setSaving(true);
-        setError(null);
-        try {
-            // One Review, Status queued. Not a new kind of document, and
-            // nothing gets promoted or copied later (ADR-0004).
-            await backend.saveReview({ title: title.trim(), slug, type, status: 'todo' }, false);
-            setTitle('');
-            invalidateReviews();
-        } catch {
-            setError('Network error');
-        } finally {
-            inFlight.current = false;
-            setSaving(false);
-        }
     };
 
     const setStatus = async (review: Review, status: ReviewStatus) => {
@@ -210,45 +170,7 @@ const BacklogWindow = ({ onClose }: Props) => {
 
                 <div className={`p-4 flex flex-col gap-4 ${contentReady ? '' : 'invisible'}`}>
 
-                    {/* Capture. Stacks on narrow screens so it stays usable
-                        one-handed on the device you're holding when the
-                        thought occurs (story 20). */}
-                    <div className="relative">
-                        <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
-                        <div className="w-full bg-nier-100-lighter relative">
-                            <div className="h-7 w-full bg-nier-150 flex items-center px-2">
-                                <h3 className="text-nier-text-dark text-sm">Capture</h3>
-                            </div>
-                            <div className="p-3 flex flex-col sm:flex-row gap-3 sm:items-center">
-                                <div className="flex-1">
-                                    <TextField label="Title" value={title} onChange={setTitle} />
-                                </div>
-                                <div className="sm:w-40">
-                                    <SelectField
-                                        label="Category"
-                                        value={type}
-                                        options={CATEGORY_OPTIONS}
-                                        onChange={setType}
-                                    />
-                                </div>
-                                <div className="sm:w-32 h-12">
-                                    <Button
-                                        label={saving ? 'Saving…' : 'Capture'}
-                                        type="primary"
-                                        handleClick={capture}
-                                    />
-                                </div>
-                            </div>
-                            {/* Story 3 asks to *know*, not to be stopped —
-                                a remake and its original share a title, and
-                                both are worth having. */}
-                            {duplicate && (
-                                <p className="px-3 pb-3 text-sm text-nier-text-dark/70">
-                                    Already captured: {duplicate.title} ({duplicate.status})
-                                </p>
-                            )}
-                        </div>
-                    </div>
+                    <Capture reviews={reviews} />
 
                     {/* The handoff. Finishing something here is where it stops
                         being the Backlog's and becomes the Reviews window's —
