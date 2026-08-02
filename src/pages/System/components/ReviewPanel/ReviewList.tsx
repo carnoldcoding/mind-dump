@@ -4,7 +4,7 @@ import { ReviewGridCard } from "./ReviewGridCard"
 import { useState, useEffect, useMemo, useRef } from "react"
 import { createPortal } from "react-dom"
 import { backend } from "../../../../api/backend"
-import { useReviews, invalidateReviews } from "../../../../store/reviews"
+import { useReviews, invalidateReviews, isFinished } from "../../../../store/reviews"
 import { completedTime, byNewestCompleted, todayIso } from "../../../../utils/completionDate"
 import { rankByTitle } from "../../../../utils/rankByTitle"
 import { TextField } from "../../../../components/common/TextField"
@@ -34,8 +34,16 @@ export const ReviewList = () => {
     type SortMetric = 'rating' | 'status' | 'date';
     const activeSortRef = useRef<{ metric: SortMetric; stateValue: boolean } | null>(null);
 
-    // Default order: most recently finished first.
-    const posts = useMemo(() => [...reviews].sort(byNewestCompleted), [reviews]);
+    // Finished work only. Everything unfinished belongs to the Backlog folder,
+    // which owns capture, grooming and the Status transitions — this window is
+    // where a Review gets written up once it's done (ADR-0004).
+    //
+    // The charts above are deliberately not narrowed this way; they still read
+    // the whole collection.
+    const posts = useMemo(
+        () => reviews.filter(isFinished).sort(byNewestCompleted),
+        [reviews],
+    );
 
     const applySort = (arr: any[], metric: string, stateValue: boolean): any[] => {
         const result = [...arr];

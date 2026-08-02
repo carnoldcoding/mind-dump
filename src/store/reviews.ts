@@ -28,6 +28,22 @@ export type Review = {
     [key: string]: unknown;
 };
 
+/** A Review's place in its lifecycle. See CONTEXT.md. */
+export type ReviewStatus = "todo" | "active" | "done";
+
+/**
+ * The Backlog rule, in one place: everything not finished is on it, and a
+ * Review leaves only by being finished. Membership is derived, never stored —
+ * there is no Backlog flag on a Review (ADR-0004).
+ */
+export const isUnfinished = (review: Pick<Review, "status">): boolean =>
+    review.status === "todo" || review.status === "active";
+
+/** The other side of the same line: what the Category shelves and the System
+ *  Reviews window show. */
+export const isFinished = (review: Pick<Review, "status">): boolean =>
+    review.status === "done";
+
 type Status = "idle" | "loading" | "ready" | "error";
 
 type ReviewsStore = {

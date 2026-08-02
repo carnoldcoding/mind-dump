@@ -12,6 +12,7 @@ import { useMediaUpload } from "./useMediaUpload"
 import { NumTextField } from "../../../../components/common/NumTextField"
 import { transformKeysToSnakeCase } from "../../../../utils/helpers"
 import { todayIso } from "../../../../utils/completionDate"
+import { generateSlug } from "../../../../utils/slug"
 import { toIsoDate } from "./migration"
 import { gameGenres, movieGenres, bookGenres } from "../../../../utils/genres"
 import ModModal from "./ModModal"
@@ -63,9 +64,6 @@ const BIG_TEXT_FIELDS: Record<'game' | 'cinema' | 'book', string[]> = {
     cinema: ['story', 'cinematography', 'casting', 'sound'],
     book:   ['story', 'world', 'characters', 'writing'],
 };
-
-const generateSlug = (title: string) =>
-    title.toLowerCase().replace(/[^a-z0-9\s]/g, '').trim().replace(/\s+/g, '-');
 
 export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }: Arguments) => {
     const [type, setType]               = useState<'game' | 'cinema' | 'book'>('game');

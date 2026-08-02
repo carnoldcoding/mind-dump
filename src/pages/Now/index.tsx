@@ -115,7 +115,7 @@ const Now = () => {
                                             </h3>
                                             <ul className="flex flex-col gap-2" aria-label={activity.label}>
                                                 {activity.items.map(review => (
-                                                    <ReviewRow key={review.slug} review={review} />
+                                                    <ReviewRow key={`${review.type}-${review.slug}`} review={review} />
                                                 ))}
                                             </ul>
                                         </div>
@@ -144,7 +144,7 @@ const Now = () => {
                             : (
                                 <ul className="flex flex-col gap-2" aria-label="Up Next">
                                     {queued.slice(0, UP_NEXT_CAP).map(review => (
-                                        <ReviewRow key={review.slug} review={review} />
+                                        <ReviewRow key={`${review.type}-${review.slug}`} review={review} />
                                     ))}
                                 </ul>
                             )}
@@ -157,7 +157,7 @@ const Now = () => {
                                 <ul className="flex flex-col gap-2" aria-label="Recently Finished">
                                     {recentlyFinished.map(review => (
                                         <ReviewRow
-                                            key={review.slug}
+                                            key={`${review.type}-${review.slug}`}
                                             review={review}
                                             // Absence, not falsiness — a
                                             // finished thing rated 0 was rated.

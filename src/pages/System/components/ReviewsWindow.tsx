@@ -7,12 +7,6 @@ import { ReviewModal } from "./ReviewPanel/ReviewModal";
 import { usePanelReveal, panelStageIndex } from "../../../hooks/usePanelReveal";
 import { enterClass } from "../../../utils/animations";
 
-const TYPE_ICON: Record<string, string> = {
-    game:   'game-controller-sharp',
-    cinema: 'videocam-sharp',
-    book:   'book-sharp',
-};
-
 type Props = {
     onClose: () => void;
 };
@@ -27,15 +21,6 @@ const ReviewsWindow = ({ onClose }: Props) => {
     // each time it's opened, so no resetKey is needed either.
     const panelStage = usePanelReveal(true);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-
-    const activeReviews = reviews
-        .filter(p => p.status?.toLowerCase() === 'active')
-        .sort((a, b) => parseInt(b._id.substring(0, 8), 16) - parseInt(a._id.substring(0, 8), 16));
-
-    const openEdit = (post: any) => {
-        setEditingReview(post);
-        setModalOpen(true);
-    };
 
     return (
         <div className="relative">
@@ -55,46 +40,9 @@ const ReviewsWindow = ({ onClose }: Props) => {
                 </div>
                 <div className={`p-4 flex flex-col gap-4 ${contentReady ? '' : 'invisible'}`}>
 
-                    {/* In-progress strip */}
-                    {activeReviews.length > 0 && (
-                        <div className="relative">
-                            <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
-                            <div className="w-full bg-nier-100-lighter relative">
-                                <div className="h-7 w-full bg-nier-150 flex items-center px-2">
-                                    <h3 className="text-nier-text-dark text-sm">In Progress ({activeReviews.length})</h3>
-                                </div>
-                                <ul className="flex flex-col divide-y divide-nier-150/40">
-                                    {activeReviews.map(review => (
-                                        <li key={review._id}>
-                                            <button
-                                                onClick={() => openEdit(review)}
-                                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-nier-150/40 transition-colors cursor-pointer group"
-                                            >
-                                                <ion-icon
-                                                    name={TYPE_ICON[review.type] ?? 'document-sharp'}
-                                                    style={{ flexShrink: 0, opacity: 0.4, fontSize: '14px' }}
-                                                ></ion-icon>
-                                                <span className="text-sm uppercase tracking-wide text-nier-text-dark truncate flex-1 text-left">
-                                                    {review.title}
-                                                </span>
-                                                {review.genres?.slice(0, 2).map((g: string) => (
-                                                    <span key={g} className="text-[10px] uppercase tracking-wide text-nier-text-dark/40 hidden sm:block shrink-0">
-                                                        {g}
-                                                    </span>
-                                                ))}
-                                                <ion-icon
-                                                    name="pencil-sharp"
-                                                    style={{ flexShrink: 0, opacity: 0, fontSize: '12px' }}
-                                                    className="group-hover:opacity-40 transition-opacity"
-                                                ></ion-icon>
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        </div>
-                    )}
-
+                    {/* Charts read the whole collection, deliberately:
+                        narrowing the list below should not narrow the sense of
+                        what the collection is (story 18). */}
                     <div className="flex gap-4 relative z-1 flex-col md:flex-row">
                         <PieChart data={reviews} />
                         <BarChart data={reviews} />
