@@ -8,6 +8,7 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 import { backend } from "../api/backend";
+import { toRating } from "../utils/rating";
 
 // Loose on purpose. `src/types/index.ts` is known to drift from the shapes the
 // API actually returns (see docs/architecture.md), so this names the fields
@@ -19,6 +20,10 @@ export type Review = {
     title: string;
     type: string;
     status?: string;
+    /**
+     * A number here because `normalise` makes it one — the API sends it as a
+     * string for most Reviews. Absent means unrated; 0 means rated 0.
+     */
     rating?: number;
     genres?: string[];
     image_path?: string;
@@ -57,6 +62,24 @@ type ReviewsStore = {
     invalidate: () => Promise<void>;
 };
 
+/**
+ * The single place the API's shape is reconciled with the one the app declares.
+ *
+ * Only `rating` needs it so far, and it needs it badly: stored as a string on
+ * most records, as a number on a few, and typed here as a number throughout —
+ * so every `typeof rating === "number"` in the app was a silent filter that
+ * dropped seven Reviews in eight. Doing it here rather than at each call site
+ * means a surface added tomorrow is right without knowing any of this.
+ *
+ * Deliberately not a validator. Anything it does not understand passes through
+ * untouched, because the store's job is to hold what the API said, not to
+ * decide the API is wrong.
+ */
+const normalise = (review: Review): Review => ({
+    ...review,
+    rating: toRating(review.rating),
+});
+
 // Module-level rather than store state: neither of these is anything a
 // component should be able to render, and both have to survive the `set` calls
 // they coordinate.
@@ -76,7 +99,7 @@ export const useReviewsStore = create<ReviewsStore>((set, get) => {
         const run = (async () => {
             try {
                 const data = (await backend.getReviews()) as Review[];
-                if (mine === generation) set({ reviews: data, status: "ready" });
+                if (mine === generation) set({ reviews: data.map(normalise), status: "ready" });
             } catch {
                 if (mine === generation && initial) set({ status: "error" });
             } finally {
