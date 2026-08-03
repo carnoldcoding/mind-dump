@@ -1,4 +1,5 @@
 import { Bar } from 'react-chartjs-2';
+import { toRating } from "../../../utils/rating";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -14,10 +15,13 @@ export const BarChart = ({ data }: { data: any[] }) => {
   function getRatingDistribution(reviews: any[]) {
     return reviews.reduce(
       (acc, review) => {
-        if (review.rating == null) return acc;
+        // One reader of ratings, shared with the store and the readouts —
+        // this used to normalise a string rating itself, which is the
+        // duplication toRating exists to end.
+        const value = toRating(review.rating);
+        if (value === undefined) return acc;
 
-        // Normalize rating (string, decimals, whitespace-safe)
-        const rating = Math.floor(Number(review.rating));
+        const rating = Math.floor(value);
 
         if (rating >= 1 && rating <= 5) {
           acc[rating]++;
