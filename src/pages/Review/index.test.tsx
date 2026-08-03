@@ -160,6 +160,62 @@ describe("a Review on a Category shelf", () => {
     });
 });
 
+// The API stores most ratings as strings, so a status column that asked
+// `typeof rating === "number"` counted almost none of them. The store coerces
+// on the way in; this holds the shelf to the answer that produces.
+describe("the shelf's rating figures, against what the API really sends", () => {
+    it("counts a Review whose rating arrived as a string", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Nioh", { rating: "4" as unknown as number }),
+            review("Doom", { rating: "5" as unknown as number }),
+        ]);
+
+        await showShelf();
+        await screen.findByText("Nioh");
+
+        // The row itself, not the column around it: every other figure in
+        // that column is also a small number, so a looser match passes
+        // whatever the answer is.
+        expect(screen.getByText("Rated").parentElement?.textContent).toBe("Rated2");
+    });
+
+    it("averages string and number ratings together", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Nioh", { rating: "4" as unknown as number }),
+            review("Doom", { rating: 3 }),
+        ]);
+
+        await showShelf();
+        await screen.findByText("Nioh");
+
+        expect(screen.getByText("3.5 ★")).toBeDefined();
+    });
+
+    it("still treats a Review rated zero as rated", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Nioh", { rating: "0" as unknown as number }),
+        ]);
+
+        await showShelf();
+        await screen.findByText("Nioh");
+
+        expect(screen.getByText("0.0 ★")).toBeDefined();
+    });
+
+    it("leaves an unrated Review out of the average rather than scoring it zero", async () => {
+        mocked.getReviews.mockResolvedValue([
+            review("Nioh", { rating: "" as unknown as number }),
+            review("Doom", { rating: "4" as unknown as number }),
+        ]);
+
+        await showShelf();
+        await screen.findByText("Nioh");
+
+        // 4, not 2 — the unrated one is absent from the sum and the count.
+        expect(screen.getByText("4.0 ★")).toBeDefined();
+    });
+});
+
 describe("a Review with no cover yet", () => {
     it("still renders a card with its title and stays openable", async () => {
         mocked.getReviews.mockResolvedValue([

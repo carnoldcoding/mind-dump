@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router";
 import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
 import { backend } from "../../api/backend";
+import { normaliseReview } from "../../store/reviews";
 import Loader from "../../components/common/Loader";
 import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
@@ -12,6 +13,11 @@ import { usePanelReveal } from "../../hooks/usePanelReveal";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { enterClass } from "../../utils/animations";
 import { ReviewCover } from "../../components/review/ReviewCover";
+// Every tab in the reference carries a glyph as well as a word, and the glyph
+// is what you navigate by once you know the menu. Shared with the Backlog,
+// which marks a Review with the sections it has written, so a section looks
+// the same wherever it is named.
+import { SECTION_GLYPH, writtenSections } from "../../utils/critique";
 type Mod = { name: string; author?: string; url?: string; notes?: string };
 
 const TYPE_ICON: Record<string, string> = {
@@ -32,21 +38,6 @@ const reviewPropMap = {
     casting:        'Casting',
 } as const;
 
-// Every tab in the reference carries a glyph as well as a word, and the glyph
-// is what you actually navigate by once you know the menu. Geometric rather
-// than pictorial, because that is the register the rest of the set is in.
-const SECTION_GLYPH: Record<string, string> = {
-    story:          '✦',
-    gameplay:       '✥',
-    graphics:       '◈',
-    sound:          '♪',
-    world:          '⬟',
-    characters:     '⬢',
-    writing:        '✎',
-    cinematography: '▣',
-    casting:        '◉',
-    mods:           '⚙',
-};
 
 /**
  * One tab of the reference's top menu bar — the one screen element this site
@@ -177,7 +168,12 @@ const ReviewDetail = () => {
                 setLoading(true);
                 setError(null);
                 const d = await backend.getReviews({ slug });
-                setData(d[0]);
+                // This page is the one surface that does not read the shared
+                // collection — it fetches its own record by slug — so the
+                // store's coercion never touches it and it applies the same
+                // one itself. Without this, `rating` here is whatever the API
+                // sent, which for most records is a string.
+                setData(d[0] ? normaliseReview(d[0]) : d[0]);
             } catch {
                 setError('Network error');
             } finally {
@@ -190,10 +186,10 @@ const ReviewDetail = () => {
     // Set initial tab and mods once data loads, then fetch audio tracks
     useEffect(() => {
         if (!data) return;
-        const entries = Object.entries(data.review ?? {}).filter(([, v]) => (v as string).length > 0);
+        const entries = writtenSections(data);
         const loadedMods: Mod[] = data.mods ?? [];
         setMods(loadedMods);
-        if (entries.length > 0) setActiveTab(entries[0][0]);
+        if (entries.length > 0) setActiveTab(entries[0]);
         else if (loadedMods.length > 0) setActiveTab('mods');
 
         backend.getAudioTracks(data._id).then(setTracks).catch(() => { /* network error */ });
@@ -206,9 +202,12 @@ const ReviewDetail = () => {
     if (!data)   return null;
 
     const creator = data.creator || data.director || data.author || data.developers?.[0] || '—';
-    const reviewEntries = Object.entries(data.review ?? {})
-        .filter(([, v]) => (v as string).length > 0)
-        .sort() as [string, string][];
+    // The sections that were written, in the order the Category lists them
+    // rather than alphabetically. `writtenSections` is the one place that
+    // decides what "written" means; this page used to answer it twice, in two
+    // slightly different ways, a few lines apart.
+    const reviewEntries = writtenSections(data)
+        .map(key => [key, data.review[key] as string] as [string, string]);
 
     const activeContent = reviewEntries.find(([k]) => k === activeTab)?.[1] ?? '';
 

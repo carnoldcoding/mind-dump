@@ -2,9 +2,6 @@ import { Link, useLocation } from "react-router";
 import { navItems } from "./NavItems";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
 import { useStageState } from "../../context/BootSequenceContext";
-import { useSearch } from '../search/useSearch';
-import searchIcon from '../../assets/search.svg';
-import searchLightIcon from '../../assets/search-light.svg';
 
 interface NavigationMobileProps{
     isOpen: boolean;
@@ -15,7 +12,6 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     const location = useLocation();
     const { trusted } = useTrustedDevice();
     const { active: borderActive, animating: borderAnimating } = useStageState('borders');
-    const { isOpen: searchOpen, open: openSearch } = useSearch();
     const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
     return (
         <>
@@ -90,31 +86,6 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
                     </Link>
                 )
                 })}
-
-                <button
-                    onClick={() => { openSearch(); onClose(); }}
-                    aria-expanded={searchOpen}
-                    className={`flex px-1 py-2 pt-2 w-45 items-center justify-start transition-all duration-300 ease-in-out cursor-pointer ${
-                        searchOpen
-                            ? 'bg-nier-text-dark -translate-x-1'
-                            : 'bg-nier-150/60 hover:bg-nier-150/80'
-                    }`}
-                >
-                    <div className={`h-5.5 w-5.5 flex items-center justify-center p-0.5 mr-1 ml-0.5 ${
-                        searchOpen ? 'bg-nier-text-light' : 'bg-nier-text-dark'
-                    }`}>
-                        <img
-                            src={searchOpen ? searchIcon : searchLightIcon}
-                            alt=""
-                            className="w-full h-full object-contain"
-                        />
-                    </div>
-                    <h3 className={`uppercase text-2xl leading-none ${
-                        searchOpen ? 'text-nier-text-light' : 'text-nier-text-dark'
-                    }`}>
-                        search
-                    </h3>
-                </button>
             </nav>
         </>
     )

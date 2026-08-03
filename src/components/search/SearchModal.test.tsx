@@ -77,11 +77,11 @@ const renderApp = async (initialEntries: string[] = ["/"]) => {
     return { ...result, router };
 };
 
-// Search is a nav tab like any other — it just opens instead of going.
-const searchTab = () => screen.getByRole("button", { name: "search" });
-
+// Search has no control in the bar any more — the shelves search themselves,
+// and the tab was a second way to do what the page you are on does better. The
+// keyboard is the way in now, so it is the way these tests get in too.
 const openSearch = async () => {
-    fireEvent.click(searchTab());
+    fireEvent.keyDown(window, { key: "k", ctrlKey: true });
     await act(async () => {});
 };
 
@@ -123,7 +123,7 @@ afterEach(() => {
 });
 
 describe("opening and closing Search", () => {
-    it("opens from the nav control and puts a bare param on the URL", async () => {
+    it("opens on Ctrl+K from anywhere and puts a bare param on the URL", async () => {
         await renderApp();
         expect(url()).toBe("/");
 
@@ -133,13 +133,14 @@ describe("opening and closing Search", () => {
         expect(url()).toBe("/?search");
     });
 
-    it("opens on Ctrl+K from anywhere", async () => {
+    // The bar carried a Search tab until the shelves grew fields of their own.
+    // Nothing about the prompt changed — only how you reach it — so this is
+    // the one assertion that had to go, and the shortcut test above absorbed
+    // what it was checking about the URL.
+    it("has no control in the navigation bar", async () => {
         await renderApp();
 
-        fireEvent.keyDown(window, { key: "k", ctrlKey: true });
-        await act(async () => {});
-
-        expect(promptIsOpen()).toBe(true);
+        expect(screen.queryByRole("button", { name: "search" })).toBeNull();
     });
 
     it("opens already showing the prompt at a URL that carries the param", async () => {

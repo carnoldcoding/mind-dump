@@ -18,6 +18,7 @@ import { gameGenres, movieGenres, bookGenres } from "../../../../utils/genres"
 import ModModal from "./ModModal"
 import type { Mod } from "./ModModal"
 import type { AudioTrack } from "../../../../types"
+import { sectionsFor } from "../../../../utils/critique"
 import AudioPlayer from "../../../ReviewDetail/AudioPlayer"
 import { enterClass } from "../../../../utils/animations"
 
@@ -57,12 +58,6 @@ interface Arguments {
 const EMPTY_REVIEW: Partial<Review> = {
     title: '', slug: '', description: '', releaseDate: '', dateCompleted: '',
     creator: '', genres: [], review: {} as any, rating: 0, imagePath: '', status: '',
-};
-
-const BIG_TEXT_FIELDS: Record<'game' | 'cinema' | 'book', string[]> = {
-    game:   ['story', 'gameplay', 'graphics', 'sound'],
-    cinema: ['story', 'cinematography', 'casting', 'sound'],
-    book:   ['story', 'world', 'characters', 'writing'],
 };
 
 export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }: Arguments) => {
@@ -254,7 +249,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const handleFieldChange = (field: string, value: any) => {
         const previousStatus = review.status;
 
-        if (BIG_TEXT_FIELDS[type]?.includes(field)) {
+        if (sectionsFor(type).includes(field)) {
             setReview(prev => ({
                 ...prev,
                 review: { ...(prev.review as any), [field]: value },
@@ -474,7 +469,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
                     {/* Review sections */}
                     <div className="flex flex-col gap-3">
-                        {BIG_TEXT_FIELDS[type]?.map((field) => (
+                        {sectionsFor(type).map((field) => (
                             <BigTextField
                                 key={field}
                                 label={field}

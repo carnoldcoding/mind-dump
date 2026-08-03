@@ -51,7 +51,7 @@ const shelfLine = (review: Pick<ReviewRecord, "rating" | "date_completed">): str
     ].filter(Boolean).join('  ·  ');
 
 /** One `label ......... value` line of the status readout. Same object as Now's. */
-const Stat = ({ label, value }: { label: string; value: React.ReactNode }) => (
+const Readout = ({ label, value }: { label: string; value: React.ReactNode }) => (
     <div className="flex items-baseline justify-between gap-3 text-xs">
         <span className="uppercase tracking-wide text-nier-text-dark/70">{label}</span>
         <span className="uppercase text-nier-text-dark">{value}</span>
@@ -94,11 +94,11 @@ const ShelfStatus = ({ shelved, showing, error }: {
                 Shelf
             </h2>
             <div className="flex flex-col gap-1 px-2 py-3">
-                <Stat label="On shelf" value={error ? unknown : shelved.length} />
-                <Stat label="Showing" value={error ? unknown : showing} />
-                <Stat label="Rated" value={error ? unknown : rated.length} />
-                <Stat label="Average" value={error || !average ? unknown : `${average} ★`} />
-                <Stat label={year} value={error ? unknown : thisYear} />
+                <Readout label="On shelf" value={error ? unknown : shelved.length} />
+                <Readout label="Showing" value={error ? unknown : showing} />
+                <Readout label="Rated" value={error ? unknown : rated.length} />
+                <Readout label="Average" value={error || !average ? unknown : `${average} ★`} />
+                <Readout label={year} value={error ? unknown : thisYear} />
             </div>
             {/* The reference's row of empty slots. Furniture, and honest about
                 it: there is nothing to put in them. */}
