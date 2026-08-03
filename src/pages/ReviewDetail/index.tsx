@@ -12,6 +12,11 @@ import { usePanelReveal } from "../../hooks/usePanelReveal";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { enterClass } from "../../utils/animations";
 import { ReviewCover } from "../../components/review/ReviewCover";
+// Every tab in the reference carries a glyph as well as a word, and the glyph
+// is what you navigate by once you know the menu. Shared with the Backlog,
+// which marks a Review with the sections it has written, so a section looks
+// the same wherever it is named.
+import { SECTION_GLYPH } from "../../utils/critique";
 type Mod = { name: string; author?: string; url?: string; notes?: string };
 
 const TYPE_ICON: Record<string, string> = {
@@ -32,21 +37,6 @@ const reviewPropMap = {
     casting:        'Casting',
 } as const;
 
-// Every tab in the reference carries a glyph as well as a word, and the glyph
-// is what you actually navigate by once you know the menu. Geometric rather
-// than pictorial, because that is the register the rest of the set is in.
-const SECTION_GLYPH: Record<string, string> = {
-    story:          '✦',
-    gameplay:       '✥',
-    graphics:       '◈',
-    sound:          '♪',
-    world:          '⬟',
-    characters:     '⬢',
-    writing:        '✎',
-    cinematography: '▣',
-    casting:        '◉',
-    mods:           '⚙',
-};
 
 /**
  * One tab of the reference's top menu bar — the one screen element this site

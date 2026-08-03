@@ -18,6 +18,7 @@ import { gameGenres, movieGenres, bookGenres } from "../../../../utils/genres"
 import ModModal from "./ModModal"
 import type { Mod } from "./ModModal"
 import type { AudioTrack } from "../../../../types"
+import { sectionsFor } from "../../../../utils/critique"
 import AudioPlayer from "../../../ReviewDetail/AudioPlayer"
 import { enterClass } from "../../../../utils/animations"
 
@@ -59,10 +60,12 @@ const EMPTY_REVIEW: Partial<Review> = {
     creator: '', genres: [], review: {} as any, rating: 0, imagePath: '', status: '',
 };
 
-const BIG_TEXT_FIELDS: Record<'game' | 'cinema' | 'book', string[]> = {
-    game:   ['story', 'gameplay', 'graphics', 'sound'],
-    cinema: ['story', 'cinematography', 'casting', 'sound'],
-    book:   ['story', 'world', 'characters', 'writing'],
+// The editor is where these are written, but no longer where they are
+// declared: the Backlog reads them too, to say which sections a Review has.
+const BIG_TEXT_FIELDS: Record<'game' | 'cinema' | 'book', readonly string[]> = {
+    game:   sectionsFor('game'),
+    cinema: sectionsFor('cinema'),
+    book:   sectionsFor('book'),
 };
 
 export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }: Arguments) => {

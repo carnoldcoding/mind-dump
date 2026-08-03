@@ -110,8 +110,13 @@ describe("capture", () => {
 
         // SelectField opens on click and commits on mousedown, so that the
         // choice lands before the container's blur closes the list.
+        //
+        // Scoped to the field: the state column names every Category too, so
+        // "book" is on screen twice whenever the folder has anything in it.
+        // This test is about the option in the dropdown, and now says so.
+        const categoryField = screen.getByText("Category").closest("div") as HTMLElement;
         fireEvent.click(screen.getByText("Category"));
-        fireEvent.mouseDown(screen.getByText("book"));
+        fireEvent.mouseDown(within(categoryField).getByText("book"));
         capture("Project Hail Mary");
 
         await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
@@ -509,14 +514,151 @@ describe("grooming", () => {
         expect(await screen.findByText(/write it up in the reviews folder/i)).toBeDefined();
     });
 
-    it("removes something gone off", async () => {
+    it("removes something gone off, on the second press", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
 
         fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
+        fireEvent.click(screen.getByLabelText("Confirm removing Nioh 3"));
 
         await waitFor(() => expect(mocked.deleteReview).toHaveBeenCalledWith("nioh-3"));
     });
 
+    // The card grid makes this control bigger and easier to hit than the row
+    // did, and a Review deleted here is gone — there is no undo, and one could
+    // not be built: restoring would write a new record with a new id, and the
+    // id is where the capture date comes from.
+    it("does not remove on the first press", async () => {
+        await showFolder([review("Nioh 3", { status: "todo" })]);
+
+        fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
+
+        expect(mocked.deleteReview).not.toHaveBeenCalled();
+        expect(screen.getByLabelText("Confirm removing Nioh 3")).toBeDefined();
+    });
+
+    it("goes back to safe when the pointer leaves without confirming", async () => {
+        await showFolder([review("Nioh 3", { status: "todo" })]);
+
+        fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
+        fireEvent.mouseLeave(screen.getByLabelText("Confirm removing Nioh 3"));
+
+        expect(screen.getByLabelText("Remove Nioh 3")).toBeDefined();
+        expect(mocked.deleteReview).not.toHaveBeenCalled();
+    });
+
+    // Arming one card must not arm the others: they share a component, and a
+    // single "is the confirm showing" flag would put every card in that state
+    // at once.
+    it("arms only the card that was pressed", async () => {
+        await showFolder([
+            review("Nioh 3", { status: "todo" }),
+            review("Doom", { status: "todo" }),
+        ]);
+
+        fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
+
+        expect(screen.getByLabelText("Confirm removing Nioh 3")).toBeDefined();
+        expect(screen.getByLabelText("Remove Doom")).toBeDefined();
+    });
+});
+
+// A Category offers four sections and requires none of them (CONTEXT.md), so
+// the card says which were written and never how many of four.
+describe("what a card says about a Review", () => {
+    const OLD_ID = "6955b900a1b2c3d4e5f60718";      // captured 2026-01-01
+    const RECENT_ID = "6a63fc80a1b2c3d4e5f60718";   // captured 2026-07-25
+
+    const card = (title: string) =>
+        screen.getByText(title).closest("li") as HTMLElement;
+
+    it("marks the sections that were written and draws nothing for the rest", async () => {
+        await showFolder([
+            review("Nioh 3", {
+                type: "game",
+                review: { story: "Good", sound: "Great", gameplay: "", graphics: "" },
+            }),
+        ]);
+
+        const marks = within(card("Nioh 3")).getByLabelText("Sections written");
+
+        // story and sound, and no mark standing in for the two that aren't.
+        expect(marks.textContent).toBe("✦♪");
+    });
+
+    it("never states a total, because four is not a target", async () => {
+        await showFolder([
+            review("Nioh 3", { type: "game", review: { story: "Good" } }),
+        ]);
+
+        expect(card("Nioh 3").textContent).not.toContain("/4");
+        expect(card("Nioh 3").textContent).not.toContain("1 of 4");
+    });
+
+    it("says a Review with nothing written has nothing written", async () => {
+        await showFolder([review("Nioh 3", { type: "game", review: {} })]);
+
+        expect(within(card("Nioh 3")).getByLabelText("Sections written").textContent)
+            .toBe("—");
+    });
+
+    it("says how long it has been waiting", async () => {
+        await showFolder([review("Nioh 3", { _id: RECENT_ID })]);
+
+        expect(card("Nioh 3").textContent).toContain("7d");
+    });
+
+    it("says nothing about waiting when the id carries no date", async () => {
+        await showFolder([review("Nioh 3", { _id: "id-Nioh 3" })]);
+
+        expect(card("Nioh 3").textContent).not.toContain("NaN");
+        expect(within(card("Nioh 3")).queryByText(/waiting/i)).toBeNull();
+    });
+
+    it("leads with whatever has waited longest", async () => {
+        await showFolder([
+            review("Recent", { _id: RECENT_ID, status: "todo" }),
+            review("Ancient", { _id: OLD_ID, status: "todo" }),
+        ]);
+
+        const position = screen.getByText("Ancient")
+            .compareDocumentPosition(screen.getByText("Recent"));
+        expect(Boolean(position & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    });
+});
+
+describe("the Backlog's state column", () => {
+    // Scoped to the column: "Started" is also a section heading, and "game" is
+    // also printed on every game card. A page-wide lookup would match those
+    // instead, or match nothing because it matched several.
+    const stat = (label: string) =>
+        within(screen.getByLabelText("Backlog state")).getByText(label)
+            .parentElement?.textContent;
+
+    it("counts what is started against what is only queued", async () => {
+        await showFolder([
+            review("A", { status: "active" }),
+            review("B", { status: "active" }),
+            review("C", { status: "todo" }),
+        ]);
+
+        expect(stat("Started")).toBe("Started2");
+        expect(stat("Queued")).toBe("Queued1");
+    });
+
+    it("splits the unfinished work by Category", async () => {
+        await showFolder([
+            review("A", { type: "game" }),
+            review("B", { type: "cinema" }),
+        ]);
+
+        expect(stat("game")).toBe("game1");
+        expect(stat("cinema")).toBe("cinema1");
+        // A Category with nothing unfinished still shows, saying zero.
+        expect(stat("book")).toBe("book0");
+    });
+});
+
+describe("grooming, continued", () => {
     it("offers Start on queued items and Finish on started ones, not the other way round", async () => {
         await showFolder([
             review("Queued Thing", { status: "todo" }),
