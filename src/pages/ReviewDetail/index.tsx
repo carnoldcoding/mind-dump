@@ -32,6 +32,115 @@ const reviewPropMap = {
     casting:        'Casting',
 } as const;
 
+// Every tab in the reference carries a glyph as well as a word, and the glyph
+// is what you actually navigate by once you know the menu. Geometric rather
+// than pictorial, because that is the register the rest of the set is in.
+const SECTION_GLYPH: Record<string, string> = {
+    story:          '✦',
+    gameplay:       '✥',
+    graphics:       '◈',
+    sound:          '♪',
+    world:          '⬟',
+    characters:     '⬢',
+    writing:        '✎',
+    cinematography: '▣',
+    casting:        '◉',
+    mods:           '⚙',
+};
+
+/**
+ * One tab of the reference's top menu bar — the one screen element this site
+ * had an exact analogue for and wasn't using.
+ *
+ * The two state screenshots are specific about what the bar does. Hover is a
+ * light fill with a dark hairline and a caret pointing in from the left.
+ * Selected is inverted *and taller*: it hangs below the rule the other tabs
+ * sit on, with a small foot under it. That vertical break is what makes the
+ * selected tab read as attached to the panel below rather than as one more
+ * button — which is exactly the relationship these tabs have to the critique.
+ */
+const Tab = ({ id, label, active, onSelect }: {
+    id: string;
+    label: string;
+    active: boolean;
+    onSelect: () => void;
+}) => (
+    // The group is the wrapper rather than the button, because the caret sits
+    // outside the tab it points at — in the gap the reference leaves for it.
+    <div className="group/tab relative flex-shrink-0">
+        <span
+            aria-hidden="true"
+            className={`absolute -left-2.5 top-3 -translate-y-1/2 text-[9px] text-nier-text-dark transition-opacity duration-150 ${
+                active ? 'opacity-0' : 'opacity-0 group-hover/tab:opacity-100'
+            }`}
+        >
+            ➤
+        </span>
+        <button
+            onClick={onSelect}
+            aria-pressed={active}
+            className={`relative z-10 flex items-center gap-1.5 px-2.5 cursor-pointer transition-colors duration-150 ${
+                active
+                    // Two units taller than the rest of the row, which is what
+                    // takes it past the rule at top-6.
+                    ? 'h-8 bg-nier-dark text-nier-text-light'
+                    : 'h-6 bg-nier-150/60 border border-transparent hover:bg-nier-100-lighter hover:border-nier-dark'
+            }`}
+        >
+            <span aria-hidden="true" className="text-[10px] leading-none opacity-70">
+                {SECTION_GLYPH[id] ?? '▪'}
+            </span>
+            <span className="text-xs uppercase tracking-wide whitespace-nowrap">{label}</span>
+        </button>
+        {/* The foot under the selected tab. */}
+        {active && (
+            <span aria-hidden="true" className="absolute z-10 left-1/2 -translate-x-1/2 top-8 w-2 h-1 bg-nier-dark" />
+        )}
+    </div>
+);
+
+/**
+ * What the caption bar says. The other two panels name their selection here;
+ * on a page about one thing, the selection is which part of it you are
+ * reading — and when there is no critique yet, that is worth saying rather
+ * than leaving the bar to state the obvious.
+ */
+const captionFor = (title: string, activeTab: string, sectionCount: number): string => {
+    if (sectionCount === 0) return `${title} — not written up yet`;
+    const label = activeTab === 'mods'
+        ? 'Mods'
+        : reviewPropMap[activeTab as keyof typeof reviewPropMap] ?? activeTab;
+    return `${title} — ${label}`;
+};
+
+/**
+ * The reference's map screen annotates its list from below rather than
+ * captioning it inline: a small grey label, a ❖-marked heading, and a line of
+ * detail under both.
+ *
+ * That is the shape the release date and the creator were always in — one is a
+ * name and the other is context for it — and they were being run together into
+ * a single italic line at the foot of the panel, as far from the cover as the
+ * layout could put them. Under the cover they are next to the thing they are
+ * about.
+ */
+const Annotation = ({ label, name, detail }: {
+    label: string;
+    name: string;
+    detail?: string;
+}) => (
+    <div className="flex flex-col gap-0.5 pt-2 flex-shrink-0">
+        <p className="text-[10px] uppercase tracking-widest text-nier-text-dark/40">{label}</p>
+        <div className="border-t border-nier-text-dark/30 pt-1 flex items-baseline gap-1.5">
+            <span aria-hidden="true" className="text-[10px] text-nier-text-dark/60">❖</span>
+            <p className="text-sm uppercase tracking-wide truncate">{name}</p>
+        </div>
+        {detail && (
+            <p className="text-xs text-nier-text-dark/60 pl-4">{detail}</p>
+        )}
+    </div>
+);
+
 const ReviewDetail = () => {
     const navigate  = useNavigate();
     const location  = useLocation();
@@ -103,6 +212,17 @@ const ReviewDetail = () => {
 
     const activeContent = reviewEntries.find(([k]) => k === activeTab)?.[1] ?? '';
 
+    // The tabs in the order they are rendered, so "section 3 of 7" counts the
+    // same things the bar shows and in the same order the eye reads them.
+    // Mods are a tab on a game that has any, and are not a section of the
+    // critique anywhere else.
+    const sections = [
+        ...reviewEntries.map(([key]) => key),
+        ...(data.type === 'game' && mods.length > 0 ? ['mods'] : []),
+    ];
+    const sectionCount = sections.length;
+    const sectionPosition = Math.max(sections.indexOf(activeTab) + 1, 1);
+
     return (
         <>
             <PageHeader name={data.title} />
@@ -144,13 +264,33 @@ const ReviewDetail = () => {
                     </div>
 
                     {/* ── Body ───────────────────────────────────────── */}
-                    <div className={`p-4 flex flex-col md:flex-row gap-4 flex-1 min-h-0 ${contentReady ? '' : 'invisible'}`}>
+                    {/* The gutter rail is the one piece of the frame every
+                        reference screen shares, whatever is inside it. */}
+                    <div className={`p-4 flex gap-4 flex-1 min-h-0 ${contentReady ? '' : 'invisible'}`}>
 
-                        {/* Full colour, not the card treatment: a grid tints
-                            its covers so it reads as one surface, but you have
-                            opened this one, and here the art is the point. */}
-                        <div className="h-56 md:h-full md:w-72 flex-shrink-0">
-                            <ReviewCover imagePath={data.image_path} fill full />
+                        <div aria-hidden="true" className="hidden md:flex w-1 flex-shrink-0 flex-col">
+                            <span className="w-full flex-[2] bg-nier-shadow" />
+                            <span className="w-full flex-[5] bg-nier-150/50" />
+                        </div>
+
+                        <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+
+                        {/* Cover, and directly under it the two facts that are
+                            about the cover — which is the arrangement the map
+                            screen uses, and where the footer's italic line
+                            should have been all along. */}
+                        <div className="md:w-72 flex-shrink-0 flex flex-col min-h-0">
+                            {/* Full colour, not the card treatment: a grid tints
+                                its covers so it reads as one surface, but you have
+                                opened this one, and here the art is the point. */}
+                            <div className="h-56 md:h-auto md:flex-1 min-h-0">
+                                <ReviewCover imagePath={data.image_path} fill full />
+                            </div>
+                            <Annotation
+                                label={data.type}
+                                name={creator}
+                                detail={data.release_date?.trim() || undefined}
+                            />
                         </div>
 
                         {/* Right column */}
@@ -174,115 +314,140 @@ const ReviewDetail = () => {
 
                             {/* Analysis tabs */}
                             {(reviewEntries.length > 0 || mods.length > 0) && (
-                                <div className="flex flex-col flex-1 min-h-0 gap-0">
-                                    <div className="flex flex-wrap gap-px flex-shrink-0">
+                                <div className="flex flex-col flex-1 min-h-0">
+
+                                    {/* The menu bar. The rule sits at the
+                                        height of an unselected tab and runs
+                                        behind the row, so the selected tab —
+                                        two units taller — visibly crosses it.
+                                        min-h-9 keeps the row from changing
+                                        height as selection moves. */}
+                                    <div className="relative flex items-start gap-2.5 flex-wrap min-h-9 flex-shrink-0 pb-1">
+                                        <span aria-hidden="true" className="absolute left-0 right-0 top-6 h-px bg-nier-text-dark/25" />
                                         {reviewEntries.map(([key]) => (
-                                            <button
+                                            <Tab
                                                 key={key}
-                                                onClick={() => setActiveTab(key)}
-                                                className={`px-3 py-1 text-xs cursor-pointer transition-colors duration-150 ${
-                                                    activeTab === key
-                                                        ? 'bg-nier-dark text-nier-text-light'
-                                                        : 'bg-nier-150/60 hover:bg-nier-150'
-                                                }`}
-                                            >
-                                                {reviewPropMap[key as keyof typeof reviewPropMap] ?? key}
-                                            </button>
+                                                id={key}
+                                                label={reviewPropMap[key as keyof typeof reviewPropMap] ?? key}
+                                                active={activeTab === key}
+                                                onSelect={() => setActiveTab(key)}
+                                            />
                                         ))}
                                         {data.type === 'game' && mods.length > 0 && (
-                                            <button
-                                                onClick={() => setActiveTab('mods')}
-                                                className={`px-3 py-1 text-xs cursor-pointer transition-colors duration-150 ${
-                                                    activeTab === 'mods'
-                                                        ? 'bg-nier-dark text-nier-text-light'
-                                                        : 'bg-nier-150/60 hover:bg-nier-150'
-                                                }`}
-                                            >
-                                                Mods{mods.length > 0 ? ` (${mods.length})` : ''}
-                                            </button>
+                                            <Tab
+                                                id="mods"
+                                                label={`Mods (${mods.length})`}
+                                                active={activeTab === 'mods'}
+                                                onSelect={() => setActiveTab('mods')}
+                                            />
                                         )}
                                     </div>
 
-                                    {activeTab === 'mods' ? (
-                                        <div className="flex-1 min-h-0 overflow-y-auto p-3">
-                                            <div className="border border-nier-150 relative">
-                                                <aside className="absolute w-full h-full bg-nier-shadow -z-1 top-0.5 left-0.5" />
-                                                <div className="h-6 bg-nier-150 flex items-center justify-between px-3">
-                                                    <span className="text-[10px] uppercase tracking-widest text-nier-text-dark">Installed Mods</span>
-                                                    <span className="text-[10px] text-nier-text-dark/50">{mods.length}/{mods.length}</span>
-                                                </div>
-                                                <ul className="flex flex-col">
-                                                    {mods.map((mod, i) => (
-                                                        <li key={i} className="border-t border-nier-150/40 first:border-t-0">
-                                                            {(() => {
-                                                                const rowClass = `flex items-center gap-2 px-3 py-1.5 transition-colors group ${mod.url ? 'cursor-pointer hover:bg-nier-150/50' : 'hover:bg-nier-150/30'}`;
-                                                                const inner = (
-                                                                    <>
-                                                                        <span className="text-nier-text-dark/60 text-sm shrink-0">◎</span>
-                                                                        <div className="flex flex-col flex-1 min-w-0">
-                                                                            <span className="text-sm uppercase tracking-wide text-nier-text-dark truncate">{mod.name}</span>
-                                                                            {mod.author && <span className="text-xs text-nier-text-dark/60">{mod.author}</span>}
-                                                                        </div>
-                                                                        <span className="text-xs text-nier-text-dark/60 font-mono shrink-0">[{String(i + 1).padStart(2, '0')}]</span>
-                                                                    </>
-                                                                );
-                                                                return mod.url
-                                                                    ? <a href={mod.url} target="_blank" rel="noreferrer" className={rowClass}>{inner}</a>
-                                                                    : <div className={rowClass}>{inner}</div>;
-                                                            })()}
-                                                            {mod.notes && (
-                                                                <p className="text-xs text-nier-text-dark/60 leading-relaxed px-8 pb-2 whitespace-pre-wrap">{mod.notes}</p>
-                                                            )}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
+                                    {/* The reference's middle column is not a
+                                        bare pane — it is a framed box with a
+                                        title bar of its own naming what is in
+                                        it, and a count in its bottom right.
+                                        Which section of how many is the honest
+                                        version of that count here: it says how
+                                        much of the critique you have seen,
+                                        which nothing else on the page does. */}
+                                    <div className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
+                                        <div className="h-7 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
+                                            <span className="text-[10px] uppercase tracking-widest text-nier-text-dark">
+                                                {activeTab === 'mods'
+                                                    ? 'Installed Mods'
+                                                    : reviewPropMap[activeTab as keyof typeof reviewPropMap] ?? activeTab}
+                                            </span>
                                         </div>
-                                    ) : (
-                                        <div className="flex-1 overflow-y-auto bg-nier-100-lighter p-3 min-h-0 flex flex-col gap-3">
-                                            <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeContent}</p>
-                                            {activeTab === 'sound' && tracks.length > 0 && (
-                                                <ul className="flex flex-col border-t border-nier-150 pt-2">
-                                                    {tracks.map((track, i) => (
-                                                        <AudioPlayer
-                                                            key={track._id}
-                                                            src={track.url}
-                                                            title={track.title}
-                                                            index={i}
-                                                        />
-                                                    ))}
-                                                </ul>
-                                            )}
-                                            {activeTab === 'graphics' && screenshots.length > 0 && (
-                                                <div className="border-t border-nier-150 pt-2 flex gap-2 overflow-x-auto pb-1">
-                                                    {screenshots.map(img => (
-                                                        <button
-                                                            key={img._id}
-                                                            onClick={() => setSelectedImg(img)}
-                                                            className="shrink-0 h-24 aspect-video bg-nier-150/20 overflow-hidden block cursor-pointer hover:opacity-80 transition-opacity"
-                                                            title={img.title}
-                                                        >
-                                                            <img
-                                                                src={img.url}
-                                                                alt={img.title || 'Screenshot'}
-                                                                className="w-full h-full object-cover"
+
+                                        {activeTab === 'mods' ? (
+                                            <ul className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+                                                {mods.map((mod, i) => (
+                                                    <li key={i} className="border-t border-nier-150/40 first:border-t-0">
+                                                        {(() => {
+                                                            const rowClass = `flex items-center gap-2 px-3 py-1.5 transition-colors group ${mod.url ? 'cursor-pointer hover:bg-nier-150/50' : 'hover:bg-nier-150/30'}`;
+                                                            const inner = (
+                                                                <>
+                                                                    <span className="text-nier-text-dark/60 text-sm shrink-0">◎</span>
+                                                                    <div className="flex flex-col flex-1 min-w-0">
+                                                                        <span className="text-sm uppercase tracking-wide text-nier-text-dark truncate">{mod.name}</span>
+                                                                        {mod.author && <span className="text-xs text-nier-text-dark/60">{mod.author}</span>}
+                                                                    </div>
+                                                                    <span className="text-xs text-nier-text-dark/60 font-mono shrink-0">[{String(i + 1).padStart(2, '0')}]</span>
+                                                                </>
+                                                            );
+                                                            return mod.url
+                                                                ? <a href={mod.url} target="_blank" rel="noreferrer" className={rowClass}>{inner}</a>
+                                                                : <div className={rowClass}>{inner}</div>;
+                                                        })()}
+                                                        {mod.notes && (
+                                                            <p className="text-xs text-nier-text-dark/60 leading-relaxed px-8 pb-2 whitespace-pre-wrap">{mod.notes}</p>
+                                                        )}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <div className="flex-1 overflow-y-auto p-3 min-h-0 flex flex-col gap-3">
+                                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeContent}</p>
+                                                {activeTab === 'sound' && tracks.length > 0 && (
+                                                    <ul className="flex flex-col border-t border-nier-150 pt-2">
+                                                        {tracks.map((track, i) => (
+                                                            <AudioPlayer
+                                                                key={track._id}
+                                                                src={track.url}
+                                                                title={track.title}
+                                                                index={i}
                                                             />
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                                {activeTab === 'graphics' && screenshots.length > 0 && (
+                                                    <div className="border-t border-nier-150 pt-2 flex gap-2 overflow-x-auto pb-1">
+                                                        {screenshots.map(img => (
+                                                            <button
+                                                                key={img._id}
+                                                                onClick={() => setSelectedImg(img)}
+                                                                className="shrink-0 h-24 aspect-video bg-nier-150/20 overflow-hidden block cursor-pointer hover:opacity-80 transition-opacity"
+                                                                title={img.title}
+                                                            >
+                                                                <img
+                                                                    src={img.url}
+                                                                    alt={img.title || 'Screenshot'}
+                                                                    className="w-full h-full object-cover"
+                                                                />
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* The reference's 所持数 3/99, in the
+                                            corner it puts it in. */}
+                                        <p className="flex-shrink-0 text-right text-[10px] uppercase tracking-widest text-nier-text-dark/50 px-3 py-1.5 border-t border-nier-150/60">
+                                            Section {sectionPosition} / {sectionCount}
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                         </div>
+                        </div>
                     </div>
 
-                    {/* ── Footer ─────────────────────────────────────── */}
-                    <div className={`h-px bg-nier-150 mx-4 flex-shrink-0 ${contentReady ? '' : 'invisible'}`} />
-                    <div className={`px-4 py-2 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
-                        <p className="text-sm italic text-nier-text-dark/60">
-                            {data.release_date} — {creator}
+                    {/* ── Caption bar ────────────────────────────────── */}
+                    {/* What every reference screen ends with, and what the two
+                        other panels on this site already end with: what you
+                        are looking at on the left, what you can do about it on
+                        the right. It replaces an italic line that repeated the
+                        release date and the creator, both of which now sit
+                        under the cover they belong to. */}
+                    <div className={`flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2 ${contentReady ? '' : 'invisible'}`}>
+                        <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
+                        <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
+                            {captionFor(data.title, activeTab, sectionCount)}
+                        </p>
+                        <p className="ml-auto flex-shrink-0 text-xs uppercase tracking-wide text-nier-text-dark/50">
+                            <span className="hidden sm:inline">↔ Section&nbsp;&nbsp;&nbsp;</span>✕ Back
                         </p>
                     </div>
 

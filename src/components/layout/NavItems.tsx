@@ -23,7 +23,9 @@ export const navItems: NavItem[] = [
   {
     iconActive: homeIcon,
     icon: homeLightIcon,
-    label: "now",
+    // Reads "current"; the page is still Now. UI copy over vocabulary, the
+    // same way the Backlog says "Started" for Status `active`.
+    label: "current",
     path: "/"
   },
   {

@@ -6,7 +6,7 @@ Read these before making non-trivial changes:
 
 - [`CONTEXT.md`](./CONTEXT.md) — domain vocabulary (Review, Status, Movement, Entry, etc.). Use these terms, not ad-hoc synonyms.
 - [`docs/architecture.md`](./docs/architecture.md) — stack, routing, auth, backend boundary, directory conventions, known data-model drift.
-- [`docs/branching.md`](./docs/branching.md) — git workflow: trunk-based, branch+PR for every change, no direct pushes to `main` (enforced by branch protection).
+- [`docs/branching.md`](./docs/branching.md) — git workflow: `dev` is the trunk, `main` is release-only. Branch off `dev`, PR back into `dev`; `main` receives merges from `releases/*` alone.
 
 ## Commands
 
@@ -14,6 +14,11 @@ Read these before making non-trivial changes:
 - `npm run build-strict` — typecheck + build (use this, not `npm run build`, to catch type errors)
 - `npm run lint`
 - `npm run test` — Vitest
+- `node scripts/lint-budget.mjs` — the lint gate CI runs. Fails only if a branch *adds* eslint errors; the repo's existing 77 are recorded in `.eslint-budget`. Under budget, lower it with `--update`
+
+## CI
+
+Pull requests into `dev` and `main` run typecheck, tests and the lint budget on Node 24 — the version the API runs in production. There is no build step: `npm run build-strict` cannot run because `dist/assets` is root-owned from an old Docker build.
 
 ## Things that will surprise you
 
@@ -24,4 +29,4 @@ Read these before making non-trivial changes:
 - The backend (`mind-dump-backend`) is a separate repo. This repo only knows it as an HTTP API — see `docs/architecture.md` for the boundary and confirmed endpoints.
 - `src/types/index.ts` doesn't match runtime data shapes in several places (see `docs/architecture.md`). Don't treat it as authoritative.
 - Body tracking stores two kinds of document in one collection — Movement and Entry — told apart by an explicit `_meta` flag, not by guessing from field presence. A Goal is current state on a Movement, so there is no goal history and no way to ask what a target used to be ([ADR-0002](./docs/adr/0002-goal-as-movement-state.md)).
-- Every change, including small ones, goes through a branch + PR — `main` rejects direct pushes.
+- Every change, including small ones, goes through a branch + PR, and branches off **`dev`** rather than `main`. `main` only ever receives a release. If you are about to branch off `main`, you are on the wrong trunk.

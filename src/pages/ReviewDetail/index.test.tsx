@@ -120,9 +120,15 @@ describe("a finished Review's page", () => {
         await showReview();
         await screen.findByText("Nioh 3");
 
-        expect(screen.getByText("Story")).toBeDefined();
-        expect(screen.getByText("Gameplay")).toBeDefined();
+        // By role, not by bare text: the critique panel names the open
+        // section in a title bar of its own now, so the selected section's
+        // word is on screen twice and only one of the two is the tab. What
+        // this asserts — which sections you can reach — is unchanged.
+        const tab = (name: string) => screen.getByRole("button", { name: new RegExp(name, "i") });
+
+        expect(tab("Story")).toBeDefined();
+        expect(tab("Gameplay")).toBeDefined();
         // Still self-hiding the ones with nothing in them.
-        expect(screen.queryByText("Graphics")).toBeNull();
+        expect(screen.queryByRole("button", { name: /graphics/i })).toBeNull();
     });
 });
