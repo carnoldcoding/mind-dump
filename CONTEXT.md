@@ -36,7 +36,7 @@ _Avoid_: Queue, Wishlist, To-read, Someday list
 How the Backlog labels the two Statuses it contains — `active` and `todo` respectively. UI copy, not a fourth and fifth Status: the underlying values are unchanged, and "Started" on the Backlog is the same thing as "In Progress" on Now. Both shelves exist so the overlap with Now reads as deliberate rather than as duplication.
 
 **Search**:
-Title lookup across every Category and every Status, opened as a modal from a nav tab rather than visited as a page. The tab looks like every other and takes the active state while the modal is open, so the bar still says where you are. Finds all Reviews, queued ones included, so it also answers whether something has already been captured — which matters more now that the Backlog is System-only.
+Title lookup across every Category and every Status, opened as a modal rather than visited as a page. It has no control in the navigation bar: each Category shelf searches itself from a field in its own panel, beside filters a modal cannot offer, so the bar's Search tab had become a second and worse way to do what the page you are on already does. Reached by keyboard, or by a URL carrying the param. Still finds all Reviews, queued ones included, so it also answers whether something has already been captured — which matters more now that the Backlog is System-only.
 _Avoid_: Find, Filter, Query
 
 **Readout**:
