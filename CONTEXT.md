@@ -11,10 +11,20 @@ A single game, movie, or book the user is tracking — from the moment it's queu
 _Avoid_: Post (used in the type names `GamePost`/`CinemaPost`/`BookPost` and in fetch/filter code, but "Review" is the canonical term going forward)
 
 **Status**:
-A Review's place in its lifecycle: `todo` (queued, not started), `active` (currently being played/watched/read, no critique written yet), or `done` (finished, has a rating and written critique).
+A Review's place in its lifecycle: `todo` (queued, not started), `active` (currently being played/watched/read), or `done` (finished and judged).
+
+Status says where the *work* is, not how much has been written about it. It used to claim that `active` had no critique yet and that `done` was the one that had a rating — neither holds. A Critique accumulates from whenever you start writing, so an `active` Review may carry several sections and a rating already, and going `done` adds nothing but the decision that you are finished.
 
 **Category**:
 The kind of Review — `games`, `cinema`, or `books`. Used in URLs and navigation (plural form). The underlying `type` field on a Review is singular (`game`, `cinema`, `book`).
+
+**Critique**:
+The written part of a Review, divided into sections. A Category defines **at most** four — games get story/gameplay/graphics/sound, cinema story/cinematography/casting/sound, books story/world/characters/writing — and **any of them may be absent by design**. A fighting game with nothing worth saying about story is complete without a story section; the four are what is available to write, never a standard the work must meet.
+
+So four sections written and three sections written are both simply what they are. Nothing may present a Critique as a fraction, a total, or progress toward four: a denominator would be the interface imposing exactly the uniformity this shape exists to avoid. Surfaces show the sections that exist and draw nothing for the ones that don't — the same rule the Category shelf's line and the Review detail's tabs already follow.
+
+A Critique also accumulates while a Review is unfinished. Writing as you go is normal, so sections and a rating on a `todo` or `active` Review are not drift; `done` means you stopped and judged it, not that the writing began there.
+_Avoid_: "complete"/"incomplete" critique, "missing sections", any n-of-4 phrasing.
 
 **Now**:
 The site's front page: what is being played, watched and read at this moment — every Review with Status `active`, across all Categories at once — with what's queued up next and what was finished most recently on either side of it. The only view that answers "where am I" rather than "what do I have".
