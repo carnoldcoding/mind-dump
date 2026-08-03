@@ -71,11 +71,16 @@ type ReviewsStore = {
  * dropped seven Reviews in eight. Doing it here rather than at each call site
  * means a surface added tomorrow is right without knowing any of this.
  *
- * Deliberately not a validator. Anything it does not understand passes through
- * untouched, because the store's job is to hold what the API said, not to
- * decide the API is wrong.
+ * Every other field passes through untouched — the store's job is to hold what
+ * the API said, not to decide the API is wrong. `rating` is the exception it
+ * exists for, and there a value it cannot read is reported as no rating rather
+ * than passed on, because `typeof NaN === "number"` would rearm the very trap
+ * this removes.
+ *
+ * Exported because one surface does not read the collection: the Review detail
+ * page fetches its own record by slug, so it applies this itself.
  */
-const normalise = (review: Review): Review => ({
+export const normaliseReview = (review: Review): Review => ({
     ...review,
     rating: toRating(review.rating),
 });
@@ -99,7 +104,7 @@ export const useReviewsStore = create<ReviewsStore>((set, get) => {
         const run = (async () => {
             try {
                 const data = (await backend.getReviews()) as Review[];
-                if (mine === generation) set({ reviews: data.map(normalise), status: "ready" });
+                if (mine === generation) set({ reviews: data.map(normaliseReview), status: "ready" });
             } catch {
                 if (mine === generation && initial) set({ status: "error" });
             } finally {
