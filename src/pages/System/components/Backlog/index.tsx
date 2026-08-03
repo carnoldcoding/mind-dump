@@ -83,7 +83,7 @@ const Written = ({ review }: { review: Review }) => {
     return (
         <span
             aria-label="Sections written"
-            title={written.length ? written.join(', ') : 'Nothing written yet'}
+            title={written.length ? written.join(', ') : 'No sections written'}
             className="text-nier-text-dark/70 tracking-widest text-xs"
         >
             {written.length
@@ -176,13 +176,27 @@ const Card = ({ review, selected, onSetStatus, onRemove, onEdit, onSelect }: Car
                 {/* Two presses, because this is the one control here that
                     cannot be taken back. An undo could not be built either:
                     restoring would write a new record with a new id, and the
-                    id is where the capture date comes from. */}
+                    id is where the capture date comes from.
+
+                    Armed, it offers both answers rather than only the
+                    dangerous one. Moving the pointer away also cancels, but
+                    that is a mouse gesture and this folder is used one-handed
+                    on a phone — without a control of its own, an armed card on
+                    touch would stay armed with the confirm as the biggest
+                    target in the row. */}
                 {confirming ? (
-                    <button
-                        onClick={() => { setConfirming(false); onRemove(review); }}
-                        aria-label={`Confirm removing ${review.title}`}
-                        className="flex-[2] text-[10px] uppercase tracking-widest py-1.5 bg-nier-dark text-nier-text-light cursor-pointer"
-                    >Delete?</button>
+                    <>
+                        <button
+                            onClick={() => setConfirming(false)}
+                            aria-label={`Keep ${review.title}`}
+                            className="flex-1 text-[10px] uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-150 cursor-pointer transition-colors duration-150"
+                        >Keep</button>
+                        <button
+                            onClick={() => { setConfirming(false); onRemove(review); }}
+                            aria-label={`Confirm removing ${review.title}`}
+                            className="flex-1 text-[10px] uppercase tracking-widest py-1.5 bg-nier-dark text-nier-text-light cursor-pointer"
+                        >Delete?</button>
+                    </>
                 ) : (
                     <button
                         onClick={() => setConfirming(true)}
@@ -211,13 +225,13 @@ const Section = ({ label, items, selected, ...actions }: SectionProps) => (
             : (
                 <ul
                     aria-label={label}
-                    className="grid grid-cols-1 xl:grid-cols-2 gap-2 mt-2"
+                    className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2"
                 >
                     {items.map(review => (
                         <Card
                             key={`${review.type}-${review.slug}`}
                             review={review}
-                            selected={selected?.slug === review.slug}
+                            selected={selected !== undefined && keyOf(selected) === keyOf(review)}
                             {...actions}
                         />
                     ))}
@@ -227,7 +241,7 @@ const Section = ({ label, items, selected, ...actions }: SectionProps) => (
 );
 
 /** One `label ......... value` line of the state readout. */
-const Stat = ({ label, value }: { label: string; value: React.ReactNode }) => (
+const Readout = ({ label, value }: { label: string; value: React.ReactNode }) => (
     <div className="flex items-baseline justify-between gap-3 text-xs">
         <span className="uppercase tracking-wide text-nier-text-dark/70">{label}</span>
         <span className="uppercase text-nier-text-dark">{value}</span>
@@ -242,8 +256,13 @@ const Stat = ({ label, value }: { label: string; value: React.ReactNode }) => (
  * against — so the sections stay on the cards, where they say which rather
  * than how many.
  */
-const State = ({ started, queued }: { started: Review[]; queued: Review[] }) => {
-    const all = [...started, ...queued];
+const State = ({ started, notStarted, error }: {
+    started: Review[];
+    notStarted: Review[];
+    /** A write that failed, or a collection that never arrived. */
+    error: boolean;
+}) => {
+    const all = [...started, ...notStarted];
     const oldest = all
         .map(review => daysWaiting(review._id))
         .filter((days): days is number => days !== undefined)
@@ -255,14 +274,17 @@ const State = ({ started, queued }: { started: Review[]; queued: Review[] }) => 
                 State
             </h3>
             <div className="flex flex-col gap-1 px-2 py-3">
-                <Stat label="Started" value={started.length} />
-                <Stat label="Queued" value={queued.length} />
+                {/* "Started" and "Not Started" are the Backlog's two labels
+                    (CONTEXT.md). This column used to say "Queued" for the
+                    second one, so the same screen called `todo` two names. */}
+                <Readout label="Started" value={started.length} />
+                <Readout label="Not Started" value={notStarted.length} />
             </div>
             {/* Every Category, including the ones with nothing on them: a
                 shelf that is clear is worth seeing as clear. */}
             <div className="flex flex-col gap-1 px-2 py-3 border-t border-nier-150">
                 {CATEGORIES.map(category => (
-                    <Stat
+                    <Readout
                         key={category.type}
                         label={category.type}
                         value={all.filter(review => review.type === category.type).length}
@@ -271,7 +293,7 @@ const State = ({ started, queued }: { started: Review[]; queued: Review[] }) => 
             </div>
             {oldest !== undefined && (
                 <div className="flex flex-col gap-1 px-2 pb-3 border-t border-nier-150 pt-3">
-                    <Stat label="Oldest" value={`${oldest}d`} />
+                    <Readout label="Oldest" value={`${oldest}d`} />
                 </div>
             )}
             {/* The reference's row of empty slots. Furniture, and honest about
@@ -281,16 +303,38 @@ const State = ({ started, queued }: { started: Review[]; queued: Review[] }) => 
                     <span key={i} className="h-2 w-2 border border-nier-text-dark/40 mt-2" />
                 ))}
             </div>
+            {/* The self-diagnostic, and a real one: it reads NO ERROR because
+                it is capable of reading something else. The message itself
+                stays above the cards, where it is next to what failed; this
+                is the standing indicator that something did. */}
+            <p className={`text-[10px] uppercase tracking-[0.3em] text-center py-4 ${
+                error ? 'text-nier-text-dark' : 'text-nier-text-dark/50'
+            }`}>
+                {error ? 'Error' : 'No Error'}
+            </p>
         </div>
     );
 };
 
-/** What the caption bar says about the selection. */
-const captionFor = (review: Review | undefined, error: string | null): string => {
+/** A Review's identity on this screen. Slug alone is not one: two Categories
+ *  can hold the same slug. */
+const keyOf = (review: Review) => `${review.type}-${review.slug}`;
+
+/**
+ * What the caption bar says — about the selection, or about the folder when
+ * there is no selection, which on a touch device is always.
+ */
+const captionFor = (review: Review | undefined, error: string | null, waitingOn: Review[]): string => {
     if (error) return error;
-    if (!review) return "Nothing on the backlog.";
+    if (!review) {
+        if (waitingOn.length === 0) return "Nothing on the backlog.";
+        const oldest = daysWaiting(waitingOn[0]._id);
+        return oldest !== undefined
+            ? `${waitingOn.length} unfinished — longest waiting ${oldest} days`
+            : `${waitingOn.length} unfinished`;
+    }
     const waiting = daysWaiting(review._id);
-    const state = review.status === 'active' ? 'started' : 'queued';
+    const state = review.status === 'active' ? 'started' : 'not started';
     return waiting !== undefined
         ? `${review.title} — ${state}, waiting ${waiting} days`
         : `${review.title} — ${state}`;
@@ -306,7 +350,9 @@ const BacklogWindow = ({ onClose }: Props) => {
     const [justFinished, setJustFinished] = useState<string | null>(null);
     const [editing, setEditing] = useState<Review | null>(null);
     const [editorOpen, setEditorOpen] = useState(false);
-    const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
+    // Two Categories can hold the same slug — a game and a film of it — and
+    // the cards key on both, so selection has to as well.
+    const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
     const unfinished = useMemo(
         () => reviews.filter(isUnfinished),
@@ -329,7 +375,11 @@ const BacklogWindow = ({ onClose }: Props) => {
     );
 
     const listed = useMemo(() => [...started, ...unstarted], [started, unstarted]);
-    const selected = listed.find(review => review.slug === selectedSlug) ?? listed[0];
+    // No fallback to the first card. Selection here means "what the pointer is
+    // on", and defaulting drew one card highlighted and described it in the
+    // caption before anything had been touched — which on a phone, where
+    // there is no pointer to move, is the only thing it would ever say.
+    const selected = listed.find(review => keyOf(review) === selectedKey);
 
     const openEdit = (review: Review) => {
         setEditing(review);
@@ -365,7 +415,7 @@ const BacklogWindow = ({ onClose }: Props) => {
         onSetStatus: setStatus,
         onRemove: remove,
         onEdit: openEdit,
-        onSelect: (review: Review) => setSelectedSlug(review.slug),
+        onSelect: (review: Review) => setSelectedKey(keyOf(review)),
     };
 
     return (
@@ -415,7 +465,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                         </div>
 
                         <div className="hidden md:block w-40 flex-shrink-0 bg-nier-100-lighter/40">
-                            <State started={started} queued={unstarted} />
+                            <State started={started} notStarted={unstarted} error={error !== null} />
                         </div>
                     </div>
                 </div>
@@ -426,7 +476,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                 <div className={`flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2 ${contentReady ? '' : 'invisible'}`}>
                     <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                     <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
-                        {captionFor(selected, error)}
+                        {captionFor(selected, error, listed)}
                     </p>
                 </div>
             </div>

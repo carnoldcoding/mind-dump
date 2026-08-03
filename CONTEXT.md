@@ -50,8 +50,10 @@ Title lookup across every Category and every Status, opened as a modal from a na
 _Avoid_: Find, Filter, Query
 
 **Readout**:
-A figure shown in the footer band — how much is in progress, how much is queued, how much was finished this year, and the average rating of finished work. Always derived from Reviews already loaded, never stored and never entered, so a readout cannot be out of date. The footer carries them on every page.
-_Avoid_: stat, metric, score — nothing here is scored or tracked against a target.
+A `label ....... value` figure derived from Reviews already loaded — never stored, never entered, so a readout cannot be out of date. The footer band carries four on every page: how much is in progress, how much is queued, how much was finished this year, and the average rating of finished work.
+
+Not only the footer's. A Category shelf and the System Backlog each carry a column of them, and the rule for those is that a surface's readouts answer what the footer cannot — the footer's figures are collection-wide, so repeating them beside a single Category would put the same numbers on screen twice.
+_Avoid_: stat, metric, score — nothing here is scored or tracked against a target, and the component is named `Readout` for that reason.
 
 **Mod**:
 A game modification attached to a game Review — a name, optional author, URL, and notes. Only meaningful for `game`-category Reviews.

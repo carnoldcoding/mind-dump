@@ -60,14 +60,6 @@ const EMPTY_REVIEW: Partial<Review> = {
     creator: '', genres: [], review: {} as any, rating: 0, imagePath: '', status: '',
 };
 
-// The editor is where these are written, but no longer where they are
-// declared: the Backlog reads them too, to say which sections a Review has.
-const BIG_TEXT_FIELDS: Record<'game' | 'cinema' | 'book', readonly string[]> = {
-    game:   sectionsFor('game'),
-    cinema: sectionsFor('cinema'),
-    book:   sectionsFor('book'),
-};
-
 export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }: Arguments) => {
     const [type, setType]               = useState<'game' | 'cinema' | 'book'>('game');
     const [review, setReview]           = useState<Partial<Review>>(EMPTY_REVIEW);
@@ -257,7 +249,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const handleFieldChange = (field: string, value: any) => {
         const previousStatus = review.status;
 
-        if (BIG_TEXT_FIELDS[type]?.includes(field)) {
+        if (sectionsFor(type).includes(field)) {
             setReview(prev => ({
                 ...prev,
                 review: { ...(prev.review as any), [field]: value },
@@ -477,7 +469,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
                     {/* Review sections */}
                     <div className="flex flex-col gap-3">
-                        {BIG_TEXT_FIELDS[type]?.map((field) => (
+                        {sectionsFor(type).map((field) => (
                             <BigTextField
                                 key={field}
                                 label={field}

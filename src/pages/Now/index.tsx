@@ -134,7 +134,7 @@ const Section = ({ title, empty, children }: {
 );
 
 /** One `label ......... value` line of the status readout. */
-const Stat = ({ label, value }: { label: string; value: React.ReactNode }) => (
+const Readout = ({ label, value }: { label: string; value: React.ReactNode }) => (
     <div className="flex items-baseline justify-between gap-3 text-xs">
         <span className="uppercase tracking-wide text-nier-text-dark/70">{label}</span>
         <span className="uppercase text-nier-text-dark">{value}</span>
@@ -168,7 +168,7 @@ const Detail = ({ review }: { review: Review }) => {
             <h3 className="text-lg uppercase tracking-wide leading-tight">{review.title}</h3>
             <div className="flex flex-col gap-1 border-t border-nier-150 pt-2">
                 {facts.map(([label, value]) => (
-                    <Stat key={label} label={label} value={value} />
+                    <Readout key={label} label={label} value={value} />
                 ))}
             </div>
             {review.genres && review.genres.length > 0 && (
@@ -219,7 +219,7 @@ const Shelves = ({ reviews, error }: { reviews: Review[]; error: boolean }) => {
             </p>
             <div className="flex flex-col gap-1 px-2 py-2">
                 {shelves.map(shelf => (
-                    <Stat
+                    <Readout
                         key={shelf.label}
                         label={shelf.label}
                         // Not 0 / 0: with nothing fetched, a zero would say the

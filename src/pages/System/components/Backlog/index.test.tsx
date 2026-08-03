@@ -546,6 +546,19 @@ describe("grooming", () => {
         expect(mocked.deleteReview).not.toHaveBeenCalled();
     });
 
+    // Leaving with the pointer is a mouse gesture, and this folder is used
+    // one-handed on a phone. Without a control of its own, an armed card on
+    // touch stays armed with the confirm as the biggest target in the row.
+    it("can be disarmed without a pointer", async () => {
+        await showFolder([review("Nioh 3", { status: "todo" })]);
+
+        fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
+        fireEvent.click(screen.getByLabelText("Keep Nioh 3"));
+
+        expect(screen.getByLabelText("Remove Nioh 3")).toBeDefined();
+        expect(mocked.deleteReview).not.toHaveBeenCalled();
+    });
+
     // Arming one card must not arm the others: they share a component, and a
     // single "is the confirm showing" flag would put every card in that state
     // at once.
@@ -634,7 +647,10 @@ describe("the Backlog's state column", () => {
         within(screen.getByLabelText("Backlog state")).getByText(label)
             .parentElement?.textContent;
 
-    it("counts what is started against what is only queued", async () => {
+    // "Started" and "Not Started" are the Backlog's two labels (CONTEXT.md).
+    // The column used to invent "Queued" for the same Status, so one screen
+    // called `todo` two different things.
+    it("counts what is started against what is not", async () => {
         await showFolder([
             review("A", { status: "active" }),
             review("B", { status: "active" }),
@@ -642,7 +658,26 @@ describe("the Backlog's state column", () => {
         ]);
 
         expect(stat("Started")).toBe("Started2");
-        expect(stat("Queued")).toBe("Queued1");
+        expect(stat("Not Started")).toBe("Not Started1");
+    });
+
+    // The reference's self-diagnostic, and a real one: it reads NO ERROR
+    // because it is capable of reading something else.
+    it("reports itself healthy when nothing has gone wrong", async () => {
+        await showFolder([review("A")]);
+
+        expect(within(screen.getByLabelText("Backlog state")).getByText(/no error/i))
+            .toBeDefined();
+    });
+
+    it("says so in the diagnostic when a write fails", async () => {
+        await showFolder([review("A", { status: "todo" })]);
+        mocked.saveReview.mockRejectedValueOnce(new Error("offline"));
+
+        fireEvent.click(screen.getByText("Start"));
+
+        const column = within(screen.getByLabelText("Backlog state"));
+        await waitFor(() => expect(column.getByText(/^error$/i)).toBeDefined());
     });
 
     it("splits the unfinished work by Category", async () => {
