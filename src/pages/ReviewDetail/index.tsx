@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from "react-router";
 import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
 import { backend } from "../../api/backend";
+import { normaliseReview } from "../../store/reviews";
 import Loader from "../../components/common/Loader";
 import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
@@ -167,7 +168,12 @@ const ReviewDetail = () => {
                 setLoading(true);
                 setError(null);
                 const d = await backend.getReviews({ slug });
-                setData(d[0]);
+                // This page is the one surface that does not read the shared
+                // collection — it fetches its own record by slug — so the
+                // store's coercion never touches it and it applies the same
+                // one itself. Without this, `rating` here is whatever the API
+                // sent, which for most records is a string.
+                setData(d[0] ? normaliseReview(d[0]) : d[0]);
             } catch {
                 setError('Network error');
             } finally {
