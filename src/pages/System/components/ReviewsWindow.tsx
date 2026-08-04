@@ -6,7 +6,7 @@ import { ReviewPanel } from "./ReviewPanel";
 import { ReviewModal } from "./ReviewPanel/ReviewModal";
 import { usePanelReveal, panelStageIndex } from "../../../hooks/usePanelReveal";
 import { usePanelHeight } from "../../../hooks/usePanelHeight";
-import { enterClass } from "../../../utils/animations";
+import { Panel } from "../../../components/common/Panel";
 
 type Props = {
     onClose: () => void;
@@ -20,21 +20,22 @@ const ReviewsWindow = ({ onClose }: Props) => {
     // done (user has to open System, then click a folder icon), and the
     // conditional render in Desktop.tsx already gives it a fresh mount
     // each time it's opened, so no resetKey is needed either.
-    const panelStage = usePanelReveal(true);
+    // No decoded title and no card domino in this window, so nothing reports
+    // either stage yet.
+    const { stage: panelStage, advance } = usePanelReveal(true, undefined, ['title', 'cards']);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLDivElement>();
+    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     return (
-        <div className="relative">
-            {/* Sibling of the panel div, not a child — see Review/index.tsx
-                for why: a transform on the panel would trap a child shadow
-                in the wrong stacking context. */}
-            <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-            <div
-                    ref={panelRef}
-                    style={maxHeight ? { maxHeight } : undefined}
-                    className={`nier-panel-frame relative bg-nier-100 border border-nier-150 flex flex-col ${enterClass('nier-enter')}`}
-                >
+        <>
+        <Panel
+            ready
+            stage={panelStage}
+            onBoxRevealed={() => advance('box')}
+            className="bg-nier-100 border border-nier-150"
+            style={maxHeight ? { maxHeight } : undefined}
+            frameRef={panelRef}
+        >
                 <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
                     <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Reviews</h3>
                     <button
@@ -55,15 +56,15 @@ const ReviewsWindow = ({ onClose }: Props) => {
                     </div>
                     <ReviewPanel />
                 </div>
-            </div>
+        </Panel>
 
-            <ReviewModal
-                isOpen={modalOpen}
-                setIsOpen={setModalOpen}
-                onReviewAdded={() => { invalidateReviews(); setEditingReview(null); }}
-                editingReview={editingReview}
-            />
-        </div>
+        <ReviewModal
+            isOpen={modalOpen}
+            setIsOpen={setModalOpen}
+            onReviewAdded={() => { invalidateReviews(); setEditingReview(null); }}
+            editingReview={editingReview}
+        />
+        </>
     );
 };
 

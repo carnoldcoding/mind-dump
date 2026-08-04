@@ -4,8 +4,8 @@ import BodyWindow from "./components/Body";
 import BacklogWindow from "./components/Backlog";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
+import { Panel } from "../../components/common/Panel";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
-import { enterClass } from "../../utils/animations";
 
 const FolderIcon = ({ selected }: { selected: boolean }) => (
     <svg viewBox="0 0 56 46" width="56" height="46" xmlns="http://www.w3.org/2000/svg">
@@ -29,7 +29,9 @@ const Desktop = () => {
     // could start its own enter animation while <main> was still hidden
     // behind the boot sequence. Gated the same way now.
     const { active: contentActive } = useStageState('header');
-    const panelStage = usePanelReveal(contentActive);
+    // No decoded title and no card domino on the desktop screen, so nothing
+    // reports either stage yet.
+    const { stage: panelStage, advance } = usePanelReveal(contentActive, undefined, ['title', 'cards']);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
     const [time, setTime] = useState("");
     const [date, setDate] = useState("");
@@ -51,20 +53,18 @@ const Desktop = () => {
         setOpenApp(prev => prev === app ? null : app);
     };
 
+    // The screen. Title bar and taskbar are its fixed edges; the desktop
+    // between them is what scrolls, so a window inside never pushes the page.
     return (
-        <div className="mt-5 relative">
-            {/* Sibling of article, not a child — see Review/index.tsx for
-                why: a transform on article would trap a child shadow in
-                the wrong stacking context. */}
-            <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`} />
-            {/* The screen. Title bar and taskbar are its fixed edges; the
-                desktop between them is what scrolls, so a window inside never
-                pushes the page. */}
-            <article
-                ref={panelRef}
-                style={maxHeight ? { maxHeight } : undefined}
-                className={`nier-panel-frame bg-nier-50 relative border border-nier-150 flex flex-col h-[42rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
-            >
+        <Panel
+            ready={contentActive}
+            stage={panelStage}
+            onBoxRevealed={() => advance('box')}
+            wrapperClassName="mt-5"
+            className="bg-nier-50 border border-nier-150 h-[42rem]"
+            style={maxHeight ? { maxHeight } : undefined}
+            frameRef={panelRef}
+        >
 
                 {/* Title bar */}
                 <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
@@ -134,8 +134,7 @@ const Desktop = () => {
                         </span>
                     </div>
                 </div>
-            </article>
-        </div>
+        </Panel>
     );
 };
 

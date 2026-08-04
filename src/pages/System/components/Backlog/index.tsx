@@ -41,7 +41,7 @@ import { writtenSections, SECTION_GLYPH } from "../../../../utils/critique";
 import { CATEGORIES } from "../../../../utils/categories";
 import { usePanelReveal, panelStageIndex } from "../../../../hooks/usePanelReveal";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
-import { enterClass } from "../../../../utils/animations";
+import { Panel } from "../../../../components/common/Panel";
 import { ReviewCover } from "../../../../components/review/ReviewCover";
 import { ReviewModal } from "../ReviewPanel/ReviewModal";
 import { Capture } from "./Capture";
@@ -342,9 +342,11 @@ const captionFor = (review: Review | undefined, error: string | null, waitingOn:
 
 const BacklogWindow = ({ onClose }: Props) => {
     const { reviews } = useReviews();
-    const panelStage = usePanelReveal(true);
+    // No decoded title and no card domino in this window, so nothing reports
+    // either stage yet.
+    const { stage: panelStage, advance } = usePanelReveal(true, undefined, ['title', 'cards']);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLDivElement>();
+    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const [error, setError] = useState<string | null>(null);
     const [justFinished, setJustFinished] = useState<string | null>(null);
@@ -419,13 +421,15 @@ const BacklogWindow = ({ onClose }: Props) => {
     };
 
     return (
-        <div className="relative">
-            <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-            <div
-                    ref={panelRef}
-                    style={maxHeight ? { maxHeight } : undefined}
-                    className={`nier-panel-frame relative bg-nier-100 border border-nier-150 flex flex-col ${enterClass('nier-enter')}`}
-                >
+        <>
+        <Panel
+            ready
+            stage={panelStage}
+            onBoxRevealed={() => advance('box')}
+            className="bg-nier-100 border border-nier-150"
+            style={maxHeight ? { maxHeight } : undefined}
+            frameRef={panelRef}
+        >
                 <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
                     <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Backlog</h3>
                     <button
@@ -479,17 +483,17 @@ const BacklogWindow = ({ onClose }: Props) => {
                         {captionFor(selected, error, listed)}
                     </p>
                 </div>
-            </div>
+        </Panel>
 
-            {/* The heavier fields, asked for at the stage that needs them
-                (story 2) — the same editor the Reviews window uses. */}
-            <ReviewModal
-                isOpen={editorOpen}
-                setIsOpen={setEditorOpen}
-                onReviewAdded={() => { invalidateReviews(); setEditing(null); }}
-                editingReview={editing}
-            />
-        </div>
+        {/* The heavier fields, asked for at the stage that needs them
+            (story 2) — the same editor the Reviews window uses. */}
+        <ReviewModal
+            isOpen={editorOpen}
+            setIsOpen={setEditorOpen}
+            onReviewAdded={() => { invalidateReviews(); setEditing(null); }}
+            editingReview={editing}
+        />
+        </>
     );
 };
 

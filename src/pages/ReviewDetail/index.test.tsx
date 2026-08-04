@@ -72,14 +72,14 @@ describe("a queued Review's page", () => {
 
         await showReview();
 
-        expect(await screen.findByText("Nioh 3")).toBeDefined();
+        expect(await screen.findByRole("heading", { level: 3, name: "Nioh 3" })).toBeDefined();
     });
 
     it("shows no rating", async () => {
         mocked.getReviews.mockResolvedValue([review({ status: "todo", rating: 0 })]);
 
         await showReview();
-        await screen.findByText("Nioh 3");
+        await screen.findByRole("heading", { level: 3, name: "Nioh 3" });
 
         expect(screen.queryByText("0")).toBeNull();
     });
@@ -88,7 +88,7 @@ describe("a queued Review's page", () => {
         mocked.getReviews.mockResolvedValue([review()]);
 
         await showReview();
-        await screen.findByText("Nioh 3");
+        await screen.findByRole("heading", { level: 3, name: "Nioh 3" });
 
         for (const section of ["Story", "Gameplay", "Graphics", "Sound"]) {
             expect(screen.queryByText(section)).toBeNull();
@@ -103,7 +103,7 @@ describe("a finished Review's page", () => {
         ]);
 
         await showReview();
-        await screen.findByText("Nioh 3");
+        await screen.findByRole("heading", { level: 3, name: "Nioh 3" });
 
         expect(screen.getByText("9")).toBeDefined();
     });
@@ -118,7 +118,7 @@ describe("a finished Review's page", () => {
         ]);
 
         await showReview();
-        await screen.findByText("Nioh 3");
+        await screen.findByRole("heading", { level: 3, name: "Nioh 3" });
 
         // By role, not by bare text: the critique panel names the open
         // section in a title bar of its own now, so the selected section's

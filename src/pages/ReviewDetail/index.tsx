@@ -11,7 +11,7 @@ import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal } from "../../hooks/usePanelReveal";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
-import { enterClass } from "../../utils/animations";
+import { Panel } from "../../components/common/Panel";
 import { ReviewCover } from "../../components/review/ReviewCover";
 // Every tab in the reference carries a glyph as well as a word, and the glyph
 // is what you navigate by once you know the menu. Shared with the Backlog,
@@ -154,7 +154,9 @@ const ReviewDetail = () => {
     // horizontally then vertically, content stays hidden until it settles so
     // it doesn't visibly squish along with the box. resetKey=slug so this
     // restarts on every review, not just the first mount of this route.
-    const panelStage = usePanelReveal(contentActive, slug);
+    // No decoded title and no card domino on the detail panel, so nothing
+    // reports either stage yet.
+    const { stage: panelStage, advance } = usePanelReveal(contentActive, slug, ['title', 'cards']);
     const contentReady = panelStage !== 'box';
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
@@ -226,14 +228,16 @@ const ReviewDetail = () => {
         <>
             <PageHeader name={data.title} />
 
-            <div key={slug} className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
-                <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`} />
-
-                <article
-                    ref={panelRef}
-                    style={maxHeight ? { maxHeight } : undefined}
-                    className={`nier-panel-frame bg-nier-100 relative flex flex-col md:h-[34rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
-                >
+            <Panel
+                key={slug}
+                ready={contentActive}
+                stage={panelStage}
+                onBoxRevealed={() => advance('box')}
+                wrapperClassName="mt-5"
+                className="bg-nier-100 md:h-[34rem]"
+                style={maxHeight ? { maxHeight } : undefined}
+                frameRef={panelRef}
+            >
 
                     {/* ── Header bar ─────────────────────────────────── */}
                     <div className={`h-10 bg-nier-150 flex items-stretch flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
@@ -450,8 +454,7 @@ const ReviewDetail = () => {
                         </p>
                     </div>
 
-                </article>
-            </div>
+            </Panel>
             {selectedImg && createPortal(
                 <div
                     className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"

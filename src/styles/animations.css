@@ -106,36 +106,97 @@
       }
 
       /*
-        Nier page transition — sharp left-to-right data-write reveal.
-        220ms/12px used to be barely perceptible against a dense content
-        grid appearing all at once — bumped up so it actually reads as a
-        reveal rather than a pop.
+        ─────────────────────────────────────────────────────────────────
+        The motion primitives. See docs/motion.md for which owns what.
+
+        These are deliberately the same vocabulary the boot sequence below
+        already speaks — Wipe is nier-boot-border-wipe, Domino is
+        nier-boot-nav-item, Growth is nier-boot-line-grow. The panel and
+        modal layer used to have its own translate-and-fade dialect; this
+        is what replaced it.
+
+        Every duration is a custom property so a surface can tune its own
+        pacing without needing a second keyframe.
+        ─────────────────────────────────────────────────────────────────
       */
-      @keyframes nier-enter {
-        0%   { opacity: 0; transform: translateX(-28px) scale(0.98); }
-        100% { opacity: 1; transform: translateX(0) scale(1); }
+
+      /*
+        WIPE — the entrance for every solid surface: panels, frames, modals.
+        A hard clip edge sweeping left-to-right, at full opacity throughout.
+        No fade and no scale, both of which read as soft rather than
+        geometric; the previous translateX(-28px) scale(0.98) also moved the
+        surface on both axes at once, which is what made it look diagonal.
+      */
+      @keyframes nier-wipe {
+        0%   { clip-path: inset(0 100% 0 0); }
+        100% { clip-path: inset(0 0 0 0); }
       }
 
-      .nier-enter {
-        animation: nier-enter 450ms ease-out forwards;
+      .nier-wipe {
+        animation: nier-wipe var(--nier-wipe-duration, 320ms) ease-in-out both;
+        animation-delay: var(--nier-wipe-delay, 0ms);
       }
 
-      @keyframes nier-backdrop-enter {
+      /*
+        GROWTH — horizontal bars, rules and dividers expanding from an
+        anchored edge. transform-origin is left by default; a right-anchored
+        bar sets --nier-grow-origin.
+      */
+      @keyframes nier-grow-x {
+        0%   { transform: scaleX(0); }
+        100% { transform: scaleX(1); }
+      }
+
+      .nier-grow-x {
+        transform-origin: var(--nier-grow-origin, left center);
+        animation: nier-grow-x var(--nier-grow-duration, 300ms) ease-out both;
+        animation-delay: var(--nier-grow-delay, 0ms);
+      }
+
+      /*
+        DOMINO — anything appearing as a sequence: card grids, list rows.
+        Slight overshoot and settle. Per-item delay via --nier-domino-delay,
+        the same shape the nav's own domino uses.
+      */
+      @keyframes nier-domino {
+        0%   { opacity: 0; transform: translateY(-18px); }
+        60%  { opacity: 1; transform: translateY(4px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+
+      .nier-domino {
+        /* "both", not "forwards" — see nier-boot-nav-item below for why a
+           staggered item must hold its 0% state during its own delay. */
+        animation: nier-domino var(--nier-domino-duration, 350ms) ease-out both;
+        animation-delay: var(--nier-domino-delay, 0ms);
+      }
+
+      /*
+        FADE — prose and fields. Anything that wraps, plus backdrops, which
+        have no geometry to wipe.
+      */
+      @keyframes nier-fade {
         0%   { opacity: 0; }
         100% { opacity: 1; }
       }
 
-      .nier-backdrop-enter {
-        animation: nier-backdrop-enter 180ms ease-out forwards;
+      .nier-fade {
+        animation: nier-fade var(--nier-fade-duration, 240ms) ease-out both;
+        animation-delay: var(--nier-fade-delay, 0ms);
       }
 
-      @keyframes nier-modal-enter {
-        0%   { opacity: 0; transform: translateX(-16px); }
-        100% { opacity: 1; transform: translateX(0); }
+      /*
+        A modal is a solid surface, so it wipes like a panel; its backdrop is
+        a dimming field, so it fades. Both start on the same frame — the
+        backdrop used to settle first, which read as the shadow arriving
+        before the thing casting it.
+      */
+      .nier-backdrop-enter {
+        animation: nier-fade 180ms ease-out both;
       }
 
       .nier-modal-enter {
-        animation: nier-modal-enter 240ms ease-out forwards;
+        animation: nier-wipe 240ms ease-in-out both;
       }
 
       /*
@@ -214,18 +275,7 @@
         animation-delay: var(--nier-nav-delay, 0ms);
       }
 
-      /*
-        Panel reveal — 'cards' stage: each card falls into place with a
-        slight overshoot/settle, staggered per-card via --nier-card-delay.
-      */
-      @keyframes nier-panel-card-fall {
-        0%   { opacity: 0; transform: translateY(-18px); }
-        60%  { opacity: 1; transform: translateY(4px); }
-        100% { opacity: 1; transform: translateY(0); }
-      }
-
-      .nier-panel-card-fall {
-        animation: nier-panel-card-fall 350ms ease-out both;
-        animation-delay: var(--nier-card-delay, 0ms);
-      }
+      /* The 'cards' stage of a panel reveal is just the Domino primitive —
+         see .nier-domino above. .nier-panel-card-fall used to live here as a
+         separate, identical keyframe. */
   }

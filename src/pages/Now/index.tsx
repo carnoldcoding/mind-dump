@@ -37,7 +37,7 @@ import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
 import { useDecodeText } from "../../hooks/useDecodeText";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
-import { enterClass } from "../../utils/animations";
+import { Panel } from "../../components/common/Panel";
 import { Link } from "react-router";
 
 // How many queued Reviews the up-next section shows before handing off to the
@@ -263,9 +263,11 @@ const captionFor = (review: Review | undefined, error: boolean): string => {
 const Now = () => {
     const { reviews, loading, error } = useReviews();
     const { active: contentActive } = useStageState('header');
-    const panelStage = usePanelReveal(contentActive);
+    // No card domino here — the sections are rows, not a grid — so nothing
+    // reports the 'cards' stage.
+    const { stage: panelStage, advance } = usePanelReveal(contentActive, undefined, ['cards']);
     const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const decodedPanelTitle = useDecodeText('CURRENT VIEW PANEL', contentReady);
+    const decodedPanelTitle = useDecodeText('CURRENT VIEW PANEL', contentReady, () => advance('title'));
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     // Keyed rather than held by object identity: the store replaces Review
@@ -331,16 +333,18 @@ const Now = () => {
         <>
             {/* Reads "current"; the page is still Now — see CONTEXT.md. */}
             <PageHeader name="CURRENT" />
-            <div className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
-                <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-                {/* A window, not a document: the frame takes the room that is
-                    actually there and the contents scroll inside it. 42rem is
-                    the most it wants; the cap is what is left below it. */}
-                <article
-                    ref={panelRef}
-                    style={maxHeight ? { maxHeight } : undefined}
-                    className={`nier-panel-frame relative bg-nier-100 flex flex-col h-[42rem] ${enterClass('nier-enter')} ${contentReady ? '' : 'invisible'}`}
-                >
+            {/* A window, not a document: the frame takes the room that is
+                actually there and the contents scroll inside it. 42rem is
+                the most it wants; the cap is what is left below it. */}
+            <Panel
+                ready={contentActive}
+                stage={panelStage}
+                onBoxRevealed={() => advance('box')}
+                wrapperClassName="mt-5"
+                className="bg-nier-100 h-[42rem]"
+                style={maxHeight ? { maxHeight } : undefined}
+                frameRef={panelRef}
+            >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 className={`text-nier-text-dark text-xl uppercase ${contentReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
                     </div>
@@ -417,8 +421,7 @@ const Now = () => {
                         </p>
                     </div>
 
-                </article>
-            </div>
+            </Panel>
         </>
     );
 };

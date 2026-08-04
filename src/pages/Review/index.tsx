@@ -1,6 +1,6 @@
 import PageHeader from "../../components/common/PageHeader";
 import { ReviewCard } from "../../components/review/ReviewCard";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Loader from "../../components/common/Loader";
 import { useReviews, type Review as ReviewRecord } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
@@ -13,7 +13,7 @@ import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
 import { useDecodeText } from "../../hooks/useDecodeText";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
-import { enterClass } from "../../utils/animations";
+import { Panel } from "../../components/common/Panel";
 
 // The rating scale, asserted in one place. Every rating stored is between 3
 // and 4.5 with a decimal, so the scale is five points and the useful grain is
@@ -357,10 +357,16 @@ const Review = () => {
     // without this the hook's state would stay stuck from the previous
     // category while the section's own `key` still forces its DOM to
     // remount, leaving cards "ready" from frame one instead of waiting.
-    const panelStage = usePanelReveal(contentActive, category);
+    // Every stage here has a real reporter: the frame's wipe, the title's
+    // decode, and the first card's domino.
+    const { stage: panelStage, advance } = usePanelReveal(contentActive, category);
     const titleReady = panelStageIndex(panelStage) >= panelStageIndex('title');
     const cardsReady = panelStageIndex(panelStage) >= panelStageIndex('cards');
-    const decodedPanelTitle = useDecodeText(`${category ?? ''} VIEW PANEL`.toUpperCase(), titleReady);
+    const decodedPanelTitle = useDecodeText(
+        `${category ?? ''} VIEW PANEL`.toUpperCase(),
+        titleReady,
+        () => advance('title'),
+    );
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleFieldChange = (field: string, value: any) => {
@@ -725,24 +731,22 @@ const Review = () => {
             </div>
         );
 
+        // The margin lives on Panel's wrapper rather than on the frame. It
+        // used to sit on the article, where it margin-collapsed out through
+        // the section around it — which had no padding or border to stop it —
+        // while the absolutely positioned shadow kept its full 20px, landing
+        // 22px low instead of 2px. With the margin on the wrapper neither box
+        // can collapse away from the other.
         return (
-          <section key={category} className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
-            {/* Sibling of article, not a child — a transform (from
-                nier-enter) makes an element establish its own
-                stacking context, which would trap a -z-1 child instead of
-                letting it render behind the whole article as intended. */}
-            {/* No margin here, unlike the article it shadows. An absolutely
-                positioned box does not margin-collapse, so an `mt-5` to match
-                the article's kept its full 20px — while the article's own
-                collapsed out through this section, which has no padding or
-                border to stop it, leaving the article flush at the top. The
-                shadow ended up 22px low rather than 2px, at the bottom as much
-                as the top. `top-0.5` is the whole offset. */}
-            <div className={`absolute w-full h-[42rem] bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}></div>
-            <article
-                ref={panelRef}
+          <Fragment key={category}>
+          <Panel
+                ready={contentActive}
+                stage={panelStage}
+                onBoxRevealed={() => advance('box')}
+                wrapperClassName="mt-5"
+                className="bg-nier-100 h-[42rem]"
                 style={maxHeight ? { maxHeight } : undefined}
-                className={`nier-panel-frame bg-nier-100 mt-5 relative flex flex-col h-[42rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
+                frameRef={panelRef}
             >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 className={`text-nier-text-dark text-xl uppercase ${titleReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
@@ -810,7 +814,7 @@ const Review = () => {
                                 {shown.length > 0
                                     ? shown.map((post, i) => (
                                         <div
-                                            className={`w-full ${cardsReady ? 'nier-panel-card-fall' : 'invisible'}`}
+                                            className={`w-full ${cardsReady ? 'nier-domino' : 'invisible'}`}
                                             key={post._id}
                                             // The caption bar's whole input.
                                             // onFocus rather than a key
@@ -818,7 +822,14 @@ const Review = () => {
                                             // so Tab already walks the shelf.
                                             onMouseEnter={() => setSelectedId(post._id)}
                                             onFocus={() => setSelectedId(post._id)}
-                                            style={cardsReady ? ({ '--nier-card-delay': `${Math.min(i, 20) * 30}ms` } as React.CSSProperties) : undefined}
+                                            // Only the first card reports. The
+                                            // stage ends on the lead element,
+                                            // so the rest of the domino runs on
+                                            // under whatever comes next.
+                                            onAnimationEnd={i === 0 ? (event) => {
+                                                if (event.target === event.currentTarget) advance('cards');
+                                            } : undefined}
+                                            style={cardsReady ? ({ '--nier-domino-delay': `${Math.min(i, 20) * 30}ms` } as React.CSSProperties) : undefined}
                                         >
                                         {/* A shelf is finished work, so the line
                                             is what finishing produced: the rating
@@ -858,11 +869,13 @@ const Review = () => {
                         </p>
                     </div>
 
-                </article>
+                </Panel>
 
                 {/* Below lg the filter column has nowhere to stand, so it
                     arrives over the panel — the same column, not a second,
-                    smaller set of controls that can drift from it. */}
+                    smaller set of controls that can drift from it. It is
+                    `fixed`, so it does not need to sit inside the panel's
+                    wrapper to land in the right place. */}
                 {showFilters && (
                     <div
                         className="lg:hidden fixed inset-0 z-40 bg-nier-dark/40 flex items-start justify-center p-4 pt-20"
@@ -885,7 +898,7 @@ const Review = () => {
                         </div>
                     </div>
                 )}
-          </section>
+          </Fragment>
         );
       };
 
