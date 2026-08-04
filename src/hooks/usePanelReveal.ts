@@ -95,15 +95,18 @@ export const usePanelReveal = (
     setStage('box');
   }, [ready, resetKey, motionVersion]);
 
-  // Stable dep: the array identity changes on every render at most call sites.
+  // Only the *dep* needs flattening — the array identity changes on every
+  // render at most call sites, while its contents do not.
   const unreportedKey = unreported.join(',');
+  const isUnreported = unreported.includes(stage);
 
   useEffect(() => {
     if (!ready || stage === 'done' || animationsDisabled()) return;
-    if (!unreportedKey.split(',').includes(stage)) return;
+    if (!isUnreported) return;
 
     advance(stage);
-  }, [ready, stage, advance, unreportedKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unreportedKey stands in for `unreported`, whose identity is unstable.
+  }, [ready, stage, advance, unreportedKey, isUnreported]);
 
   // One guard per stage, replaced as the sequence moves on.
   useEffect(() => {

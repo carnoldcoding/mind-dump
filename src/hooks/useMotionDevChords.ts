@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { replayReveal, toggleMotion } from '../utils/animations';
+import { useEffect, useSyncExternalStore } from 'react';
+import { getMotionVersion, replayReveal, subscribeMotion, toggleMotion } from '../utils/animations';
 
 /**
  * Dev-only motion controls, so iterating on a ~1.1s reveal doesn't mean
@@ -16,6 +16,16 @@ import { replayReveal, toggleMotion } from '../utils/animations';
  * build — the listener and its imports drop out entirely.
  */
 export const useMotionDevChords = () => {
+  /**
+   * Subscribed from the shell so a toggle re-renders the whole tree.
+   * `enterClass` is a plain read, and most of its callers are modals that
+   * early-return before they could legally call a hook — so rather than each
+   * of them subscribing, the one component above all of them does, and their
+   * next render picks the new value up. Blunt, but this is a dev-only control
+   * and the alternative is a hook call every modal is shaped wrong for.
+   */
+  useSyncExternalStore(subscribeMotion, getMotionVersion, getMotionVersion);
+
   useEffect(() => {
     if (!import.meta.env.DEV) return;
 

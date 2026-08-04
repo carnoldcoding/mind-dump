@@ -12,6 +12,7 @@ import { useStageState } from "../../context/BootSequenceContext";
 import { usePanelReveal } from "../../hooks/usePanelReveal";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
+import { enterClass } from "../../utils/animations";
 import { ReviewCover } from "../../components/review/ReviewCover";
 // Every tab in the reference carries a glyph as well as a word, and the glyph
 // is what you navigate by once you know the menu. Shared with the Backlog,
@@ -457,7 +458,7 @@ const ReviewDetail = () => {
             </Panel>
             {selectedImg && createPortal(
                 <div
-                    className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+                    className={`fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 ${enterClass('nier-backdrop-enter')}`}
                     onClick={() => setSelectedImg(null)}
                 >
                     <div

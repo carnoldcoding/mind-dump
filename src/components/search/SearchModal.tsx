@@ -122,7 +122,7 @@ export const SearchModal = () => {
 
     return createPortal(
         <div
-            className="fixed inset-0 z-200 flex items-start justify-center p-4 pt-24 bg-nier-dark/40"
+            className={`fixed inset-0 z-200 flex items-start justify-center p-4 pt-24 bg-nier-dark/40 ${enterClass('nier-backdrop-enter')}`}
             onClick={close}
         >
             <div

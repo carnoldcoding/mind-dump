@@ -1,6 +1,6 @@
 import type { AnimationEvent, CSSProperties, ReactNode, Ref } from 'react';
 import type { PanelStage } from '../../hooks/usePanelReveal';
-import { enterClass } from '../../utils/animations';
+import { useEnterClass } from '../../utils/animations';
 
 type PanelProps = {
     /** Whether the panel may begin revealing at all — typically the boot sequence's 'header' stage. */
@@ -32,6 +32,12 @@ type PanelProps = {
  * the point of the component: a caller cannot desync them, because a caller
  * cannot address them separately.
  *
+ * The shadow is a **sibling** of the frame, never a child, and must stay one.
+ * The Wipe sets `clip-path`, which makes the frame establish its own stacking
+ * context — a `-z-1` child would be trapped inside it instead of rendering
+ * behind the whole frame as intended. (This held for the `transform` the old
+ * entrance used, and holds for `clip-path` for the same reason.)
+ *
  * The frame reports the end of the 'box' stage. Note the target check in
  * `handleAnimationEnd` — `animationend` bubbles, so without it every card
  * finishing its domino inside the panel would be read as the frame's own
@@ -48,7 +54,7 @@ export const Panel = ({
     children,
 }: PanelProps) => {
     const gate = ready ? '' : 'invisible';
-    const wipe = enterClass('nier-wipe');
+    const wipe = useEnterClass('nier-wipe');
 
     const handleAnimationEnd = (event: AnimationEvent<HTMLElement>) => {
         if (event.target !== event.currentTarget) return;
