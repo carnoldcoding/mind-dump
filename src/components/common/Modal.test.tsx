@@ -136,12 +136,18 @@ describe('Modal', () => {
   });
 
   describe('when motion is disabled', () => {
-    it('opens at its resting state', () => {
+    /**
+     * At rest a primitive leaves nothing inline behind — `clearProps` hands the
+     * element back to its stylesheet. An entrance that leaves residue is what
+     * made the detail page's prose stick invisible: the next build read the
+     * leftover `opacity: 0` as the value it should animate *towards*.
+     */
+    it('opens at its resting state, with nothing left inline', () => {
       setMotionOverride('off');
       renderModal();
 
       const surface = document.querySelector('[data-modal-surface]') as HTMLElement;
-      expect(surface.style.clipPath).toBe('inset(0 0% 0 0)');
+      expect(surface.style.clipPath).toBe('');
     });
 
     it('leaves immediately rather than holding a closed dialog on screen', () => {

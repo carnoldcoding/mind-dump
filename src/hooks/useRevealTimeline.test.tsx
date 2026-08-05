@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useRef, type RefObject } from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
+import gsap from 'gsap';
 // `gsap.core.Timeline` needs no import — gsap's types declare a global `gsap`
 // namespace, and importing the default export for a type position leaves an
 // unused value binding.
 import { useRevealTimeline } from './useRevealTimeline';
+import { fade } from '../utils/motion';
 import { resetMotionOverride, setMotionOverride } from '../utils/animations';
 
 /**
@@ -21,15 +23,16 @@ const timeline = () => built!.current!;
  * rather than advancing a clock — `progress()` reads synchronously, which is
  * the point of owning the clock instead of borrowing the browser's.
  */
-const Surface = ({ ready }: { ready: boolean }) => {
+const Surface = ({ ready, rebuildKey = 0 }: { ready: boolean; rebuildKey?: number }) => {
   const scope = useRef<HTMLDivElement>(null);
 
   const revealed = useRevealTimeline(
     ready,
     (tl) => {
-      tl.from('[data-testid="subject"]', { opacity: 0, duration: 0.3 });
+      fade(tl, '[data-testid="subject"]');
     },
     scope,
+    [rebuildKey],
   );
 
   built = revealed;
@@ -108,6 +111,46 @@ describe('useRevealTimeline', () => {
     expect(timeline().paused()).toBe(false);
   });
 
+  /**
+   * The bug this guards is the one that made the detail page's prose stick
+   * invisible. `.from()` reads the element's *current* value as the value it
+   * animates towards, so a second build over an element the first had left at
+   * `opacity: 0` recorded 0 as the destination and faded 0 to 0. Every
+   * primitive is a `fromTo` with an explicit resting value now, and clears
+   * what it touched when it lands.
+   */
+  describe('rebuilding', () => {
+    const settle = () => {
+      act(() => {
+        gsap.globalTimeline.time(gsap.globalTimeline.time() + 2);
+      });
+    };
+
+    it('leaves nothing inline once the entrance has landed', () => {
+      render(<Surface ready />);
+      settle();
+
+      expect(opacityOfSubject()).toBe('');
+    });
+
+    it('fades in again on a rebuild, rather than sticking where the last build left it', () => {
+      const { rerender } = render(<Surface ready />);
+      settle();
+
+      rerender(<Surface ready rebuildKey={1} />);
+      settle();
+
+      expect(opacityOfSubject()).toBe('');
+    });
+
+    it('hides the subject again while a rebuilt entrance is still waiting', () => {
+      const { rerender } = render(<Surface ready={false} />);
+      rerender(<Surface ready={false} rebuildKey={1} />);
+
+      expect(opacityOfSubject()).toBe('0');
+    });
+  });
+
   describe('when motion is disabled', () => {
     it('resolves to the finished state instead of animating', () => {
       setMotionOverride('off');
@@ -121,7 +164,7 @@ describe('useRevealTimeline', () => {
       setMotionOverride('off');
       render(<Surface ready={false} />);
 
-      expect(opacityOfSubject()).not.toBe('0');
+      expect(opacityOfSubject()).toBe('');
     });
 
     it('does not start playing when ready turns true', () => {

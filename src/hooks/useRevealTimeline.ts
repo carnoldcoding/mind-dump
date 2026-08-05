@@ -80,7 +80,25 @@ export const useRevealTimeline = (
         timeline.current = null;
       };
     },
-    { scope, dependencies: [motionVersion, ...rebuildOn] },
+    {
+      scope,
+      dependencies: [motionVersion, ...rebuildOn],
+      /**
+       * Not the default, and the default is a trap here.
+       *
+       * `useGSAP` reverts only on unmount unless told otherwise, so a rebuild
+       * left the previous entrance's inline styles in place. `.from()` reads
+       * the element's *current* value as the endpoint it animates towards —
+       * so a second build over an element the first build had left at
+       * `opacity: 0` recorded 0 as the destination, and faded 0 to 0. Every
+       * Fade, Domino and Growth on a surface with `rebuildOn` stuck invisible;
+       * Wipe survived only because it is a `fromTo` with an explicit end.
+       *
+       * Reverting first means each build starts from the element's real
+       * resting style, which is the value `.from()` is supposed to read.
+       */
+      revertOnUpdate: true,
+    },
   );
 
   // useGSAP runs in a layout effect, so the timeline exists by the time this

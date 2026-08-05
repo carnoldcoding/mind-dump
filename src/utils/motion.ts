@@ -51,6 +51,24 @@ export const FADE_DURATION = 0.24;
 export const DECODE_PER_CHAR = 0.055;
 
 /**
+ * Why every primitive below is a `fromTo` with an explicit resting value, and
+ * clears the properties it touched when it lands.
+ *
+ * `.from()` reads the element's *current* value as the destination it animates
+ * towards. That is fine once, and wrong the second time: a rebuild — a shelf
+ * filtering, a critique changing tab — runs over an element the previous build
+ * left at `opacity: 0`, records 0 as the destination, and fades 0 to 0. The
+ * prose on the detail page stuck invisible exactly this way, and so would
+ * every Domino and Growth on a surface with `rebuildOn`. Wipe never did,
+ * because it was already a `fromTo`.
+ *
+ * `clearProps` is the other half: an entrance that removes its own inline
+ * styles when it finishes leaves the element in the state its stylesheet
+ * describes, so nothing downstream — a hover transition, the next rebuild —
+ * has to reason about residue an animation left behind.
+ */
+
+/**
  * WIPE — the entrance for every solid surface: panels, frames, modals.
  *
  * A hard clip edge sweeping left to right, at full opacity throughout. No fade
@@ -66,7 +84,7 @@ export const wipe = (timeline: gsap.core.Timeline, target: Target, position?: Po
   timeline.fromTo(
     target,
     { clipPath: 'inset(0 100% 0 0)' },
-    { clipPath: 'inset(0 0% 0 0)', duration: WIPE_DURATION, ease: 'power2.inOut' },
+    { clipPath: 'inset(0 0% 0 0)', duration: WIPE_DURATION, ease: 'power2.inOut', clearProps: 'clipPath' },
     position,
   );
 
@@ -80,9 +98,10 @@ export const growth = (
   position?: Position,
   origin = 'left center',
 ) =>
-  timeline.from(
+  timeline.fromTo(
     target,
-    { scaleX: 0, transformOrigin: origin, duration: GROWTH_DURATION, ease: 'power2.out' },
+    { scaleX: 0, transformOrigin: origin },
+    { scaleX: 1, duration: GROWTH_DURATION, ease: 'power2.out', clearProps: 'transform' },
     position,
   );
 
@@ -98,23 +117,26 @@ export const domino = (
   position?: Position,
   stagger = DOMINO_STAGGER,
 ) =>
-  timeline.from(
+  timeline.fromTo(
     target,
+    { opacity: 0, y: -18 },
     {
-      opacity: 0,
-      y: -18,
+      opacity: 1,
+      y: 0,
       duration: DOMINO_DURATION,
       ease: 'back.out(1.4)',
       stagger,
+      clearProps: 'opacity,transform',
     },
     position,
   );
 
 /** FADE — prose and fields. Anything that wraps, plus backdrops. */
 export const fade = (timeline: gsap.core.Timeline, target: Target, position?: Position) =>
-  timeline.from(
+  timeline.fromTo(
     target,
-    { opacity: 0, duration: FADE_DURATION, ease: 'power1.out' },
+    { opacity: 0 },
+    { opacity: 1, duration: FADE_DURATION, ease: 'power1.out', clearProps: 'opacity' },
     position,
   );
 

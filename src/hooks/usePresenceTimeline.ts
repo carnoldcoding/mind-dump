@@ -58,7 +58,14 @@ export const usePresenceTimeline = (
         timeline.current = null;
       };
     },
-    { scope, dependencies: [present, motionVersion] },
+    {
+      scope,
+      dependencies: [present, motionVersion],
+      // See useRevealTimeline: without this, a rebuild leaves the previous
+      // entrance's inline styles behind, and `.from()` reads them as the
+      // values it should animate towards.
+      revertOnUpdate: true,
+    },
   );
 
   useEffect(() => {
