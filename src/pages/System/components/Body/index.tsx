@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { backend } from "../../../../api/backend";
 import WorkoutGrid from "./WorkoutGrid";
 import MovementChart from "./MovementChart";
@@ -9,22 +9,28 @@ import MovementEditModal from "./MovementEditModal";
 import EntryEditModal from "./EntryEditModal";
 import { partitionBodyDocs, describeEntry, docId } from "./entry";
 import type { BodyDoc, Entry } from "./entry";
-import { usePanelReveal, panelStageIndex } from "../../../../hooks/usePanelReveal";
+import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
+import { fade, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
-import { enterClass } from "../../../../utils/animations";
+import { useRetained } from "../../../../hooks/useRetained";
+import { Panel } from "../../../../components/common/Panel";
 
 type ActiveTab = "chart" | "history";
 
 type Props = { onClose: () => void };
 
 const BodyWindow = ({ onClose }: Props) => {
-    // Always ready=true — this window only ever mounts well after boot is
-    // done (user has to open System, then click a folder icon), and the
-    // conditional render in Desktop.tsx already gives it a fresh mount
-    // each time it's opened, so no resetKey is needed either.
-    const panelStage = usePanelReveal(true);
-    const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLDivElement>();
+    // No signal to wait on: this window only ever mounts well after boot is
+    // done — the user has to open System, then click a folder icon — and
+    // Desktop's conditional render gives it a fresh mount each time. It has no
+    // decoded title and no card grid, so its whole entrance is the frame
+    // arriving with its chrome a beat behind.
+    const scope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(true, (tl) => {
+        wipe(tl, '[data-panel-surface]');
+        fade(tl, '[data-window-chrome]', '<0.2');
+    }, scope);
+    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const [docs, setDocs]                         = useState<BodyDoc[]>([]);
     const [selectedName, setSelectedName]         = useState<string | null>(null);
@@ -70,6 +76,14 @@ const BodyWindow = ({ onClose }: Props) => {
         [movements, editingName]
     );
 
+    // Held so the edit modals can play their exit over the record that was on
+    // screen, rather than over an empty dialog — see useRetained. Three
+    // separate values because they answer three different questions: what is
+    // being edited, which entry, and which Movement that entry belongs to.
+    const shownMovement = useRetained(editingMovement);
+    const shownEntry = useRetained(editingEntry);
+    const shownSelected = useRetained(selected);
+
     // ── Mutations ───────────────────────────────────────────────────
     const handleDeleteMovement = useCallback(async (workoutName: string) => {
         const doomed = docs.filter(d => d.workoutName === workoutName);
@@ -112,26 +126,22 @@ const BodyWindow = ({ onClose }: Props) => {
 
     return (
         <>
-            <div className="relative">
-                {/* Sibling of the panel div, not a child — see
-                    Review/index.tsx for why: a transform on the panel would
-                    trap a child shadow in the wrong stacking context. */}
-                <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-                <div
-                    ref={panelRef}
-                    style={maxHeight ? { maxHeight } : undefined}
-                    className={`nier-panel-frame relative bg-nier-100 border border-nier-150 flex flex-col ${enterClass('nier-enter')}`}
-                >
+            <Panel
+                wrapperRef={scope}
+                className="bg-nier-100 border border-nier-150"
+                style={maxHeight ? { maxHeight } : undefined}
+                frameRef={panelRef}
+            >
 
                     {/* Window title bar */}
-                    <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
+                    <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Body</h3>
                         <button onClick={onClose} aria-label="Close" className="text-sm px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none">
                             ✕
                         </button>
                     </div>
 
-                    <div className={`p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0 ${contentReady ? '' : 'invisible'}`}>
+                    <div data-window-chrome className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
                         <div className="flex gap-4 flex-col md:flex-row md:items-start">
                             <MovementList
@@ -202,30 +212,36 @@ const BodyWindow = ({ onClose }: Props) => {
                         {/* Review artifact, so it sits below the things you came to do. */}
                         <WorkoutGrid entries={entries} />
                     </div>
-                </div>
-            </div>
+            </Panel>
 
-            {creating && (
-                <NewMovementModal
-                    order={movements.length}
-                    onClose={() => setCreating(false)}
-                    onSaved={(workoutName) => { setSelectedName(workoutName); fetchDocs(); }}
-                />
-            )}
+            {/* Rendered unconditionally and told whether they are open. A
+                modal the parent removes from the tree has nothing left to
+                animate, which is why nothing here used to have an exit. The
+                two that describe a selection hold on to it while they leave,
+                so the exit plays over the record the reader was looking at
+                rather than over an empty dialog. */}
+            <NewMovementModal
+                open={creating}
+                order={movements.length}
+                onClose={() => setCreating(false)}
+                onSaved={(workoutName) => { setSelectedName(workoutName); fetchDocs(); }}
+            />
 
-            {editingMovement && (
+            {shownMovement && (
                 <MovementEditModal
-                    movement={editingMovement}
+                    open={!!editingMovement}
+                    movement={shownMovement}
                     onClose={() => setEditingName(null)}
                     onSaved={fetchDocs}
                     onDelete={handleDeleteMovement}
                 />
             )}
 
-            {editingEntry && selected && (
+            {shownEntry && shownSelected && (
                 <EntryEditModal
-                    entry={editingEntry}
-                    movementName={selected.displayName}
+                    open={!!(editingEntry && selected)}
+                    entry={shownEntry}
+                    movementName={shownSelected.displayName}
                     onClose={() => setEditingEntry(null)}
                     onSaved={() => { fetchDocs(); setEditingEntry(null); }}
                     onDelete={id => { handleDeleteEntry(id); setEditingEntry(null); }}

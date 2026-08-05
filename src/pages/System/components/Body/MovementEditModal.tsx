@@ -1,15 +1,16 @@
 import { useState, useEffect, useId } from "react";
-import { createPortal } from "react-dom";
 import { TextField } from "../../../../components/common/TextField";
 import { BigTextField } from "../../../../components/common/BigTextField";
 import { NumTextField } from "../../../../components/common/NumTextField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
-import { enterClass } from "../../../../utils/animations";
+import { Modal } from "../../../../components/common/Modal";
 import { buildGoal, fieldValue } from "./entry";
 import type { Movement, MovementTag } from "./entry";
 
 type Props = {
+    /** Kept mounted while closing, so the exit has something to play over. */
+    open: boolean;
     movement: Movement;
     onClose: () => void;
     onSaved: () => void;
@@ -18,7 +19,7 @@ type Props = {
 
 // Everything that defines a Movement is edited here, Goal included. A Goal is
 // current state, not history — saving replaces whatever was there before.
-const MovementEditModal = ({ movement, onClose, onSaved, onDelete }: Props) => {
+const MovementEditModal = ({ movement, open, onClose, onSaved, onDelete }: Props) => {
     const confirmId = useId();
     const [displayName, setDisplayName] = useState(movement.displayName);
     const [tag, setTag]                 = useState<MovementTag>(movement.tag);
@@ -33,9 +34,10 @@ const MovementEditModal = ({ movement, onClose, onSaved, onDelete }: Props) => {
     const [deleteError, setDeleteError] = useState("");
 
     useEffect(() => {
+        if (!open) return;
         document.body.style.overflow = "hidden";
         return () => { document.body.style.overflow = ""; };
-    }, []);
+    }, [open]);
 
     const handleSave = async () => {
         if (!displayName.trim()) { setError("Name is required"); return; }
@@ -69,10 +71,8 @@ const MovementEditModal = ({ movement, onClose, onSaved, onDelete }: Props) => {
         }
     };
 
-    return createPortal(
-        <div className={`fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 ${enterClass('nier-backdrop-enter')}`}>
-            <div role="dialog" aria-label="Edit Movement" className={`relative w-full max-w-md ${enterClass('nier-modal-enter')}`}>
-                <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
+    return (
+        <Modal open={open} onClose={onClose} label="Edit Movement" className="w-full max-w-md">
                 <article className="bg-nier-100-lighter relative max-h-[85vh] overflow-y-auto">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5 sticky top-0">
@@ -148,9 +148,7 @@ const MovementEditModal = ({ movement, onClose, onSaved, onDelete }: Props) => {
                         )}
                     </div>
                 </article>
-            </div>
-        </div>,
-        document.body
+        </Modal>
     );
 };
 

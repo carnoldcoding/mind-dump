@@ -26,19 +26,24 @@
 // row is an anchor, so Tab already walks the list and Enter already opens —
 // `onFocus` and `onMouseEnter` simply tell the detail pane what to show.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import PageHeader from "../../components/common/PageHeader";
 import Loader from "../../components/common/Loader";
 import { ReviewCover } from "../../components/review/ReviewCover";
 import { useReviews, isUnfinished, type Review } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
 import { reviewPath } from "../../utils/categories";
-import { useStageState } from "../../context/BootSequenceContext";
-import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
-import { useDecodeText } from "../../hooks/useDecodeText";
+import { useRevealSignal } from "../../hooks/useRevealSignal";
+import { useRevealTimeline } from "../../hooks/useRevealTimeline";
+import { decode, domino, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
-import { enterClass } from "../../utils/animations";
+import { Panel } from "../../components/common/Panel";
 import { Link } from "react-router";
+
+// The panel's own title. Held here rather than inline because the reveal
+// timeline and the heading have to agree on it — Decode scrambles *toward* the
+// text the element already carries.
+const PANEL_TITLE = "CURRENT VIEW PANEL";
 
 // How many queued Reviews the up-next section shows before handing off to the
 // Backlog, and how many finished ones the last section carries.
@@ -123,7 +128,7 @@ const Section = ({ title, empty, children }: {
     empty: string;
     children?: React.ReactNode;
 }) => (
-    <section aria-label={title}>
+    <section data-now-section aria-label={title}>
         <h2 className="bg-nier-dark text-nier-text-light text-xs uppercase tracking-widest px-2 py-1">
             {title}
         </h2>
@@ -199,7 +204,7 @@ const Detail = ({ review }: { review: Review }) => {
  * so the left number is always part of the right one, and `n / n` means a
  * Category with nothing left to start.
  */
-const Shelves = ({ reviews, error }: { reviews: Review[]; error: boolean }) => {
+const Shelves = ({ reviews, error, loading }: { reviews: Review[]; error: boolean; loading: boolean }) => {
     const shelves = ACTIVITIES.map(activity => {
         const all = reviews.filter(review => review.type === activity.type);
         return {
@@ -224,7 +229,7 @@ const Shelves = ({ reviews, error }: { reviews: Review[]; error: boolean }) => {
                         label={shelf.label}
                         // Not 0 / 0: with nothing fetched, a zero would say the
                         // shelf is clear when what is true is that we don't know.
-                        value={error ? "— / —" : `${shelf.active} / ${shelf.backlog}`}
+                        value={error || loading ? "— / —" : `${shelf.active} / ${shelf.backlog}`}
                     />
                 ))}
             </div>
@@ -237,10 +242,14 @@ const Shelves = ({ reviews, error }: { reviews: Review[]; error: boolean }) => {
             </div>
             {/* The reference's self-diagnostic line, and a real one: it says NO
                 ERROR because it is capable of saying something else. */}
+            {/* It says NO ERROR because it is capable of saying something
+                else — and now because it is capable of saying what it is
+                doing, which is the field the spinner used to replace the
+                whole page to tell you. */}
             <p className={`text-[10px] uppercase tracking-[0.3em] text-center py-4 ${
                 error ? 'text-nier-text-dark' : 'text-nier-text-dark/50'
             }`}>
-                {error ? 'Error' : 'No Error'}
+                {error ? 'Error' : loading ? 'Loading' : 'No Error'}
             </p>
         </div>
     );
@@ -251,8 +260,9 @@ const Shelves = ({ reviews, error }: { reviews: Review[]; error: boolean }) => {
  * one. The bar carries the fault as well as the Shelves column, because the
  * column is desktop-only and a phone would otherwise be told nothing.
  */
-const captionFor = (review: Review | undefined, error: boolean): string => {
+const captionFor = (review: Review | undefined, error: boolean, loading: boolean): string => {
     if (error) return "Collection unreachable — the API did not answer.";
+    if (loading) return "Reading the collection…";
     if (!review) return "Nothing to show.";
     if (review.status === "active") return `${review.title} — in progress`;
     if (review.status === "todo") return `${review.title} — queued`;
@@ -262,10 +272,28 @@ const captionFor = (review: Review | undefined, error: boolean): string => {
 
 const Now = () => {
     const { reviews, loading, error } = useReviews();
-    const { active: contentActive } = useStageState('header');
-    const panelStage = usePanelReveal(contentActive);
-    const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const decodedPanelTitle = useDecodeText('CURRENT VIEW PANEL', contentReady);
+    const revealed = useRevealSignal();
+    const scope = useRef<HTMLDivElement>(null);
+
+    // The frame arrives, its title decodes over the tail of that, and the
+    // sections fall in underneath. Each beat starts before the one before it
+    // has finished — that overlap is the `"<"` positions, and it is what makes
+    // the panel read as one machine coming online rather than three beats
+    // politely waiting for each other.
+    useRevealTimeline(revealed, (tl) => {
+        wipe(tl, '[data-panel-surface]');
+        decode(tl, '[data-panel-title]', PANEL_TITLE, '<0.15');
+    }, scope);
+
+    // The sections get their own timeline because they arrive on a different
+    // signal. The frame's is built at mount, when the fetch has not answered
+    // and there are no sections to address; these domino in when the list is
+    // actually there. Two timelines, two readinesses — not one timeline that
+    // has to be rebuilt, which would replay the frame's wipe.
+    const listScope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(revealed && !loading, (tl) => {
+        domino(tl, '[data-now-section]');
+    }, listScope, [loading]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     // Keyed rather than held by object identity: the store replaces Review
@@ -305,12 +333,6 @@ const Now = () => {
     // empty pane: the panel should say something the moment it opens.
     const selected = listed.find(review => keyOf(review) === selectedKey) ?? listed[0];
 
-    if (loading) return (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2">
-            <Loader />
-        </div>
-    );
-
     // A failed fetch no longer replaces the page with a line of text. The
     // panel is the thing that reports on itself — it has a field for exactly
     // this — and swapping it out for `Error: Network error` threw away the
@@ -320,6 +342,14 @@ const Now = () => {
     // The sections say "unavailable" rather than "nothing", because with
     // nothing fetched those are different claims and only one of them is true.
     const emptyText = (nothing: string) => error ? "Unavailable." : nothing;
+
+    // The frame does not wait for the fetch. It used to be replaced wholesale
+    // by a centred spinner, which threw away the panel, its title and its
+    // diagnostic at the one moment there is nothing else on screen — the same
+    // argument the error branch below already makes, applied to the other
+    // outcome of the same request. It also made the reveal depend on network
+    // latency: the panel could not wipe in until the data arrived, so a slow
+    // response left boot handing off to nothing. See docs/motion.md.
 
     const rowProps = (review: Review) => ({
         review,
@@ -331,18 +361,18 @@ const Now = () => {
         <>
             {/* Reads "current"; the page is still Now — see CONTEXT.md. */}
             <PageHeader name="CURRENT" />
-            <div className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
-                <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-                {/* A window, not a document: the frame takes the room that is
-                    actually there and the contents scroll inside it. 42rem is
-                    the most it wants; the cap is what is left below it. */}
-                <article
-                    ref={panelRef}
-                    style={maxHeight ? { maxHeight } : undefined}
-                    className={`nier-panel-frame relative bg-nier-100 flex flex-col h-[42rem] ${enterClass('nier-enter')} ${contentReady ? '' : 'invisible'}`}
-                >
+            {/* A window, not a document: the frame takes the room that is
+                actually there and the contents scroll inside it. 42rem is
+                the most it wants; the cap is what is left below it. */}
+            <Panel
+                wrapperRef={scope}
+                wrapperClassName="mt-5"
+                className="bg-nier-100 h-[42rem]"
+                style={maxHeight ? { maxHeight } : undefined}
+                frameRef={panelRef}
+            >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 className={`text-nier-text-dark text-xl uppercase ${contentReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
+                        <h3 data-panel-title className="text-nier-text-dark text-xl uppercase">{PANEL_TITLE}</h3>
                     </div>
 
                     {/* min-h-0 so the columns scroll inside the frame instead
@@ -358,7 +388,13 @@ const Now = () => {
                             <span className="w-full flex-[5] bg-nier-150/50" />
                         </div>
 
-                        <div className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4 pl-4">
+                        <div ref={listScope} className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4 pl-4">
+                            {loading ? (
+                                <div className="flex-1 flex items-center justify-center">
+                                    <Loader />
+                                </div>
+                            ) : (
+                              <>
                             <Section title="In Progress" empty={emptyText("Nothing in progress.")}>
                                 {inProgress.length > 0 && inProgress.map(review => (
                                     <Row
@@ -388,6 +424,8 @@ const Now = () => {
                                     />
                                 ))}
                             </Section>
+                              </>
+                            )}
                         </div>
 
                         {/* Both side columns are desktop-only. A phone has room
@@ -400,7 +438,7 @@ const Now = () => {
                         )}
 
                         <div className="hidden md:block w-48 flex-shrink-0 overflow-y-auto bg-nier-100-lighter/40">
-                            <Shelves reviews={reviews} error={error} />
+                            <Shelves reviews={reviews} error={error} loading={loading} />
                         </div>
                     </div>
 
@@ -410,15 +448,14 @@ const Now = () => {
                     <div className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                         <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
-                            {captionFor(selected, error)}
+                            {captionFor(selected, error, loading)}
                         </p>
                         <p className="ml-auto flex-shrink-0 text-xs uppercase tracking-wide text-nier-text-dark/50">
                             <span className="hidden sm:inline">↕ Select&nbsp;&nbsp;&nbsp;</span>◉ Open
                         </p>
                     </div>
 
-                </article>
-            </div>
+            </Panel>
         </>
     );
 };

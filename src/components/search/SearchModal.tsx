@@ -10,13 +10,12 @@
 // nothing.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import { useReviews, type Review } from "../../store/reviews";
 import { useSearch, useSearchShortcut } from "./useSearch";
 import { rankByTitle } from "../../utils/rankByTitle";
 import { reviewPath } from "../../utils/categories";
-import { enterClass } from "../../utils/animations";
+import { Modal } from "../common/Modal";
 import gameLight from "../../assets/game-light.svg";
 import monitorLight from "../../assets/monitor-light.svg";
 import bookLight from "../../assets/book-light.svg";
@@ -73,12 +72,23 @@ export const SearchModal = () => {
 
     useEffect(() => { setHighlighted(0); }, [query]);
 
-    // Opening and typing are one motion; closing forgets what was typed, so
-    // the next open is a fresh prompt rather than the last one's leftovers.
+    // Closing forgets what was typed, so the next open is a fresh prompt
+    // rather than the last one's leftovers.
     useEffect(() => {
-        if (isOpen) inputRef.current?.focus();
-        else setQuery("");
+        if (!isOpen) setQuery("");
     }, [isOpen]);
+
+    /**
+     * Focus on attach rather than on `isOpen`. The modal owns its own presence
+     * now, so the field mounts a commit *after* isOpen turns true — an effect
+     * keyed on isOpen runs while this ref is still null, and opening Search no
+     * longer put the caret in it. The field only exists while Search is open,
+     * so attaching is the same moment.
+     */
+    const attachInput = (node: HTMLInputElement | null) => {
+        inputRef.current = node;
+        node?.focus();
+    };
 
     // One navigation, replacing the entry that carries `?search` rather than
     // popping it and pushing the destination. Popping first would be a race:
@@ -118,21 +128,16 @@ export const SearchModal = () => {
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [isOpen, flat, highlighted, openResult, close]);
 
-    if (!isOpen) return null;
-
-    return createPortal(
-        <div
-            className="fixed inset-0 z-200 flex items-start justify-center p-4 pt-24 bg-nier-dark/40"
-            onClick={close}
+    return (
+        <Modal
+            open={isOpen}
+            onClose={close}
+            label="Search"
+            backdropClassName="z-200 flex items-start justify-center p-4 pt-24"
+            className="w-full max-w-2xl"
+            shadow={false}
         >
-            <div
-                role="dialog"
-                aria-modal="true"
-                aria-label="Search"
-                className={`relative w-full max-w-2xl ${enterClass('nier-modal-enter')}`}
-                onClick={event => event.stopPropagation()}
-            >
-                <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
+                <aside data-modal-shadow className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
 
                 <div className="relative bg-nier-100 border border-nier-150">
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-4">
@@ -148,7 +153,7 @@ export const SearchModal = () => {
                         <div className="flex items-center gap-2 border-b border-nier-dark/40">
                             <span aria-hidden="true" className="text-lg leading-none text-nier-text-dark">&gt;</span>
                             <input
-                                ref={inputRef}
+                                ref={attachInput}
                                 type="text"
                                 aria-label="Search Reviews"
                                 role="combobox"
@@ -230,8 +235,6 @@ export const SearchModal = () => {
                         )}
                     </div>
                 </div>
-            </div>
-        </div>,
-        document.body,
+        </Modal>
     );
 };

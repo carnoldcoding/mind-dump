@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { TextField } from "../../../../components/common/TextField";
 import { BigTextField } from "../../../../components/common/BigTextField";
 import { Button } from "../../../../components/common/Button";
-import { enterClass } from "../../../../utils/animations";
+import { Modal } from "../../../../components/common/Modal";
 
 export type Mod = {
     name: string;
@@ -13,12 +12,14 @@ export type Mod = {
 };
 
 type Props = {
+    /** Kept mounted while closing, so the exit has something to play over. */
+    open: boolean;
     mod?: Mod;
     onSave: (mod: Mod) => void;
     onClose: () => void;
 };
 
-const ModModal = ({ mod, onSave, onClose }: Props) => {
+const ModModal = ({ open, mod, onSave, onClose }: Props) => {
     const [name,   setName]   = useState(mod?.name   ?? "");
     const [author, setAuthor] = useState(mod?.author  ?? "");
     const [url,    setUrl]    = useState(mod?.url     ?? "");
@@ -40,10 +41,8 @@ const ModModal = ({ mod, onSave, onClose }: Props) => {
         });
     };
 
-    return createPortal(
-        <div className={`fixed inset-0 bg-black/40 z-[120] flex items-center justify-center p-4 ${enterClass('nier-backdrop-enter')}`}>
-            <div className={`relative w-full max-w-md ${enterClass('nier-modal-enter')}`}>
-                <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
+    return (
+        <Modal open={open} onClose={onClose} label="Mod" backdropClassName="z-[120] flex items-center justify-center p-4">
                 <article className="bg-nier-100-lighter relative">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5">
@@ -67,9 +66,7 @@ const ModModal = ({ mod, onSave, onClose }: Props) => {
                         </div>
                     </div>
                 </article>
-            </div>
-        </div>,
-        document.body
+        </Modal>
     );
 };
 

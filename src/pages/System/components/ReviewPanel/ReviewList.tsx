@@ -6,6 +6,8 @@ import { createPortal } from "react-dom"
 import { backend } from "../../../../api/backend"
 import { useReviews, invalidateReviews, isFinished } from "../../../../store/reviews"
 import { completedTime, byNewestCompleted, todayIso } from "../../../../utils/completionDate"
+import { useRevealTimeline } from "../../../../hooks/useRevealTimeline"
+import { domino } from "../../../../utils/motion"
 import { rankByTitle } from "../../../../utils/rankByTitle"
 import { TextField } from "../../../../components/common/TextField"
 import { Button } from "../../../../components/common/Button"
@@ -117,9 +119,20 @@ export const ReviewList = () => {
         ? filteredPosts.filter((p: any) => p.type === typeFilter)
         : filteredPosts;
 
+    /**
+     * The grid's cards. Keyed on how many there are, so filtering the shelf
+     * re-runs the domino over what is left rather than swapping the covers in
+     * place — the filter changing the shelf is the same kind of event as the
+     * shelf arriving.
+     */
+    const gridScope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(displayPosts.length > 0, (tl) => {
+        domino(tl, '[data-review-grid] > *');
+    }, gridScope, [displayPosts.length]);
+
     // ── Renderers ────────────────────────────────────────────────────
     const renderGrid = () => (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4 overflow-y-auto flex-1 items-start content-start">
+        <div ref={gridScope} data-review-grid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4 overflow-y-auto flex-1 items-start content-start">
             {displayPosts.length > 0
                 ? displayPosts.map((post: any) => (
                     <ReviewGridCard
