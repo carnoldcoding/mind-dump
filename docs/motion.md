@@ -16,7 +16,7 @@ library does. These three are disjoint, and all three answer to
 
 | Mechanism | Owns | Because |
 |---|---|---|
-| **GSAP timelines** | anything with a position in a sequence — panels, page headers, boot's clock | sequenced, reversible, seekable |
+| **GSAP timelines** | anything with a position in a sequence — panels, modals, page headers, boot's clock | sequenced, reversible, seekable |
 | **CSS transitions** | state-flip feedback — hover, focus, selection, press | the browser resolves interruption natively |
 | **CSS keyframes** | ambient infinite loops — background lines, loader spin | nothing sequences them |
 
@@ -25,14 +25,9 @@ overlap and none of them escapes the seam.
 
 ### Not migrated yet
 
-Three things this vocabulary claims but does not yet own. They are work, not
-exceptions — nothing below is an argument for leaving them:
+One thing this vocabulary claims but does not yet own. It is work, not an
+exception:
 
-- **Modals** still carry `nier-modal-enter` / `nier-backdrop-enter` classes and
-  `enterClass`. They need a shared `Modal` that owns its own presence first,
-  because every call site unmounts them with `{open && <Modal/>}` and a
-  component removed from the tree cannot play an exit.
-- **Exit** therefore exists as a rule here and nowhere in the code.
 - **Boot's own visuals** are still CSS keyframes, which is why
   `STAGE_DURATIONS` in `BootSequenceContext` still describes durations it does
   not own. Boot's *clock* is a timeline; its corner lines, triangle grid,
@@ -79,6 +74,15 @@ A surface that genuinely needs a different departure can override it. Keep that
 an exception — the moment overriding is routine, exits are being declared twice
 again.
 
+**A modal has to own when it leaves.** Use
+[`Modal`](../src/components/common/Modal.tsx). Every call site used to write
+`{open && <SomeModal/>}`, which takes the element out of the tree the instant
+it closes; a component the parent has already unmounted has nothing left to
+animate, which is why nothing in this app had an exit at all. Pass `open` and
+keep it mounted. Where the modal describes a selection that goes null on close,
+[`useRetained`](../src/hooks/useRetained.ts) holds the last value so the exit
+plays over what the reader was looking at.
+
 ### Response — state-flip feedback
 
 Hover, focus, selection, press. **Not a timeline**: it has no beginning or end,
@@ -122,6 +126,14 @@ stage end on its *lead* element needed a latch and an escape list to do it.
 
 The signal is **one-shot and latched**, not an event: a surface that mounts
 after it has already fired plays immediately rather than waiting forever.
+
+**A subject that arrives later needs `rebuildOn`.** GSAP resolves a selector
+when the tween is created, not when it plays, so a timeline built at mount
+addresses nothing if its subject comes with a fetch — and goes on addressing
+nothing after the subject appears. A shelf's cards and a list's sections
+therefore get their own timeline on their own readiness, keyed on `loading`.
+The frame does not: rebuilding replays, and a frame that re-wipes because its
+contents arrived is the flash this whole design exists to remove.
 
 ## Panels
 
