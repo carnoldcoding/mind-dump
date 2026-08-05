@@ -34,7 +34,7 @@ const measure = (): Geometry => {
  * Matches the reference boot-load frame (screenshots/line-design-menu-load.png):
  * a symmetric X of two full corner-to-corner diagonals, plus a horizontal bar
  * near the top and one near the bottom. All four lines share the exact same
- * grow animation (see .nier-boot-line) — only rotation/anchor/length differ,
+ * grow animation (see bootLines) — only rotation/anchor/length differ,
  * so the two diagonals (and the two horizontals) are true mirror images of
  * each other, not four independently-tuned lines.
  *
@@ -68,24 +68,26 @@ const CornerLines = () => {
     >
       {/* Diagonal: top-left corner -> bottom-right corner */}
       <div
-        className="nier-boot-line absolute h-[1.5px] bg-nier-150/60"
+        data-boot-line
+        className="absolute h-[1.5px] bg-nier-150/60"
         style={{
           top: 0,
           left: 0,
           width: `${diagonalLength}px`,
           transformOrigin: 'left center',
-          '--nier-line-rotate': `${diagonalAngleDeg}deg`,
+          rotate: `${diagonalAngleDeg}deg`,
         } as React.CSSProperties}
       />
       {/* Diagonal: top-right corner -> bottom-left corner (mirror of the above) */}
       <div
-        className="nier-boot-line absolute h-[1.5px] bg-nier-150/60"
+        data-boot-line
+        className="absolute h-[1.5px] bg-nier-150/60"
         style={{
           top: 0,
           right: 0,
           width: `${diagonalLength}px`,
           transformOrigin: 'right center',
-          '--nier-line-rotate': `${-diagonalAngleDeg}deg`,
+          rotate: `${-diagonalAngleDeg}deg`,
         } as React.CSSProperties}
       />
       {/* Horizontal bars (top + bottom) are desktop-only — mobile's nav is a
@@ -96,22 +98,24 @@ const CornerLines = () => {
           {/* Growing outward from center — aligned to line up exactly with
               the nav's own border line once it appears */}
           <div
-            className="nier-boot-line absolute h-[1.5px] w-full bg-nier-150/60"
+            data-boot-line
+            className="absolute h-[1.5px] w-full bg-nier-150/60"
             style={{
               top: `${topLineY}px`,
               left: 0,
               transformOrigin: 'center',
-              '--nier-line-rotate': '0deg',
+              rotate: '0deg',
             } as React.CSSProperties}
           />
           {/* Mirror of the above, near the bottom */}
           <div
-            className="nier-boot-line absolute h-[1.5px] w-full bg-nier-150/60"
+            data-boot-line
+            className="absolute h-[1.5px] w-full bg-nier-150/60"
             style={{
               top: '98%',
               left: 0,
               transformOrigin: 'center',
-              '--nier-line-rotate': '0deg',
+              rotate: '0deg',
             } as React.CSSProperties}
           />
         </>

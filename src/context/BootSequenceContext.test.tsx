@@ -45,6 +45,76 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+/**
+ * Boot's gestures live on the same timeline as its stages now. These render
+ * stand-ins carrying the same `data-boot-*` markers the real components do,
+ * because what is under test is the timeline addressing them — not the
+ * corner geometry or the 480-polygon mesh.
+ */
+const BootSubjects = () => (
+  <>
+    <span data-boot-line />
+    <span data-boot-triangle />
+    <nav data-boot-border><span /><span /></nav>
+    <footer data-boot-border-reverse />
+  </>
+);
+
+const renderBootWithSubjects = () =>
+  render(
+    <BootSequenceProvider>
+      <Probe />
+      <BootSubjects />
+    </BootSequenceProvider>,
+  );
+
+describe("boot's own gestures", () => {
+  it('hides the corner lines before the sequence starts', () => {
+    renderBootWithSubjects();
+    // GSAP writes the composed matrix, so a scaleX of 0 reads as scale(0, 1).
+    expect((document.querySelector('[data-boot-line]') as HTMLElement).style.transform).toBe('scale(0, 1)');
+  });
+
+  it('starts the triangle mesh black, so the screen begins solid', () => {
+    renderBootWithSubjects();
+    expect((document.querySelector('[data-boot-triangle]') as HTMLElement).style.fill).toBe('rgb(0, 0, 0)');
+  });
+
+  it('draws the two borders from opposite ends', () => {
+    renderBootWithSubjects();
+
+    const top = document.querySelector('[data-boot-border]') as HTMLElement;
+    const bottom = document.querySelector('[data-boot-border-reverse]') as HTMLElement;
+
+    expect(top.style.clipPath).toBe('inset(0 100% 0 0)');
+    expect(bottom.style.clipPath).toBe('inset(0 0 0 100%)');
+  });
+
+  it('addresses the nav items as the bar\'s children, since NavTab forwards no data props', () => {
+    renderBootWithSubjects();
+    const items = document.querySelectorAll('[data-boot-border] > *');
+    expect(items).toHaveLength(2);
+    expect((items[0] as HTMLElement).style.opacity).toBe('0');
+  });
+
+  it('leaves nothing inline once the whole sequence has run', () => {
+    renderBootWithSubjects();
+    advance(6);
+
+    const line = document.querySelector('[data-boot-line]') as HTMLElement;
+    expect(line.style.opacity).toBe('');
+  });
+
+  it('resolves everything to its resting state when motion is disabled', () => {
+    setMotionOverride('off');
+    renderBootWithSubjects();
+
+    const top = document.querySelector('[data-boot-border]') as HTMLElement;
+    expect(top.style.clipPath).toBe('');
+    expect(stage()).toBe('done');
+  });
+});
+
 describe('the boot sequence', () => {
   it('starts on its first stage', () => {
     renderBoot();

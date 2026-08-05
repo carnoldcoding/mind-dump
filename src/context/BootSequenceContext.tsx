@@ -2,27 +2,28 @@ import { createContext, useContext, useRef, useState, useSyncExternalStore, type
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { animationsDisabled, getMotionVersion, subscribeMotion } from '../utils/animations';
+import {
+  BOOT_STAGE_HOLDS,
+  bootBorders,
+  bootLines,
+  bootNavItems,
+  bootTriangles,
+} from '../utils/bootMotion';
 
 export type BootStage = 'lines' | 'triangles' | 'borders' | 'nav' | 'header' | 'done';
 
 const STAGE_ORDER: BootStage[] = ['lines', 'triangles', 'borders', 'nav', 'header', 'done'];
 
 /**
- * Seconds, because this is a GSAP timeline now and GSAP's unit is seconds.
+ * How long each stage holds before boot moves on, in seconds.
  *
- * These describe boot's own CSS keyframes rather than owning them, and that is
- * now a standing cost rather than a temporary one: boot's visuals stay as
- * keyframes deliberately (see docs/motion.md). Retuning one of those keyframes
- * means editing the matching number here in the same breath — this is the last
- * place in the app shaped the way ADR-0006 was written about.
+ * These used to describe CSS keyframes in another file, which is the drift
+ * ADR-0006 was written about. They describe nothing but themselves now: the
+ * gestures live on this same timeline, so a stage's hold and the animation it
+ * holds for are one object and cannot disagree. See `src/utils/bootMotion.ts`
+ * for why the holds are deliberately not the same numbers as the tweens.
  */
-const STAGE_DURATIONS: Record<Exclude<BootStage, 'done'>, number> = {
-  lines: 0.5,
-  triangles: 0.7,
-  borders: 0.5,
-  nav: 0.6,
-  header: 0.8,
-};
+const STAGE_HOLDS = BOOT_STAGE_HOLDS;
 
 export const stageIndex = (stage: BootStage) => STAGE_ORDER.indexOf(stage);
 
@@ -65,9 +66,29 @@ export const BootSequenceProvider = ({ children }: { children: ReactNode }) => {
 
       const next = gsap.timeline();
 
-      STAGE_ORDER.slice(1).forEach((upcoming) => {
-        const previous = STAGE_ORDER[stageIndex(upcoming) - 1] as Exclude<BootStage, 'done'>;
-        next.call(() => setStage(upcoming), undefined, `+=${STAGE_DURATIONS[previous]}`);
+      /**
+       * Each stage gets a label, its gesture is placed at that label, and the
+       * hand-over to the next stage is placed a hold later. So the animation
+       * and the moment the app is told about it are two things on one
+       * timeline, rather than a keyframe in a stylesheet and a number in a
+       * table that has to agree with it.
+       *
+       * A gesture is free to run past its own hold, and the triangle mesh
+       * does: it is still painting itself in while the borders draw over it,
+       * which is what makes boot read as one construction.
+       */
+      let at = 0;
+      STAGE_ORDER.slice(0, -1).forEach((stageName) => {
+        const hold = STAGE_HOLDS[stageName as Exclude<BootStage, 'done'>];
+        next.addLabel(stageName, at);
+
+        if (stageName === 'lines') bootLines(next, stageName);
+        if (stageName === 'triangles') bootTriangles(next, stageName);
+        if (stageName === 'borders') bootBorders(next, stageName);
+        if (stageName === 'nav') bootNavItems(next, stageName);
+
+        at += hold;
+        next.call(() => setStage(STAGE_ORDER[stageIndex(stageName) + 1]), undefined, at);
       });
 
       timeline.current = next;
