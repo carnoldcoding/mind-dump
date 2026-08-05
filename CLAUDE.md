@@ -7,7 +7,7 @@ Read these before making non-trivial changes:
 - [`CONTEXT.md`](./CONTEXT.md) — domain vocabulary (Review, Status, Movement, Entry, etc.). Use these terms, not ad-hoc synonyms.
 - [`docs/architecture.md`](./docs/architecture.md) — stack, routing, auth, backend boundary, directory conventions, known data-model drift.
 - [`docs/branching.md`](./docs/branching.md) — git workflow: `dev` is the trunk, `main` is release-only. Branch off `dev`, PR back into `dev`; `main` receives merges from `releases/*` alone.
-- [`docs/motion.md`](./docs/motion.md) — the five motion primitives (Wipe, Domino, Growth, Decode, Fade), which owns what, the panel reveal sequence, and how to turn motion off. Read before touching anything that animates.
+- [`docs/motion.md`](./docs/motion.md) — the three motion mechanisms (GSAP timelines, CSS transitions, CSS keyframes) and where the boundary between them is, the five primitives (Wipe, Domino, Growth, Decode, Fade), phase and Response, the reveal sequence, and how to turn motion off. Read before touching anything that animates.
 
 ## Commands
 
@@ -30,5 +30,5 @@ Pull requests into `dev` and `main` run typecheck, tests and the lint budget on 
 - The backend (`mind-dump-backend`) is a separate repo. This repo only knows it as an HTTP API — see `docs/architecture.md` for the boundary and confirmed endpoints.
 - `src/types/index.ts` doesn't match runtime data shapes in several places (see `docs/architecture.md`). Don't treat it as authoritative.
 - Body tracking stores two kinds of document in one collection — Movement and Entry — told apart by an explicit `_meta` flag, not by guessing from field presence. A Goal is current state on a Movement, so there is no goal history and no way to ask what a target used to be ([ADR-0002](./docs/adr/0002-goal-as-movement-state.md)).
-- Animation stages advance on events, never on elapsed time. `usePanelReveal` holds no durations — a stage ends when its *lead* element reports, so tails overlap the next stage. The version that kept a hand-synced `DURATIONS` table had drifted ~2x on two of three stages ([ADR-0006](./docs/adr/0006-event-driven-panel-reveal.md)). Panels are drawn with `Panel`, which owns the frame and its shadow as one object; they used to be hand-gated siblings that could desync.
+- Motion is GSAP timelines, built `paused` and played on the boot sequence's signal ([ADR-0007](./docs/adr/0007-gsap-timelines-own-motion.md)). Building the timeline is what hides the surface — `.from()` applies its start values on creation — so there is no separate gate, and an unplayed timeline cannot spend itself unseen. That was the bug: `visibility: hidden` does not stop a CSS animation. Exit is the entrance reversed, never declared twice. Hover/focus feedback stays CSS transitions and is gated by a `motion-off` class, not by a timeline. Panels are drawn with `Panel`, which owns the frame and its shadow as one object and mounts without waiting for data.
 - Every change, including small ones, goes through a branch + PR, and branches off **`dev`** rather than `main`. `main` only ever receives a release. If you are about to branch off `main`, you are on the wrong trunk.

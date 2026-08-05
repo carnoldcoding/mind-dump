@@ -1,8 +1,16 @@
 ---
-status: accepted
+status: superseded
+superseded-by: 0007
 ---
 
 # A panel's reveal advances on events, not elapsed time
+
+> **Superseded by [ADR-0007](./0007-gsap-timelines-own-motion.md).** Motion is
+> built as GSAP timelines now, so a stage's timing lives with its sequence
+> rather than being reported by the elements themselves. The two drift
+> measurements below still stand and are still the best evidence in this repo
+> for why duplicated timing is dangerous — 0007 answers the same question
+> differently, by giving the durations one home instead of no home.
 
 `usePanelReveal` staged a panel in three beats — the box animates in, its title decodes, its cards arrive — and it drove them from a table of durations:
 
