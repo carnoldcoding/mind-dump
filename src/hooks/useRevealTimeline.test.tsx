@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useRef, type RefObject } from 'react';
 import { cleanup, render, screen } from '@testing-library/react';
-import type gsap from 'gsap';
+// `gsap.core.Timeline` needs no import — gsap's types declare a global `gsap`
+// namespace, and importing the default export for a type position leaves an
+// unused value binding.
 import { useRevealTimeline } from './useRevealTimeline';
 import { resetMotionOverride, setMotionOverride } from '../utils/animations';
 
