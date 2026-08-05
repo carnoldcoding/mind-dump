@@ -8,6 +8,7 @@ import TriangleGrid from './BootSequence/TriangleGrid';
 import BottomBar from './BootSequence/BottomBar';
 import { BootSequenceProvider, useStageState } from '../../context/BootSequenceContext';
 import { SearchModal } from '../search/SearchModal';
+import { useMotionDevChords } from '../../hooks/useMotionDevChords';
 import type { BreakpointType } from '../../types';
 
 const Layout = () => {
@@ -27,6 +28,9 @@ const LayoutContent = () => {
   // stage the header decode waits for, so the body doesn't render ahead of
   // the background/nav construction finishing.
   const { active: contentReady } = useStageState('header');
+
+  // Mounted by the shell, like SearchModal, so the chords work on every page.
+  useMotionDevChords();
 
   const getBreakpoint = (width: number) : BreakpointType => {
     if (width < 768) return 'mobile';

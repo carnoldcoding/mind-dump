@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useReviews, invalidateReviews } from "../../../store/reviews";
 import { PieChart } from "./pieChart";
 import { BarChart } from "./barChart";
 import { ReviewPanel } from "./ReviewPanel";
 import { ReviewModal } from "./ReviewPanel/ReviewModal";
-import { usePanelReveal, panelStageIndex } from "../../../hooks/usePanelReveal";
+import { useRevealTimeline } from "../../../hooks/useRevealTimeline";
+import { fade, wipe } from "../../../utils/motion";
 import { usePanelHeight } from "../../../hooks/usePanelHeight";
-import { enterClass } from "../../../utils/animations";
+import { Panel } from "../../../components/common/Panel";
 
 type Props = {
     onClose: () => void;
@@ -16,26 +17,27 @@ const ReviewsWindow = ({ onClose }: Props) => {
     const { reviews }                 = useReviews();
     const [editingReview, setEditingReview] = useState<any>(null);
     const [modalOpen, setModalOpen]   = useState(false);
-    // Always ready=true — this window only ever mounts well after boot is
-    // done (user has to open System, then click a folder icon), and the
-    // conditional render in Desktop.tsx already gives it a fresh mount
-    // each time it's opened, so no resetKey is needed either.
-    const panelStage = usePanelReveal(true);
-    const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLDivElement>();
+    // No signal to wait on: this window only ever mounts well after boot is
+    // done — the user has to open System, then click a folder icon — and
+    // Desktop's conditional render gives it a fresh mount each time. It has no
+    // decoded title and no card grid, so its whole entrance is the frame
+    // arriving with its chrome a beat behind.
+    const scope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(true, (tl) => {
+        wipe(tl, '[data-panel-surface]');
+        fade(tl, '[data-window-chrome]', '<0.2');
+    }, scope);
+    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     return (
-        <div className="relative">
-            {/* Sibling of the panel div, not a child — see Review/index.tsx
-                for why: a transform on the panel would trap a child shadow
-                in the wrong stacking context. */}
-            <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-            <div
-                    ref={panelRef}
-                    style={maxHeight ? { maxHeight } : undefined}
-                    className={`nier-panel-frame relative bg-nier-100 border border-nier-150 flex flex-col ${enterClass('nier-enter')}`}
-                >
-                <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
+        <>
+        <Panel
+            wrapperRef={scope}
+            className="bg-nier-100 border border-nier-150"
+            style={maxHeight ? { maxHeight } : undefined}
+            frameRef={panelRef}
+        >
+                <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                     <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Reviews</h3>
                     <button
                         onClick={onClose}
@@ -44,7 +46,7 @@ const ReviewsWindow = ({ onClose }: Props) => {
                         ✕
                     </button>
                 </div>
-                <div className={`p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0 ${contentReady ? '' : 'invisible'}`}>
+                <div data-window-chrome className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
                     {/* Charts read the whole collection, deliberately:
                         narrowing the list below should not narrow the sense of
@@ -55,15 +57,15 @@ const ReviewsWindow = ({ onClose }: Props) => {
                     </div>
                     <ReviewPanel />
                 </div>
-            </div>
+        </Panel>
 
-            <ReviewModal
-                isOpen={modalOpen}
-                setIsOpen={setModalOpen}
-                onReviewAdded={() => { invalidateReviews(); setEditingReview(null); }}
-                editingReview={editingReview}
-            />
-        </div>
+        <ReviewModal
+            isOpen={modalOpen}
+            setIsOpen={setModalOpen}
+            onReviewAdded={() => { invalidateReviews(); setEditingReview(null); }}
+            editingReview={editingReview}
+        />
+        </>
     );
 };
 

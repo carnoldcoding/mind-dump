@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { NumTextField } from "../../../../components/common/NumTextField";
 import { DateField } from "../../../../components/common/DateField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
-import { enterClass } from "../../../../utils/animations";
+import { Modal } from "../../../../components/common/Modal";
 import { atLocalMidnight, fieldNumber, fieldValue } from "./entry";
 import type { Entry } from "./entry";
 
 type Props = {
+    /** Kept mounted while closing, so the exit has something to play over. */
+    open: boolean;
     entry: Entry;
     movementName: string;
     onClose: () => void;
@@ -21,7 +22,7 @@ const toDateStr = (iso: string) => iso.split("T")[0];
 // An Entry is one logged set and nothing else, so this form has one shape.
 // It used to branch on whether it was editing a goal or a log, because both
 // were stored here.
-const EntryEditModal = ({ entry, movementName, onClose, onSaved, onDelete }: Props) => {
+const EntryEditModal = ({ entry, movementName, open, onClose, onSaved, onDelete }: Props) => {
     const [date, setDate]     = useState(toDateStr(entry.datetime));
     const [sets, setSets]     = useState(fieldValue(entry.setsCompleted));
     const [reps, setReps]     = useState(fieldValue(entry.repsCompleted));
@@ -30,9 +31,10 @@ const EntryEditModal = ({ entry, movementName, onClose, onSaved, onDelete }: Pro
     const [error, setError]   = useState("");
 
     useEffect(() => {
+        if (!open) return;
         document.body.style.overflow = "hidden";
         return () => { document.body.style.overflow = ""; };
-    }, []);
+    }, [open]);
 
     const handleSave = async () => {
         if (!entry.id) return;
@@ -58,10 +60,8 @@ const EntryEditModal = ({ entry, movementName, onClose, onSaved, onDelete }: Pro
         }
     };
 
-    return createPortal(
-        <div className={`fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 ${enterClass('nier-backdrop-enter')}`}>
-            <div role="dialog" aria-label="Edit Entry" className={`relative w-full max-w-sm ${enterClass('nier-modal-enter')}`}>
-                <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
+    return (
+        <Modal open={open} onClose={onClose} label="Edit Entry" className="w-full max-w-sm">
                 <article className="bg-nier-100-lighter relative">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5">
@@ -94,9 +94,7 @@ const EntryEditModal = ({ entry, movementName, onClose, onSaved, onDelete }: Pro
                         </div>
                     </div>
                 </article>
-            </div>
-        </div>,
-        document.body
+        </Modal>
     );
 };
 

@@ -1,6 +1,6 @@
 import PageHeader from "../../components/common/PageHeader";
 import { ReviewCard } from "../../components/review/ReviewCard";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, useRef } from "react";
 import Loader from "../../components/common/Loader";
 import { useReviews, type Review as ReviewRecord } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
@@ -10,10 +10,10 @@ import { useParams } from "react-router";
 import { gameGenres, movieGenres, bookGenres } from "../../utils/helpers";
 import { useLocation } from "react-router";
 import { useStageState } from "../../context/BootSequenceContext";
-import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
-import { useDecodeText } from "../../hooks/useDecodeText";
+import { useRevealTimeline } from "../../hooks/useRevealTimeline";
+import { decode, domino, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
-import { enterClass } from "../../utils/animations";
+import { Panel } from "../../components/common/Panel";
 
 // The rating scale, asserted in one place. Every rating stored is between 3
 // and 4.5 with a decimal, so the scale is five points and the useful grain is
@@ -352,15 +352,31 @@ const Review = () => {
     // Hooks must run unconditionally, so these sit above the `if (!category)
     // return null` below even though category may briefly be undefined.
     // resetKey=category so this restarts fresh on every category switch —
-    // Review itself doesn't unmount between categories (React Router keeps
-    // the same component instance, just re-renders with new params), so
-    // without this the hook's state would stay stuck from the previous
-    // category while the section's own `key` still forces its DOM to
-    // remount, leaving cards "ready" from frame one instead of waiting.
-    const panelStage = usePanelReveal(contentActive, category);
-    const titleReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const cardsReady = panelStageIndex(panelStage) >= panelStageIndex('cards');
-    const decodedPanelTitle = useDecodeText(`${category ?? ''} VIEW PANEL`.toUpperCase(), titleReady);
+    const panelTitle = `${category ?? ''} VIEW PANEL`.toUpperCase();
+    const scope = useRef<HTMLDivElement>(null);
+
+    // Review does not unmount between categories — React Router keeps the same
+    // component instance and re-renders with new params — so the Fragment is
+    // keyed on `category`, which remounts the panel and builds this afresh.
+    // That is what the old resetKey argument was for.
+    //
+    // The frame wipes, its title decodes over the tail of that, and the shelf
+    // dominoes in underneath. The stagger is the Domino primitive's own; the
+    // version this replaces had to nominate the first card as a reporter and
+    // hand-write a per-card delay to get the same overlap.
+    useRevealTimeline(contentActive, (tl) => {
+        wipe(tl, '[data-panel-surface]');
+        decode(tl, '[data-panel-title]', panelTitle, '<0.15');
+    }, scope);
+
+    // The shelf gets its own timeline because it arrives on a different
+    // signal: the frame's is built at mount, before the fetch has answered
+    // and while there are no cards to address. Rebuilding one shared timeline
+    // when the data lands would replay the frame's wipe underneath them.
+    const shelfScope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(contentActive && !loading, (tl) => {
+        domino(tl, '[data-shelf-card]');
+    }, shelfScope, [loading]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleFieldChange = (field: string, value: any) => {
@@ -602,11 +618,6 @@ const Review = () => {
     if (!category) return null;
 
     const renderContent = () => {
-        if (loading) return (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2">
-                <Loader/>
-            </div>)
-
         // Sorted here rather than in the grid's JSX, because the caption bar
         // and the status column have to be looking at the same list in the
         // same order as the covers are.
@@ -725,34 +736,30 @@ const Review = () => {
             </div>
         );
 
+        // The margin lives on Panel's wrapper rather than on the frame. It
+        // used to sit on the article, where it margin-collapsed out through
+        // the section around it — which had no padding or border to stop it —
+        // while the absolutely positioned shadow kept its full 20px, landing
+        // 22px low instead of 2px. With the margin on the wrapper neither box
+        // can collapse away from the other.
         return (
-          <section key={category} className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
-            {/* Sibling of article, not a child — a transform (from
-                nier-enter) makes an element establish its own
-                stacking context, which would trap a -z-1 child instead of
-                letting it render behind the whole article as intended. */}
-            {/* No margin here, unlike the article it shadows. An absolutely
-                positioned box does not margin-collapse, so an `mt-5` to match
-                the article's kept its full 20px — while the article's own
-                collapsed out through this section, which has no padding or
-                border to stop it, leaving the article flush at the top. The
-                shadow ended up 22px low rather than 2px, at the bottom as much
-                as the top. `top-0.5` is the whole offset. */}
-            <div className={`absolute w-full h-[42rem] bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`}></div>
-            <article
-                ref={panelRef}
+          <Fragment key={category}>
+          <Panel
+                wrapperRef={scope}
+                wrapperClassName="mt-5"
+                className="bg-nier-100 h-[42rem]"
                 style={maxHeight ? { maxHeight } : undefined}
-                className={`nier-panel-frame bg-nier-100 mt-5 relative flex flex-col h-[42rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
+                frameRef={panelRef}
             >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 className={`text-nier-text-dark text-xl uppercase ${titleReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
+                        <h3 data-panel-title className="text-nier-text-dark text-xl uppercase">{panelTitle}</h3>
                     </div>
 
                     {/* min-h-0 so the columns scroll inside the frame instead
                         of stretching it — a flex child's default min-height is
                         its content, which would let a long shelf push the
                         panel past the height its cap just worked out. */}
-                    <div className={`flex-1 min-h-0 flex gap-4 p-4 ${titleReady ? '' : 'invisible'}`}>
+                    <div className="flex-1 min-h-0 flex gap-4 p-4">
 
                         {/* The gutter rail: two-tone, and the only thing left
                             of the content, exactly as the reference has it. */}
@@ -806,11 +813,23 @@ const Review = () => {
                                 </button>
                             </div>
 
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto flex-1 items-start content-start">
-                                {shown.length > 0
-                                    ? shown.map((post, i) => (
+                            {/* The shelf fills in underneath a frame that is
+                                already there. It used to be replaced by a
+                                centred spinner while the fetch was in flight,
+                                which threw the panel away and made the reveal
+                                wait on network latency. See docs/motion.md. */}
+                            <div ref={shelfScope} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto flex-1 items-start content-start">
+                                {loading
+                                    ? (
+                                        <div className="col-span-full flex justify-center py-8">
+                                            <Loader />
+                                        </div>
+                                    )
+                                    : shown.length > 0
+                                    ? shown.map((post) => (
                                         <div
-                                            className={`w-full ${cardsReady ? 'nier-panel-card-fall' : 'invisible'}`}
+                                            data-shelf-card
+                                            className="w-full"
                                             key={post._id}
                                             // The caption bar's whole input.
                                             // onFocus rather than a key
@@ -818,7 +837,6 @@ const Review = () => {
                                             // so Tab already walks the shelf.
                                             onMouseEnter={() => setSelectedId(post._id)}
                                             onFocus={() => setSelectedId(post._id)}
-                                            style={cardsReady ? ({ '--nier-card-delay': `${Math.min(i, 20) * 30}ms` } as React.CSSProperties) : undefined}
                                         >
                                         {/* A shelf is finished work, so the line
                                             is what finishing produced: the rating
@@ -848,7 +866,7 @@ const Review = () => {
                     {/* The caption bar. What is under the pointer on the left,
                         how to act on it on the right — the reference's bottom
                         strip, accent block and all. */}
-                    <div className={`flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2 ${titleReady ? '' : 'invisible'}`}>
+                    <div className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                         <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(selected, !!error, shown.length === 0)}
@@ -858,11 +876,13 @@ const Review = () => {
                         </p>
                     </div>
 
-                </article>
+                </Panel>
 
                 {/* Below lg the filter column has nowhere to stand, so it
                     arrives over the panel — the same column, not a second,
-                    smaller set of controls that can drift from it. */}
+                    smaller set of controls that can drift from it. It is
+                    `fixed`, so it does not need to sit inside the panel's
+                    wrapper to land in the right place. */}
                 {showFilters && (
                     <div
                         className="lg:hidden fixed inset-0 z-40 bg-nier-dark/40 flex items-start justify-center p-4 pt-20"
@@ -885,7 +905,7 @@ const Review = () => {
                         </div>
                     </div>
                 )}
-          </section>
+          </Fragment>
         );
       };
 

@@ -26,7 +26,7 @@
 // see CONTEXT.md. A denominator here would be the interface imposing exactly
 // the uniformity that shape exists to avoid.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { backend } from "../../../../api/backend";
 import {
     useReviews,
@@ -39,9 +39,10 @@ import { todayIso } from "../../../../utils/completionDate";
 import { daysWaiting } from "../../../../utils/capturedAt";
 import { writtenSections, SECTION_GLYPH } from "../../../../utils/critique";
 import { CATEGORIES } from "../../../../utils/categories";
-import { usePanelReveal, panelStageIndex } from "../../../../hooks/usePanelReveal";
+import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
+import { domino, fade, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
-import { enterClass } from "../../../../utils/animations";
+import { Panel } from "../../../../components/common/Panel";
 import { ReviewCover } from "../../../../components/review/ReviewCover";
 import { ReviewModal } from "../ReviewPanel/ReviewModal";
 import { Capture } from "./Capture";
@@ -225,6 +226,7 @@ const Section = ({ label, items, selected, ...actions }: SectionProps) => (
             : (
                 <ul
                     aria-label={label}
+                    data-backlog-shelf
                     className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2"
                 >
                     {items.map(review => (
@@ -342,9 +344,24 @@ const captionFor = (review: Review | undefined, error: string | null, waitingOn:
 
 const BacklogWindow = ({ onClose }: Props) => {
     const { reviews } = useReviews();
-    const panelStage = usePanelReveal(true);
-    const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLDivElement>();
+    // No signal to wait on: this window mounts well after boot, from a folder
+    // icon on the Desktop. No decoded title and no card grid either, so its
+    // whole entrance is the frame arriving with its chrome a beat behind.
+    const scope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(true, (tl) => {
+        wipe(tl, '[data-panel-surface]');
+        fade(tl, '[data-window-chrome]', '<0.2');
+    }, scope);
+
+    // The shelves themselves. Their own timeline and their own readiness,
+    // because the cards arrive with the collection rather than with the frame
+    // — a timeline built at mount would address nothing, and go on addressing
+    // nothing once they turned up.
+    const shelvesScope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(reviews.length > 0, (tl) => {
+        domino(tl, '[data-backlog-shelf] > li');
+    }, shelvesScope, [reviews.length > 0]);
+    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const [error, setError] = useState<string | null>(null);
     const [justFinished, setJustFinished] = useState<string | null>(null);
@@ -419,14 +436,14 @@ const BacklogWindow = ({ onClose }: Props) => {
     };
 
     return (
-        <div className="relative">
-            <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${enterClass('nier-enter')}`} />
-            <div
-                    ref={panelRef}
-                    style={maxHeight ? { maxHeight } : undefined}
-                    className={`nier-panel-frame relative bg-nier-100 border border-nier-150 flex flex-col ${enterClass('nier-enter')}`}
-                >
-                <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
+        <>
+        <Panel
+            wrapperRef={scope}
+            className="bg-nier-100 border border-nier-150"
+            style={maxHeight ? { maxHeight } : undefined}
+            frameRef={panelRef}
+        >
+                <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                     <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Backlog</h3>
                     <button
                         onClick={onClose}
@@ -435,7 +452,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                     >✕</button>
                 </div>
 
-                <div className={`p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0 ${contentReady ? '' : 'invisible'}`}>
+                <div data-window-chrome ref={shelvesScope} className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
                     <Capture reviews={reviews} />
 
@@ -473,23 +490,23 @@ const BacklogWindow = ({ onClose }: Props) => {
                 {/* The caption bar. Says what is under the pointer, and carries
                     the fault as well, because the state column is desktop-only
                     and a phone would otherwise be told nothing. */}
-                <div className={`flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2 ${contentReady ? '' : 'invisible'}`}>
+                <div data-window-chrome className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                     <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                     <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
                         {captionFor(selected, error, listed)}
                     </p>
                 </div>
-            </div>
+        </Panel>
 
-            {/* The heavier fields, asked for at the stage that needs them
-                (story 2) — the same editor the Reviews window uses. */}
-            <ReviewModal
-                isOpen={editorOpen}
-                setIsOpen={setEditorOpen}
-                onReviewAdded={() => { invalidateReviews(); setEditing(null); }}
-                editingReview={editing}
-            />
-        </div>
+        {/* The heavier fields, asked for at the stage that needs them
+            (story 2) — the same editor the Reviews window uses. */}
+        <ReviewModal
+            isOpen={editorOpen}
+            setIsOpen={setEditorOpen}
+            onReviewAdded={() => { invalidateReviews(); setEditing(null); }}
+            editingReview={editing}
+        />
+        </>
     );
 };
 

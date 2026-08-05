@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useRef, useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
@@ -9,9 +8,12 @@ import Loader from "../../components/common/Loader";
 import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
-import { usePanelReveal } from "../../hooks/usePanelReveal";
+import { useRevealTimeline } from "../../hooks/useRevealTimeline";
+import { fade, growth, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
-import { enterClass } from "../../utils/animations";
+import { Panel } from "../../components/common/Panel";
+import { Modal } from "../../components/common/Modal";
+import { useRetained } from "../../hooks/useRetained";
 import { ReviewCover } from "../../components/review/ReviewCover";
 // Every tab in the reference carries a glyph as well as a word, and the glyph
 // is what you navigate by once you know the menu. Shared with the Backlog,
@@ -148,15 +150,41 @@ const ReviewDetail = () => {
     const [tracks,      setTracks]      = useState<AudioTrack[]>([]);
     const [screenshots, setScreenshots] = useState<{ _id: string; url: string; title?: string }[]>([]);
     const [selectedImg, setSelectedImg] = useState<{ url: string; title?: string } | null>(null);
+    // Held so the lightbox can play its exit over the screenshot it was
+    // showing rather than over an empty frame — see useRetained.
+    const shownImg = useRetained(selectedImg);
     const [parent]                  = useState(location.pathname.split('/')[1]);
     const { slug }                  = useParams<{ category: string; slug: string }>();
-    // Same box-reveal used by the grid panel (Review/index.tsx) — box grows
-    // horizontally then vertically, content stays hidden until it settles so
-    // it doesn't visibly squish along with the box. resetKey=slug so this
-    // restarts on every review, not just the first mount of this route.
-    const panelStage = usePanelReveal(contentActive, slug);
-    const contentReady = panelStage !== 'box';
+    // The same entrance the grid panel uses: the frame wipes in and its
+    // header follows a beat behind. The Panel is keyed on `slug`, so moving
+    // between reviews remounts it and the timeline is built afresh — that is
+    // what the old resetKey argument was for.
+    const scope = useRef<HTMLDivElement>(null);
+    // Rebuilt when the record lands, because this page keeps its loading
+    // gate: the panel does not exist while the fetch is in flight, so a
+    // timeline built at mount would address nothing and go on addressing
+    // nothing once the panel appeared.
+    useRevealTimeline(contentActive, (tl) => {
+        wipe(tl, '[data-panel-surface]');
+        fade(tl, '[data-detail-chrome]', '<0.2');
+    }, scope, [loading, slug]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+
+    /**
+     * The critique itself. Rebuilt on every tab change, because switching
+     * section is a new arrival rather than the same one replayed — and the
+     * paragraph being addressed is a different element each time.
+     *
+     * Fade, not Decode: "if it wraps, it fades". Decode rewrites every
+     * character continuously and is unreadable on a paragraph, which is why
+     * the vocabulary reserves it for headers and labels. The section heading
+     * above is short chrome, so it may wipe with the panel it sits in.
+     */
+    const critiqueScope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(contentActive, (tl) => {
+        growth(tl, '[data-critique-heading]');
+        fade(tl, '[data-critique-prose]', '<0.1');
+    }, critiqueScope, [activeTab, loading]);
 
     const handleClose   = () => navigate(`/${parent}`);
     const filterByGenre = (genre: string) => navigate(`/${parent}?genre=${genre}`);
@@ -197,6 +225,18 @@ const ReviewDetail = () => {
     }, [data]);
 
 
+    // Deliberately still a gate, where Now and Review's are gone.
+    //
+    // Those two draw a surface whose identity is known before the fetch — the
+    // front page, a Category shelf — so the frame can be there first and the
+    // contents fill in. This page *is* the record: its title, its type icon
+    // and its whole tab strip come out of the response, so a frame drawn ahead
+    // of it would be a frame with nothing in it identifying what it is, under
+    // a PageHeader with no name to decode.
+    //
+    // It costs a late reveal on a slow response, not a broken one: the
+    // timeline is built when this finally mounts and the boot signal is a
+    // latch, so it plays at once rather than having missed anything.
     if (loading) return <Loader />;
     if (error)   return <div className="mt-5">Error: {error}</div>;
     if (!data)   return null;
@@ -226,17 +266,17 @@ const ReviewDetail = () => {
         <>
             <PageHeader name={data.title} />
 
-            <div key={slug} className={`mt-5 relative ${contentActive ? '' : 'invisible'}`}>
-                <aside className={`absolute w-full h-full bg-nier-shadow top-1 left-1 ${contentActive ? enterClass('nier-enter') : 'invisible'}`} />
-
-                <article
-                    ref={panelRef}
-                    style={maxHeight ? { maxHeight } : undefined}
-                    className={`nier-panel-frame bg-nier-100 relative flex flex-col md:h-[34rem] ${contentActive ? enterClass('nier-enter') : 'invisible'}`}
-                >
+            <Panel
+                key={slug}
+                wrapperRef={scope}
+                wrapperClassName="mt-5"
+                className="bg-nier-100 md:h-[34rem]"
+                style={maxHeight ? { maxHeight } : undefined}
+                frameRef={panelRef}
+            >
 
                     {/* ── Header bar ─────────────────────────────────── */}
-                    <div className={`h-10 bg-nier-150 flex items-stretch flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
+                    <div data-detail-chrome className="h-10 bg-nier-150 flex items-stretch flex-shrink-0">
                         <div className="flex items-center gap-2 px-4 flex-1 min-w-0">
                             <ion-icon name={TYPE_ICON[data.type]} style={{ flexShrink: 0 }}></ion-icon>
                             <h3 className="text-nier-text-dark text-lg truncate uppercase tracking-wide">
@@ -265,7 +305,7 @@ const ReviewDetail = () => {
                     {/* ── Body ───────────────────────────────────────── */}
                     {/* The gutter rail is the one piece of the frame every
                         reference screen shares, whatever is inside it. */}
-                    <div className={`p-4 flex gap-4 flex-1 min-h-0 ${contentReady ? '' : 'invisible'}`}>
+                    <div data-detail-chrome className="p-4 flex gap-4 flex-1 min-h-0">
 
                         <div aria-hidden="true" className="hidden md:flex w-1 flex-shrink-0 flex-col">
                             <span className="w-full flex-[2] bg-nier-shadow" />
@@ -350,8 +390,8 @@ const ReviewDetail = () => {
                                         version of that count here: it says how
                                         much of the critique you have seen,
                                         which nothing else on the page does. */}
-                                    <div className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
-                                        <div className="h-7 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
+                                    <div ref={critiqueScope} className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
+                                        <div data-critique-heading className="h-7 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
                                             <span className="text-[10px] uppercase tracking-widest text-nier-text-dark">
                                                 {activeTab === 'mods'
                                                     ? 'Installed Mods'
@@ -387,7 +427,7 @@ const ReviewDetail = () => {
                                             </ul>
                                         ) : (
                                             <div className="flex-1 overflow-y-auto p-3 min-h-0 flex flex-col gap-3">
-                                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeContent}</p>
+                                                <p data-critique-prose className="text-sm leading-relaxed whitespace-pre-wrap">{activeContent}</p>
                                                 {activeTab === 'sound' && tracks.length > 0 && (
                                                     <ul className="flex flex-col border-t border-nier-150 pt-2">
                                                         {tracks.map((track, i) => (
@@ -440,7 +480,7 @@ const ReviewDetail = () => {
                         the right. It replaces an italic line that repeated the
                         release date and the creator, both of which now sit
                         under the cover they belong to. */}
-                    <div className={`flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2 ${contentReady ? '' : 'invisible'}`}>
+                    <div data-detail-chrome className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                         <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(data.title, activeTab, sectionCount)}
@@ -450,22 +490,21 @@ const ReviewDetail = () => {
                         </p>
                     </div>
 
-                </article>
-            </div>
-            {selectedImg && createPortal(
-                <div
-                    className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
-                    onClick={() => setSelectedImg(null)}
+            </Panel>
+            {/* Kept mounted while it closes, and holding the screenshot it
+                was showing, so the exit plays over the image rather than over
+                an empty frame. */}
+            {shownImg && (
+                <Modal
+                    open={!!selectedImg}
+                    onClose={() => setSelectedImg(null)}
+                    label={shownImg.title || 'Screenshot'}
+                    className="w-full max-w-4xl"
                 >
-                    <div
-                        className="relative w-full max-w-4xl"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
                         <article className="bg-nier-100-lighter relative flex flex-col">
                             <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                                 <span className="text-nier-text-dark text-sm uppercase tracking-widest truncate">
-                                    {selectedImg.title || 'Screenshot'}
+                                    {shownImg.title || 'Screenshot'}
                                 </span>
                                 <button
                                     onClick={() => setSelectedImg(null)}
@@ -474,15 +513,13 @@ const ReviewDetail = () => {
                             </div>
                             <div className="bg-nier-100 p-2">
                                 <img
-                                    src={selectedImg.url}
-                                    alt={selectedImg.title || 'Screenshot'}
+                                    src={shownImg.url}
+                                    alt={shownImg.title || 'Screenshot'}
                                     className="w-full max-h-[80vh] object-contain block"
                                 />
                             </div>
                         </article>
-                    </div>
-                </div>,
-                document.body
+                </Modal>
             )}
         </>
     );
