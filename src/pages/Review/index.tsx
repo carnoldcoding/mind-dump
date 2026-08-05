@@ -610,11 +610,6 @@ const Review = () => {
     if (!category) return null;
 
     const renderContent = () => {
-        if (loading) return (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2">
-                <Loader/>
-            </div>)
-
         // Sorted here rather than in the grid's JSX, because the caption bar
         // and the status column have to be looking at the same list in the
         // same order as the covers are.
@@ -810,8 +805,19 @@ const Review = () => {
                                 </button>
                             </div>
 
+                            {/* The shelf fills in underneath a frame that is
+                                already there. It used to be replaced by a
+                                centred spinner while the fetch was in flight,
+                                which threw the panel away and made the reveal
+                                wait on network latency. See docs/motion.md. */}
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto flex-1 items-start content-start">
-                                {shown.length > 0
+                                {loading
+                                    ? (
+                                        <div className="col-span-full flex justify-center py-8">
+                                            <Loader />
+                                        </div>
+                                    )
+                                    : shown.length > 0
                                     ? shown.map((post) => (
                                         <div
                                             data-shelf-card

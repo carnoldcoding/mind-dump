@@ -204,7 +204,7 @@ const Detail = ({ review }: { review: Review }) => {
  * so the left number is always part of the right one, and `n / n` means a
  * Category with nothing left to start.
  */
-const Shelves = ({ reviews, error }: { reviews: Review[]; error: boolean }) => {
+const Shelves = ({ reviews, error, loading }: { reviews: Review[]; error: boolean; loading: boolean }) => {
     const shelves = ACTIVITIES.map(activity => {
         const all = reviews.filter(review => review.type === activity.type);
         return {
@@ -229,7 +229,7 @@ const Shelves = ({ reviews, error }: { reviews: Review[]; error: boolean }) => {
                         label={shelf.label}
                         // Not 0 / 0: with nothing fetched, a zero would say the
                         // shelf is clear when what is true is that we don't know.
-                        value={error ? "— / —" : `${shelf.active} / ${shelf.backlog}`}
+                        value={error || loading ? "— / —" : `${shelf.active} / ${shelf.backlog}`}
                     />
                 ))}
             </div>
@@ -242,10 +242,14 @@ const Shelves = ({ reviews, error }: { reviews: Review[]; error: boolean }) => {
             </div>
             {/* The reference's self-diagnostic line, and a real one: it says NO
                 ERROR because it is capable of saying something else. */}
+            {/* It says NO ERROR because it is capable of saying something
+                else — and now because it is capable of saying what it is
+                doing, which is the field the spinner used to replace the
+                whole page to tell you. */}
             <p className={`text-[10px] uppercase tracking-[0.3em] text-center py-4 ${
                 error ? 'text-nier-text-dark' : 'text-nier-text-dark/50'
             }`}>
-                {error ? 'Error' : 'No Error'}
+                {error ? 'Error' : loading ? 'Loading' : 'No Error'}
             </p>
         </div>
     );
@@ -256,8 +260,9 @@ const Shelves = ({ reviews, error }: { reviews: Review[]; error: boolean }) => {
  * one. The bar carries the fault as well as the Shelves column, because the
  * column is desktop-only and a phone would otherwise be told nothing.
  */
-const captionFor = (review: Review | undefined, error: boolean): string => {
+const captionFor = (review: Review | undefined, error: boolean, loading: boolean): string => {
     if (error) return "Collection unreachable — the API did not answer.";
+    if (loading) return "Reading the collection…";
     if (!review) return "Nothing to show.";
     if (review.status === "active") return `${review.title} — in progress`;
     if (review.status === "todo") return `${review.title} — queued`;
@@ -319,12 +324,6 @@ const Now = () => {
     // empty pane: the panel should say something the moment it opens.
     const selected = listed.find(review => keyOf(review) === selectedKey) ?? listed[0];
 
-    if (loading) return (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2">
-            <Loader />
-        </div>
-    );
-
     // A failed fetch no longer replaces the page with a line of text. The
     // panel is the thing that reports on itself — it has a field for exactly
     // this — and swapping it out for `Error: Network error` threw away the
@@ -334,6 +333,14 @@ const Now = () => {
     // The sections say "unavailable" rather than "nothing", because with
     // nothing fetched those are different claims and only one of them is true.
     const emptyText = (nothing: string) => error ? "Unavailable." : nothing;
+
+    // The frame does not wait for the fetch. It used to be replaced wholesale
+    // by a centred spinner, which threw away the panel, its title and its
+    // diagnostic at the one moment there is nothing else on screen — the same
+    // argument the error branch below already makes, applied to the other
+    // outcome of the same request. It also made the reveal depend on network
+    // latency: the panel could not wipe in until the data arrived, so a slow
+    // response left boot handing off to nothing. See docs/motion.md.
 
     const rowProps = (review: Review) => ({
         review,
@@ -373,6 +380,12 @@ const Now = () => {
                         </div>
 
                         <div className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4 pl-4">
+                            {loading ? (
+                                <div className="flex-1 flex items-center justify-center">
+                                    <Loader />
+                                </div>
+                            ) : (
+                              <>
                             <Section title="In Progress" empty={emptyText("Nothing in progress.")}>
                                 {inProgress.length > 0 && inProgress.map(review => (
                                     <Row
@@ -402,6 +415,8 @@ const Now = () => {
                                     />
                                 ))}
                             </Section>
+                              </>
+                            )}
                         </div>
 
                         {/* Both side columns are desktop-only. A phone has room
@@ -414,7 +429,7 @@ const Now = () => {
                         )}
 
                         <div className="hidden md:block w-48 flex-shrink-0 overflow-y-auto bg-nier-100-lighter/40">
-                            <Shelves reviews={reviews} error={error} />
+                            <Shelves reviews={reviews} error={error} loading={loading} />
                         </div>
                     </div>
 
@@ -424,7 +439,7 @@ const Now = () => {
                     <div className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                         <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
-                            {captionFor(selected, error)}
+                            {captionFor(selected, error, loading)}
                         </p>
                         <p className="ml-auto flex-shrink-0 text-xs uppercase tracking-wide text-nier-text-dark/50">
                             <span className="hidden sm:inline">↕ Select&nbsp;&nbsp;&nbsp;</span>◉ Open

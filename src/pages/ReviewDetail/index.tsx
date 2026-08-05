@@ -202,6 +202,18 @@ const ReviewDetail = () => {
     }, [data]);
 
 
+    // Deliberately still a gate, where Now and Review's are gone.
+    //
+    // Those two draw a surface whose identity is known before the fetch — the
+    // front page, a Category shelf — so the frame can be there first and the
+    // contents fill in. This page *is* the record: its title, its type icon
+    // and its whole tab strip come out of the response, so a frame drawn ahead
+    // of it would be a frame with nothing in it identifying what it is, under
+    // a PageHeader with no name to decode.
+    //
+    // It costs a late reveal on a slow response, not a broken one: the
+    // timeline is built when this finally mounts and the boot signal is a
+    // latch, so it plays at once rather than having missed anything.
     if (loading) return <Loader />;
     if (error)   return <div className="mt-5">Error: {error}</div>;
     if (!data)   return null;
