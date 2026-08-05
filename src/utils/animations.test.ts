@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   animationsDisabled,
   enterClass,
+  syncMotionClass,
   getMotionVersion,
   replayReveal,
   resetMotionOverride,
@@ -155,5 +156,48 @@ describe('enterClass', () => {
   it('returns an empty string when animations are disabled', () => {
     vi.stubEnv('VITE_DISABLE_ANIMATIONS', 'true');
     expect(enterClass('nier-enter')).toBe('');
+  });
+});
+
+/**
+ * Response is CSS transitions, so the seam cannot silence it by seeking a
+ * timeline — it marks the document and one rule in animations.css does the
+ * rest. Until this existed, none of the app's 93 hover/focus transitions were
+ * gated at all: only the vocabulary asked this module, so a machine set to
+ * reduce motion still got every one of them.
+ */
+describe('the motion-off class', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    resetMotionOverride();
+  });
+
+  it('is absent while motion is on', () => {
+    vi.stubEnv('VITE_DISABLE_ANIMATIONS', undefined);
+    setMotionOverride('on');
+
+    expect(document.documentElement.classList.contains('motion-off')).toBe(false);
+  });
+
+  it('marks the document when motion is turned off', () => {
+    setMotionOverride('off');
+
+    expect(document.documentElement.classList.contains('motion-off')).toBe(true);
+  });
+
+  it('is removed again when motion comes back', () => {
+    setMotionOverride('off');
+    setMotionOverride('on');
+
+    expect(document.documentElement.classList.contains('motion-off')).toBe(false);
+  });
+
+  it('follows a reduced-motion preference with no override in play', () => {
+    vi.stubEnv('VITE_DISABLE_ANIMATIONS', undefined);
+    stubMatchMedia(true);
+    syncMotionClass();
+
+    expect(document.documentElement.classList.contains('motion-off')).toBe(true);
   });
 });

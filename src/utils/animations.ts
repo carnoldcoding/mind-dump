@@ -30,7 +30,27 @@ const listeners = new Set<() => void>();
 
 const emit = () => {
   version += 1;
+  syncMotionClass();
   listeners.forEach((listener) => listener());
+};
+
+/**
+ * Response — hover, focus, selection, press — is CSS transitions rather than
+ * timelines, because interruption is the whole problem there and the browser
+ * resolves it natively from whatever the current computed value happens to be.
+ * So it cannot be silenced by building a timeline and seeking it; the seam
+ * marks the document instead, and one rule in animations.css does the rest.
+ *
+ * There are 93 of these across 31 files, and until this class existed not one
+ * of them was gated: only the vocabulary consulted this module, so a machine
+ * set to `prefers-reduced-motion: reduce` still got every hover transition in
+ * the app. That was a correctness bug rather than a coverage gap.
+ */
+const MOTION_OFF_CLASS = 'motion-off';
+
+export const syncMotionClass = (): void => {
+  if (typeof document === 'undefined') return;
+  document.documentElement.classList.toggle(MOTION_OFF_CLASS, animationsDisabled());
 };
 
 const envDisabled = (): boolean => import.meta.env.VITE_DISABLE_ANIMATIONS === 'true';
@@ -90,3 +110,17 @@ export const subscribeMotion = (listener: () => void): (() => void) => {
 };
 
 export const getMotionVersion = (): number => version;
+
+/**
+ * The preference can change while the page is open — a system-wide toggle, not
+ * just a startup setting — so the seam listens rather than reading once. The
+ * initial call is what marks the document on first load, before anything has
+ * had a reason to emit.
+ */
+if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+  window
+    .matchMedia('(prefers-reduced-motion: reduce)')
+    .addEventListener('change', () => emit());
+}
+
+syncMotionClass();

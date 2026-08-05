@@ -121,6 +121,28 @@
       */
 
       /*
+        RESPONSE, silenced.
+
+        Hover, focus, selection and press are CSS transitions — the browser
+        resolves an interrupted one from its current computed value, which is
+        the whole difficulty with hover and something a hand-written tween
+        would have to reimplement 93 times. So they are not timelines, and
+        cannot be silenced by seeking one.
+
+        src/utils/animations.ts puts this class on the document element
+        whenever the seam says motion is off. Deliberately transition-only:
+        the ambient loops (the diagonal background lines, the loader spin)
+        are not gated, and killing animation-duration here would stop the
+        spinner mid-turn on a page that is still loading.
+      */
+      .motion-off *,
+      .motion-off *::before,
+      .motion-off *::after {
+        transition-duration: 0ms !important;
+        transition-delay: 0ms !important;
+      }
+
+      /*
         WIPE — the entrance for every solid surface: panels, frames, modals.
         A hard clip edge sweeping left-to-right, at full opacity throughout.
         No fade and no scale, both of which read as soft rather than
