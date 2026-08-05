@@ -15,7 +15,7 @@ const Navigation = () => {
 
     return (
         <>
-            <nav data-boot-border className="flex items-start justify-center pt-8 gap-10 fixed w-screen nier-dot-pattern bg-nier-50 z-50">
+            <nav data-boot-border data-top-rule className="flex items-start justify-center pt-8 gap-10 fixed w-screen nier-dot-pattern bg-nier-50 z-50">
                 {visibleNavItems.map((item) => (
                     <NavTab
                         key={item.path}

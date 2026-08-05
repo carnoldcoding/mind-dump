@@ -16,9 +16,16 @@
  * Selectors are document-wide on purpose. There is exactly one boot sequence.
  */
 
-// `gsap.core.Timeline` and `gsap.Position` need no import — gsap's types
-// declare a global `gsap` namespace, and these functions only ever add to a
-// timeline they are handed.
+import gsap from 'gsap';
+
+/**
+ * Same reason as `motion.ts`, and boot has its own version of it: the desktop
+ * nav and the mobile header are never both mounted, so one of the two border
+ * tweens always addresses nothing. Set here as well because this module is
+ * reachable without `motion.ts` — a test that renders only boot loads one and
+ * not the other.
+ */
+gsap.config({ nullTargetWarn: false });
 
 /**
  * The mesh's shape. Each cell holds *two* polygons — the top-left triangle and

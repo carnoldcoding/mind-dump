@@ -9,16 +9,24 @@ interface Geometry {
 }
 
 // The border line (.nier-dot-pattern::before) sits 1.25rem above the bottom
-// edge of whichever element carries the class (nav on desktop, a plain div
-// on mobile) — see custom.css. Measuring the real element, rather than
-// guessing a viewport percentage, keeps this lined up even as nav's own
-// height changes (padding/margin tweaks, breakpoint, font size, etc).
+// edge of whichever element carries the class — see custom.css. Measuring the
+// real element, rather than guessing a viewport percentage, keeps this lined
+// up even as nav's own height changes (padding/margin tweaks, breakpoint,
+// font size, etc).
 const BORDER_LINE_OFFSET_PX = 20; // 1.25rem at the default 16px root size
 
 const measure = (): Geometry => {
   const w = window.innerWidth;
   const h = window.innerHeight;
-  const patternEl = document.querySelector('.nier-dot-pattern');
+  // `[data-top-rule]`, not `.nier-dot-pattern`. The footer wears that class
+  // too — it is a mirror of the nav bar, which is the whole point of it — so
+  // the class alone identifies two elements and the query returned whichever
+  // came first in the DOM. That was the nav only because the footer used to
+  // not exist yet: it was mounted by its own boot stage. Now that every boot
+  // element renders from the first frame, the footer is there at measuring
+  // time and sits *above* the nav in Layout, so this line was being placed
+  // 20px off the bottom of the screen instead of the top.
+  const patternEl = document.querySelector('[data-top-rule]');
   const topLineY = patternEl
     ? patternEl.getBoundingClientRect().bottom - BORDER_LINE_OFFSET_PX
     : h * 0.11;
