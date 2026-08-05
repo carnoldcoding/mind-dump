@@ -26,19 +26,24 @@
 // row is an anchor, so Tab already walks the list and Enter already opens —
 // `onFocus` and `onMouseEnter` simply tell the detail pane what to show.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import PageHeader from "../../components/common/PageHeader";
 import Loader from "../../components/common/Loader";
 import { ReviewCover } from "../../components/review/ReviewCover";
 import { useReviews, isUnfinished, type Review } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
 import { reviewPath } from "../../utils/categories";
-import { useStageState } from "../../context/BootSequenceContext";
-import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
-import { useDecodeText } from "../../hooks/useDecodeText";
+import { useRevealSignal } from "../../hooks/useRevealSignal";
+import { useRevealTimeline } from "../../hooks/useRevealTimeline";
+import { decode, domino, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { Link } from "react-router";
+
+// The panel's own title. Held here rather than inline because the reveal
+// timeline and the heading have to agree on it — Decode scrambles *toward* the
+// text the element already carries.
+const PANEL_TITLE = "CURRENT VIEW PANEL";
 
 // How many queued Reviews the up-next section shows before handing off to the
 // Backlog, and how many finished ones the last section carries.
@@ -123,7 +128,7 @@ const Section = ({ title, empty, children }: {
     empty: string;
     children?: React.ReactNode;
 }) => (
-    <section aria-label={title}>
+    <section data-now-section aria-label={title}>
         <h2 className="bg-nier-dark text-nier-text-light text-xs uppercase tracking-widest px-2 py-1">
             {title}
         </h2>
@@ -262,12 +267,19 @@ const captionFor = (review: Review | undefined, error: boolean): string => {
 
 const Now = () => {
     const { reviews, loading, error } = useReviews();
-    const { active: contentActive } = useStageState('header');
-    // No card domino here — the sections are rows, not a grid — so nothing
-    // reports the 'cards' stage.
-    const { stage: panelStage, advance } = usePanelReveal(contentActive, undefined, ['cards']);
-    const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const decodedPanelTitle = useDecodeText('CURRENT VIEW PANEL', contentReady, () => advance('title'));
+    const revealed = useRevealSignal();
+    const scope = useRef<HTMLDivElement>(null);
+
+    // The frame arrives, its title decodes over the tail of that, and the
+    // sections fall in underneath. Each beat starts before the one before it
+    // has finished — that overlap is the `"<"` positions, and it is what makes
+    // the panel read as one machine coming online rather than three beats
+    // politely waiting for each other.
+    useRevealTimeline(revealed, (tl) => {
+        wipe(tl, '[data-panel-surface]');
+        decode(tl, '[data-panel-title]', PANEL_TITLE, '<0.15');
+        domino(tl, '[data-now-section]', '<0.3');
+    }, scope);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     // Keyed rather than held by object identity: the store replaces Review
@@ -337,16 +349,14 @@ const Now = () => {
                 actually there and the contents scroll inside it. 42rem is
                 the most it wants; the cap is what is left below it. */}
             <Panel
-                ready={contentActive}
-                stage={panelStage}
-                onBoxRevealed={() => advance('box')}
+                wrapperRef={scope}
                 wrapperClassName="mt-5"
                 className="bg-nier-100 h-[42rem]"
                 style={maxHeight ? { maxHeight } : undefined}
                 frameRef={panelRef}
             >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 className={`text-nier-text-dark text-xl uppercase ${contentReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
+                        <h3 data-panel-title className="text-nier-text-dark text-xl uppercase">{PANEL_TITLE}</h3>
                     </div>
 
                     {/* min-h-0 so the columns scroll inside the frame instead

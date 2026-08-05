@@ -26,7 +26,7 @@
 // see CONTEXT.md. A denominator here would be the interface imposing exactly
 // the uniformity that shape exists to avoid.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { backend } from "../../../../api/backend";
 import {
     useReviews,
@@ -39,7 +39,8 @@ import { todayIso } from "../../../../utils/completionDate";
 import { daysWaiting } from "../../../../utils/capturedAt";
 import { writtenSections, SECTION_GLYPH } from "../../../../utils/critique";
 import { CATEGORIES } from "../../../../utils/categories";
-import { usePanelReveal, panelStageIndex } from "../../../../hooks/usePanelReveal";
+import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
+import { fade, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
 import { Panel } from "../../../../components/common/Panel";
 import { ReviewCover } from "../../../../components/review/ReviewCover";
@@ -342,10 +343,14 @@ const captionFor = (review: Review | undefined, error: string | null, waitingOn:
 
 const BacklogWindow = ({ onClose }: Props) => {
     const { reviews } = useReviews();
-    // No decoded title and no card domino in this window, so nothing reports
-    // either stage yet.
-    const { stage: panelStage, advance } = usePanelReveal(true, undefined, ['title', 'cards']);
-    const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
+    // No signal to wait on: this window mounts well after boot, from a folder
+    // icon on the Desktop. No decoded title and no card grid either, so its
+    // whole entrance is the frame arriving with its chrome a beat behind.
+    const scope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(true, (tl) => {
+        wipe(tl, '[data-panel-surface]');
+        fade(tl, '[data-window-chrome]', '<0.2');
+    }, scope);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const [error, setError] = useState<string | null>(null);
@@ -423,14 +428,12 @@ const BacklogWindow = ({ onClose }: Props) => {
     return (
         <>
         <Panel
-            ready
-            stage={panelStage}
-            onBoxRevealed={() => advance('box')}
+            wrapperRef={scope}
             className="bg-nier-100 border border-nier-150"
             style={maxHeight ? { maxHeight } : undefined}
             frameRef={panelRef}
         >
-                <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
+                <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                     <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Backlog</h3>
                     <button
                         onClick={onClose}
@@ -439,7 +442,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                     >✕</button>
                 </div>
 
-                <div className={`p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0 ${contentReady ? '' : 'invisible'}`}>
+                <div data-window-chrome className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
                     <Capture reviews={reviews} />
 
@@ -477,7 +480,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                 {/* The caption bar. Says what is under the pointer, and carries
                     the fault as well, because the state column is desktop-only
                     and a phone would otherwise be told nothing. */}
-                <div className={`flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2 ${contentReady ? '' : 'invisible'}`}>
+                <div data-window-chrome className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                     <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                     <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
                         {captionFor(selected, error, listed)}

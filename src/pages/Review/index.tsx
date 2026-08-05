@@ -1,6 +1,6 @@
 import PageHeader from "../../components/common/PageHeader";
 import { ReviewCard } from "../../components/review/ReviewCard";
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState, useRef } from "react";
 import Loader from "../../components/common/Loader";
 import { useReviews, type Review as ReviewRecord } from "../../store/reviews";
 import { byNewestCompleted } from "../../utils/completionDate";
@@ -10,8 +10,8 @@ import { useParams } from "react-router";
 import { gameGenres, movieGenres, bookGenres } from "../../utils/helpers";
 import { useLocation } from "react-router";
 import { useStageState } from "../../context/BootSequenceContext";
-import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
-import { useDecodeText } from "../../hooks/useDecodeText";
+import { useRevealTimeline } from "../../hooks/useRevealTimeline";
+import { decode, domino, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 
@@ -352,21 +352,23 @@ const Review = () => {
     // Hooks must run unconditionally, so these sit above the `if (!category)
     // return null` below even though category may briefly be undefined.
     // resetKey=category so this restarts fresh on every category switch —
-    // Review itself doesn't unmount between categories (React Router keeps
-    // the same component instance, just re-renders with new params), so
-    // without this the hook's state would stay stuck from the previous
-    // category while the section's own `key` still forces its DOM to
-    // remount, leaving cards "ready" from frame one instead of waiting.
-    // Every stage here has a real reporter: the frame's wipe, the title's
-    // decode, and the first card's domino.
-    const { stage: panelStage, advance } = usePanelReveal(contentActive, category);
-    const titleReady = panelStageIndex(panelStage) >= panelStageIndex('title');
-    const cardsReady = panelStageIndex(panelStage) >= panelStageIndex('cards');
-    const decodedPanelTitle = useDecodeText(
-        `${category ?? ''} VIEW PANEL`.toUpperCase(),
-        titleReady,
-        () => advance('title'),
-    );
+    const panelTitle = `${category ?? ''} VIEW PANEL`.toUpperCase();
+    const scope = useRef<HTMLDivElement>(null);
+
+    // Review does not unmount between categories — React Router keeps the same
+    // component instance and re-renders with new params — so the Fragment is
+    // keyed on `category`, which remounts the panel and builds this afresh.
+    // That is what the old resetKey argument was for.
+    //
+    // The frame wipes, its title decodes over the tail of that, and the shelf
+    // dominoes in underneath. The stagger is the Domino primitive's own; the
+    // version this replaces had to nominate the first card as a reporter and
+    // hand-write a per-card delay to get the same overlap.
+    useRevealTimeline(contentActive, (tl) => {
+        wipe(tl, '[data-panel-surface]');
+        decode(tl, '[data-panel-title]', panelTitle, '<0.15');
+        domino(tl, '[data-shelf-card]', '<0.3');
+    }, scope);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleFieldChange = (field: string, value: any) => {
@@ -740,23 +742,21 @@ const Review = () => {
         return (
           <Fragment key={category}>
           <Panel
-                ready={contentActive}
-                stage={panelStage}
-                onBoxRevealed={() => advance('box')}
+                wrapperRef={scope}
                 wrapperClassName="mt-5"
                 className="bg-nier-100 h-[42rem]"
                 style={maxHeight ? { maxHeight } : undefined}
                 frameRef={panelRef}
             >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 className={`text-nier-text-dark text-xl uppercase ${titleReady ? '' : 'invisible'}`}>{decodedPanelTitle}</h3>
+                        <h3 data-panel-title className="text-nier-text-dark text-xl uppercase">{panelTitle}</h3>
                     </div>
 
                     {/* min-h-0 so the columns scroll inside the frame instead
                         of stretching it — a flex child's default min-height is
                         its content, which would let a long shelf push the
                         panel past the height its cap just worked out. */}
-                    <div className={`flex-1 min-h-0 flex gap-4 p-4 ${titleReady ? '' : 'invisible'}`}>
+                    <div className="flex-1 min-h-0 flex gap-4 p-4">
 
                         {/* The gutter rail: two-tone, and the only thing left
                             of the content, exactly as the reference has it. */}
@@ -812,9 +812,10 @@ const Review = () => {
 
                             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto flex-1 items-start content-start">
                                 {shown.length > 0
-                                    ? shown.map((post, i) => (
+                                    ? shown.map((post) => (
                                         <div
-                                            className={`w-full ${cardsReady ? 'nier-domino' : 'invisible'}`}
+                                            data-shelf-card
+                                            className="w-full"
                                             key={post._id}
                                             // The caption bar's whole input.
                                             // onFocus rather than a key
@@ -822,14 +823,6 @@ const Review = () => {
                                             // so Tab already walks the shelf.
                                             onMouseEnter={() => setSelectedId(post._id)}
                                             onFocus={() => setSelectedId(post._id)}
-                                            // Only the first card reports. The
-                                            // stage ends on the lead element,
-                                            // so the rest of the domino runs on
-                                            // under whatever comes next.
-                                            onAnimationEnd={i === 0 ? (event) => {
-                                                if (event.target === event.currentTarget) advance('cards');
-                                            } : undefined}
-                                            style={cardsReady ? ({ '--nier-domino-delay': `${Math.min(i, 20) * 30}ms` } as React.CSSProperties) : undefined}
                                         >
                                         {/* A shelf is finished work, so the line
                                             is what finishing produced: the rating
@@ -859,7 +852,7 @@ const Review = () => {
                     {/* The caption bar. What is under the pointer on the left,
                         how to act on it on the right — the reference's bottom
                         strip, accent block and all. */}
-                    <div className={`flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2 ${titleReady ? '' : 'invisible'}`}>
+                    <div className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                         <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(selected, !!error, shown.length === 0)}

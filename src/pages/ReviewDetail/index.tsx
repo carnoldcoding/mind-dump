@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router";
 import { useParams } from "react-router";
@@ -9,7 +9,8 @@ import Loader from "../../components/common/Loader";
 import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
-import { usePanelReveal } from "../../hooks/usePanelReveal";
+import { useRevealTimeline } from "../../hooks/useRevealTimeline";
+import { fade, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { enterClass } from "../../utils/animations";
@@ -151,14 +152,15 @@ const ReviewDetail = () => {
     const [selectedImg, setSelectedImg] = useState<{ url: string; title?: string } | null>(null);
     const [parent]                  = useState(location.pathname.split('/')[1]);
     const { slug }                  = useParams<{ category: string; slug: string }>();
-    // Same box-reveal used by the grid panel (Review/index.tsx) — box grows
-    // horizontally then vertically, content stays hidden until it settles so
-    // it doesn't visibly squish along with the box. resetKey=slug so this
-    // restarts on every review, not just the first mount of this route.
-    // No decoded title and no card domino on the detail panel, so nothing
-    // reports either stage yet.
-    const { stage: panelStage, advance } = usePanelReveal(contentActive, slug, ['title', 'cards']);
-    const contentReady = panelStage !== 'box';
+    // The same entrance the grid panel uses: the frame wipes in and its
+    // header follows a beat behind. The Panel is keyed on `slug`, so moving
+    // between reviews remounts it and the timeline is built afresh — that is
+    // what the old resetKey argument was for.
+    const scope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(contentActive, (tl) => {
+        wipe(tl, '[data-panel-surface]');
+        fade(tl, '[data-detail-chrome]', '<0.2');
+    }, scope);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleClose   = () => navigate(`/${parent}`);
@@ -231,9 +233,7 @@ const ReviewDetail = () => {
 
             <Panel
                 key={slug}
-                ready={contentActive}
-                stage={panelStage}
-                onBoxRevealed={() => advance('box')}
+                wrapperRef={scope}
                 wrapperClassName="mt-5"
                 className="bg-nier-100 md:h-[34rem]"
                 style={maxHeight ? { maxHeight } : undefined}
@@ -241,7 +241,7 @@ const ReviewDetail = () => {
             >
 
                     {/* ── Header bar ─────────────────────────────────── */}
-                    <div className={`h-10 bg-nier-150 flex items-stretch flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
+                    <div data-detail-chrome className="h-10 bg-nier-150 flex items-stretch flex-shrink-0">
                         <div className="flex items-center gap-2 px-4 flex-1 min-w-0">
                             <ion-icon name={TYPE_ICON[data.type]} style={{ flexShrink: 0 }}></ion-icon>
                             <h3 className="text-nier-text-dark text-lg truncate uppercase tracking-wide">
@@ -270,7 +270,7 @@ const ReviewDetail = () => {
                     {/* ── Body ───────────────────────────────────────── */}
                     {/* The gutter rail is the one piece of the frame every
                         reference screen shares, whatever is inside it. */}
-                    <div className={`p-4 flex gap-4 flex-1 min-h-0 ${contentReady ? '' : 'invisible'}`}>
+                    <div data-detail-chrome className="p-4 flex gap-4 flex-1 min-h-0">
 
                         <div aria-hidden="true" className="hidden md:flex w-1 flex-shrink-0 flex-col">
                             <span className="w-full flex-[2] bg-nier-shadow" />
@@ -445,7 +445,7 @@ const ReviewDetail = () => {
                         the right. It replaces an italic line that repeated the
                         release date and the creator, both of which now sit
                         under the cover they belong to. */}
-                    <div className={`flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2 ${contentReady ? '' : 'invisible'}`}>
+                    <div data-detail-chrome className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                         <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(data.title, activeTab, sectionCount)}

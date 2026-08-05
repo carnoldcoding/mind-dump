@@ -1,11 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, act, fireEvent } from '@testing-library/react';
 import gsap from 'gsap';
-import {
-  BootSequenceProvider,
-  useBootSequence,
-  useRevealSignal,
-} from './BootSequenceContext';
+import { BootSequenceProvider, useBootSequence } from './BootSequenceContext';
+import { useRevealSignal } from '../hooks/useRevealSignal';
 import { resetMotionOverride, setMotionOverride } from '../utils/animations';
 
 const Probe = () => {

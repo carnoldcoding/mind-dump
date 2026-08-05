@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReviewsWindow from "./components/ReviewsWindow";
 import BodyWindow from "./components/Body";
 import BacklogWindow from "./components/Backlog";
-import { useStageState } from "../../context/BootSequenceContext";
-import { usePanelReveal, panelStageIndex } from "../../hooks/usePanelReveal";
+import { useRevealSignal } from "../../hooks/useRevealSignal";
+import { useRevealTimeline } from "../../hooks/useRevealTimeline";
+import { fade, wipe } from "../../utils/motion";
 import { Panel } from "../../components/common/Panel";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 
@@ -28,11 +29,15 @@ const Desktop = () => {
     // Desktop didn't wait for boot before this — unlike Search/Review it
     // could start its own enter animation while <main> was still hidden
     // behind the boot sequence. Gated the same way now.
-    const { active: contentActive } = useStageState('header');
-    // No decoded title and no card domino on the desktop screen, so nothing
-    // reports either stage yet.
-    const { stage: panelStage, advance } = usePanelReveal(contentActive, undefined, ['title', 'cards']);
-    const contentReady = panelStageIndex(panelStage) >= panelStageIndex('title');
+    const revealed = useRevealSignal();
+    const scope = useRef<HTMLDivElement>(null);
+
+    // The screen has no decoded title and no card grid, so its whole entrance
+    // is the frame arriving with its chrome a beat behind.
+    useRevealTimeline(revealed, (tl) => {
+        wipe(tl, '[data-panel-surface]');
+        fade(tl, '[data-desktop-chrome]', '<0.2');
+    }, scope);
     const [time, setTime] = useState("");
     const [date, setDate] = useState("");
     const [openApp, setOpenApp] = useState<string | null>(null);
@@ -57,9 +62,7 @@ const Desktop = () => {
     // between them is what scrolls, so a window inside never pushes the page.
     return (
         <Panel
-            ready={contentActive}
-            stage={panelStage}
-            onBoxRevealed={() => advance('box')}
+            wrapperRef={scope}
             wrapperClassName="mt-5"
             className="bg-nier-50 border border-nier-150 h-[42rem]"
             style={maxHeight ? { maxHeight } : undefined}
@@ -67,7 +70,7 @@ const Desktop = () => {
         >
 
                 {/* Title bar */}
-                <div className={`h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
+                <div data-desktop-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <span className="text-nier-text-dark text-sm uppercase tracking-widest font-semibold">
                             SYSTEM.OS
@@ -79,7 +82,7 @@ const Desktop = () => {
                 </div>
 
                 {/* Desktop area */}
-                <div className={`relative p-4 flex-1 overflow-y-auto min-h-0 ${contentReady ? '' : 'invisible'}`}>
+                <div data-desktop-chrome className="relative p-4 flex-1 overflow-y-auto min-h-0">
                     {/* Icons — own stacking context, sit beneath any open window */}
                     <div className="absolute top-4 left-4 flex gap-4 z-0">
                         {(["backlog", "reviews", "body"] as const).map(app => (
@@ -121,7 +124,7 @@ const Desktop = () => {
                 </div>
 
                 {/* Taskbar */}
-                <div className={`h-8 bg-nier-150 border-t border-nier-dark/20 flex items-center justify-between px-4 flex-shrink-0 ${contentReady ? '' : 'invisible'}`}>
+                <div data-desktop-chrome className="h-8 bg-nier-150 border-t border-nier-dark/20 flex items-center justify-between px-4 flex-shrink-0">
                     <span className="text-xs text-nier-text-dark uppercase tracking-widest opacity-50">
                         MIND DUMP OS
                     </span>
