@@ -16,12 +16,27 @@ library does. These three are disjoint, and all three answer to
 
 | Mechanism | Owns | Because |
 |---|---|---|
-| **GSAP timelines** | anything with a position in a sequence — panels, modals, boot, prose | sequenced, reversible, seekable |
+| **GSAP timelines** | anything with a position in a sequence — panels, page headers, boot's clock | sequenced, reversible, seekable |
 | **CSS transitions** | state-flip feedback — hover, focus, selection, press | the browser resolves interruption natively |
 | **CSS keyframes** | ambient infinite loops — background lines, loader spin | nothing sequences them |
 
 The test for one vocabulary is not "one library". It is that these three do not
 overlap and none of them escapes the seam.
+
+### Not migrated yet
+
+Three things this vocabulary claims but does not yet own. They are work, not
+exceptions — nothing below is an argument for leaving them:
+
+- **Modals** still carry `nier-modal-enter` / `nier-backdrop-enter` classes and
+  `enterClass`. They need a shared `Modal` that owns its own presence first,
+  because every call site unmounts them with `{open && <Modal/>}` and a
+  component removed from the tree cannot play an exit.
+- **Exit** therefore exists as a rule here and nowhere in the code.
+- **Boot's own visuals** are still CSS keyframes, which is why
+  `STAGE_DURATIONS` in `BootSequenceContext` still describes durations it does
+  not own. Boot's *clock* is a timeline; its corner lines, triangle grid,
+  border wipes and nav domino are not.
 
 ## The model
 
