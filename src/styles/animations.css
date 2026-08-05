@@ -129,82 +129,9 @@
       */
 
       /*
-        Boot sequence — corner lines grow in, then hold at full opacity
-        (the wrapper in CornerLines.tsx owns the later fade-out, once the
-        triangle stage that plays over these lines is done).
-        transform-origin is set per-line inline (anchored at its corner).
+        Boot's own keyframes used to live here — the corner lines, the
+        triangle pop, the two border wipes and the nav domino. They are tweens
+        on boot's timeline now (src/utils/bootMotion.ts), which is what let
+        STAGE_HOLDS stop describing durations it did not own.
       */
-      @keyframes nier-boot-line-grow {
-        0%   { transform: rotate(var(--nier-line-rotate, 0deg)) scaleX(0); opacity: 0; }
-        20%  { opacity: 1; }
-        65%  { transform: rotate(var(--nier-line-rotate, 0deg)) scaleX(1); opacity: 1; }
-        100% { transform: rotate(var(--nier-line-rotate, 0deg)) scaleX(1); opacity: 1; }
-      }
-
-      .nier-boot-line {
-        animation: nier-boot-line-grow 500ms ease-in-out forwards;
-      }
-
-      /*
-        Boot sequence — triangle grid pop-in. The screen starts solid black;
-        each triangle pans in by transitioning from black to the same base
-        tone as the rest, so the grid becomes a uniform beige background
-        (not a permanent two-tone checker) as it's "painted" tile by tile.
-      */
-      @keyframes nier-boot-triangle-pop {
-        0%   { transform: scale(1); fill: #000000; }
-        55%  { transform: scale(1.05); fill: var(--color-nier-100); }
-        100% { transform: scale(1); fill: var(--color-nier-50); }
-      }
-
-      .nier-boot-triangle {
-        transform-box: fill-box;
-        transform-origin: center;
-        animation: nier-boot-triangle-pop 350ms ease-out forwards;
-      }
-
-      /*
-        Boot sequence — top/bottom border bars wipe in edge-to-edge. Top
-        goes left-to-right; bottom uses the reverse variant (right-to-left).
-      */
-      @keyframes nier-boot-border-wipe {
-        0%   { clip-path: inset(0 100% 0 0); }
-        100% { clip-path: inset(0 0 0 0); }
-      }
-
-      .nier-boot-border-wipe {
-        animation: nier-boot-border-wipe 500ms ease-in-out forwards;
-      }
-
-      @keyframes nier-boot-border-wipe-reverse {
-        0%   { clip-path: inset(0 0 0 100%); }
-        100% { clip-path: inset(0 0 0 0); }
-      }
-
-      .nier-boot-border-wipe-reverse {
-        animation: nier-boot-border-wipe-reverse 500ms ease-in-out forwards;
-      }
-
-      /*
-        Boot sequence — nav items fade in one-by-one (domino). Delay is set
-        per-item via an inline --nier-nav-delay custom property.
-      */
-      @keyframes nier-boot-nav-item {
-        0%   { opacity: 0; transform: translateY(-6px); }
-        100% { opacity: 1; transform: translateY(0); }
-      }
-
-      .nier-boot-nav-item {
-        /* "both" (not just "forwards") so the item holds the 0% keyframe's
-           invisible state during its own stagger delay too — otherwise it
-           renders at its normal (fully visible) style until the delay
-           elapses, then snaps to invisible when the animation actually
-           starts, reading as a blink right before each item fades in. */
-        animation: nier-boot-nav-item 250ms ease-out both;
-        animation-delay: var(--nier-nav-delay, 0ms);
-      }
-
-      /* The 'cards' stage of a panel reveal is just the Domino primitive —
-         see .nier-domino above. .nier-panel-card-fall used to live here as a
-         separate, identical keyframe. */
   }

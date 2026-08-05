@@ -9,7 +9,6 @@ const CELL_H = 100 / ROWS;
 interface Triangle {
   key: string;
   points: string;
-  delay: number;
 }
 
 const buildTriangles = (): Triangle[] => {
@@ -18,16 +17,13 @@ const buildTriangles = (): Triangle[] => {
     for (let col = 0; col < COLS; col++) {
       const x = col * CELL_W;
       const y = row * CELL_H;
-      const delay = (row + col) * 18;
       triangles.push({
         key: `${row}-${col}-tl`,
         points: `${x},${y} ${x + CELL_W},${y} ${x},${y + CELL_H}`,
-        delay,
       });
       triangles.push({
         key: `${row}-${col}-br`,
         points: `${x + CELL_W},${y} ${x + CELL_W},${y + CELL_H} ${x},${y + CELL_H}`,
-        delay: delay + 6,
       });
     }
   }
@@ -46,16 +42,19 @@ const buildTriangles = (): Triangle[] => {
  * positive value here (as this used to be) paints above real content.
  *
  * Once boot is done, every triangle has converged to the same resting
- * fill anyway (see nier-boot-triangle-pop), so the ~480-polygon mesh is
+ * fill anyway (see bootTriangles), so the ~480-polygon mesh is
  * collapsed to a single rect — this also sidesteps the hairline seam
  * artifacts adjacent same-color SVG polygons leave from anti-aliasing.
  */
 const TriangleGrid = () => {
-  const { active, settled } = useStageState('triangles');
+  const { settled } = useStageState('triangles');
   const triangles = useMemo(buildTriangles, []);
 
-  if (!active || settled) {
-    return <div className={`fixed inset-0 -z-30 ${active ? 'bg-nier-50' : 'bg-black'}`} aria-hidden="true" />;
+  // Once boot is done every triangle has converged on the same tone, so the
+  // mesh collapses to one rect — cheaper, and it sidesteps the hairline seams
+  // anti-aliasing leaves between adjacent same-colour polygons.
+  if (settled) {
+    return <div className="fixed inset-0 -z-30 bg-nier-50" aria-hidden="true" />;
   }
 
   return (
@@ -73,8 +72,8 @@ const TriangleGrid = () => {
         <polygon
           key={triangle.key}
           points={triangle.points}
-          className="nier-boot-triangle"
-          style={{ animationDelay: `${triangle.delay}ms`, fill: '#000000' }}
+          data-boot-triangle
+          style={{ transformBox: 'fill-box', transformOrigin: 'center', fill: '#000000' }}
         />
       ))}
     </svg>

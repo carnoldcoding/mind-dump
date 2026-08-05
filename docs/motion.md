@@ -23,22 +23,27 @@ library does. These three are disjoint, and all three answer to
 The test for one vocabulary is not "one library". It is that these three do not
 overlap and none of them escapes the seam.
 
-### The boot sequence is legacy, deliberately
+### The boot sequence
 
-Boot's **clock** is a timeline like everything else — it is what raises the
-signal every surface waits on, and it answers to the seam. Its **visuals** are
-still CSS keyframes: the corner lines, the 480-polygon triangle grid, the
-border wipes, the nav domino.
+Boot is on the timeline too, clock and gestures both. Its choreography lives in
+[`src/utils/bootMotion.ts`](../src/utils/bootMotion.ts) rather than in
+`motion.ts`, because boot is not written in the five primitives — it is where
+they came from, and a triangle mesh panning in from black is not a Wipe or a
+Domino.
 
-That is a decision, not a leftover. It works, nothing waits on it, and
-converting a staggered mesh that size is real risk on the one sequence that was
-never the problem. Left as legacy until there is a reason to touch it.
+`STAGE_HOLDS` and the tween durations are deliberately different numbers, and
+that is not drift. A hold is how long a stage waits before handing over; a
+duration is how long a gesture takes. The triangle mesh runs about 900ms
+against a 700ms hold, so it is still painting itself in while the borders draw
+over it — that overlap is boot reading as one construction rather than four
+beats in a queue.
 
-The cost, so nobody rediscovers it as a bug: `STAGE_DURATIONS` in
-`BootSequenceContext` describes durations it does not own, and a keyframe
-retuned in `animations.css` has to be matched there by hand. That is exactly
-the drift ADR-0006 was written about, surviving in the one place still shaped
-the old way. Treat both numbers as one edit.
+Boot's elements render from the first frame and are hidden by their own start
+states, exactly as panels are. Nothing is gated on a stage any more, with two
+exceptions that earn it: `CornerLines` unmounts once boot is `done`, and
+`TriangleGrid` collapses its 480 polygons to a single rect at the same point —
+cheaper, and it sidesteps the hairline seams anti-aliasing leaves between
+adjacent same-coloured polygons.
 
 ## The model
 

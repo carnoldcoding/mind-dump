@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { useStageState } from '../../../context/BootSequenceContext';
 import { useReviews } from '../../../store/reviews';
 import { readoutsFor } from '../../../utils/readouts';
 
@@ -8,7 +7,7 @@ import { readoutsFor } from '../../../utils/readouts';
  * top edge by the same nier-dot-pattern line and strip the nav bar wears — a
  * mirror of it. Wipes in alongside the nav's own border during the 'borders'
  * stage so the two read as one synchronized frame being drawn — but
- * right-to-left (nier-boot-border-wipe-reverse), opposite the top bar's
+ * right-to-left (data-boot-border-reverse), opposite the top bar's
  * left-to-right direction.
  *
  * It used to hold nothing at all, and was hidden from assistive technology on
@@ -20,19 +19,17 @@ import { readoutsFor } from '../../../utils/readouts';
  * anything was put in it.
  */
 const BottomBar = () => {
-  const { active, animating } = useStageState('borders');
   const { reviews } = useReviews();
 
   const readouts = useMemo(() => readoutsFor(reviews), [reviews]);
-
-  if (!active) return null;
 
   return (
     // bottom-0, not an offset: the border strip's own reserved padding holds
     // the line and the pattern, so lifting it off the viewport edge only
     // opened a gap of bare page background underneath it.
     <footer
-      className={`fixed bottom-0 left-0 w-screen z-50 ${animating ? 'nier-boot-border-wipe-reverse' : ''}`}
+      data-boot-border-reverse
+      className="fixed bottom-0 left-0 w-screen z-50"
       aria-label="Collection status"
     >
       {/* The class puts the line and pattern along its own bottom edge; the
