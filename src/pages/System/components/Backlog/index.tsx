@@ -40,7 +40,7 @@ import { daysWaiting } from "../../../../utils/capturedAt";
 import { writtenSections, SECTION_GLYPH } from "../../../../utils/critique";
 import { CATEGORIES } from "../../../../utils/categories";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
-import { fade, wipe } from "../../../../utils/motion";
+import { domino, fade, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
 import { Panel } from "../../../../components/common/Panel";
 import { ReviewCover } from "../../../../components/review/ReviewCover";
@@ -226,6 +226,7 @@ const Section = ({ label, items, selected, ...actions }: SectionProps) => (
             : (
                 <ul
                     aria-label={label}
+                    data-backlog-shelf
                     className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2"
                 >
                     {items.map(review => (
@@ -351,6 +352,15 @@ const BacklogWindow = ({ onClose }: Props) => {
         wipe(tl, '[data-panel-surface]');
         fade(tl, '[data-window-chrome]', '<0.2');
     }, scope);
+
+    // The shelves themselves. Their own timeline and their own readiness,
+    // because the cards arrive with the collection rather than with the frame
+    // — a timeline built at mount would address nothing, and go on addressing
+    // nothing once they turned up.
+    const shelvesScope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(reviews.length > 0, (tl) => {
+        domino(tl, '[data-backlog-shelf] > li');
+    }, shelvesScope, [reviews.length > 0]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const [error, setError] = useState<string | null>(null);
@@ -442,7 +452,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                     >✕</button>
                 </div>
 
-                <div data-window-chrome className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
+                <div data-window-chrome ref={shelvesScope} className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
                     <Capture reviews={reviews} />
 

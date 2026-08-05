@@ -9,7 +9,7 @@ import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { fade, wipe } from "../../utils/motion";
+import { fade, growth, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { Modal } from "../../components/common/Modal";
@@ -169,6 +169,22 @@ const ReviewDetail = () => {
         fade(tl, '[data-detail-chrome]', '<0.2');
     }, scope, [loading, slug]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+
+    /**
+     * The critique itself. Rebuilt on every tab change, because switching
+     * section is a new arrival rather than the same one replayed — and the
+     * paragraph being addressed is a different element each time.
+     *
+     * Fade, not Decode: "if it wraps, it fades". Decode rewrites every
+     * character continuously and is unreadable on a paragraph, which is why
+     * the vocabulary reserves it for headers and labels. The section heading
+     * above is short chrome, so it may wipe with the panel it sits in.
+     */
+    const critiqueScope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(contentActive, (tl) => {
+        growth(tl, '[data-critique-heading]');
+        fade(tl, '[data-critique-prose]', '<0.1');
+    }, critiqueScope, [activeTab, loading]);
 
     const handleClose   = () => navigate(`/${parent}`);
     const filterByGenre = (genre: string) => navigate(`/${parent}?genre=${genre}`);
@@ -374,8 +390,8 @@ const ReviewDetail = () => {
                                         version of that count here: it says how
                                         much of the critique you have seen,
                                         which nothing else on the page does. */}
-                                    <div className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
-                                        <div className="h-7 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
+                                    <div ref={critiqueScope} className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
+                                        <div data-critique-heading className="h-7 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
                                             <span className="text-[10px] uppercase tracking-widest text-nier-text-dark">
                                                 {activeTab === 'mods'
                                                     ? 'Installed Mods'
@@ -411,7 +427,7 @@ const ReviewDetail = () => {
                                             </ul>
                                         ) : (
                                             <div className="flex-1 overflow-y-auto p-3 min-h-0 flex flex-col gap-3">
-                                                <p className="text-sm leading-relaxed whitespace-pre-wrap">{activeContent}</p>
+                                                <p data-critique-prose className="text-sm leading-relaxed whitespace-pre-wrap">{activeContent}</p>
                                                 {activeTab === 'sound' && tracks.length > 0 && (
                                                     <ul className="flex flex-col border-t border-nier-150 pt-2">
                                                         {tracks.map((track, i) => (
