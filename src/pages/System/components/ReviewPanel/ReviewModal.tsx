@@ -5,7 +5,6 @@ import { MutliSelectField } from "../../../../components/common/MultiSelectField
 import { BigTextField } from "../../../../components/common/BigTextField"
 import { ImageTextField } from "../../../../components/common/ImageTextField"
 import { useState, useEffect, useRef } from "react"
-import { createPortal } from "react-dom"
 import { Button } from "../../../../components/common/Button"
 import { backend } from "../../../../api/backend"
 import { useMediaUpload } from "./useMediaUpload"
@@ -15,12 +14,13 @@ import { todayIso } from "../../../../utils/completionDate"
 import { generateSlug } from "../../../../utils/slug"
 import { toIsoDate } from "./migration"
 import { gameGenres, movieGenres, bookGenres } from "../../../../utils/genres"
+import { useRetained } from "../../../../hooks/useRetained"
 import ModModal from "./ModModal"
 import type { Mod } from "./ModModal"
 import type { AudioTrack } from "../../../../types"
 import { sectionsFor } from "../../../../utils/critique"
 import AudioPlayer from "../../../ReviewDetail/AudioPlayer"
-import { enterClass } from "../../../../utils/animations"
+import { Modal } from "../../../../components/common/Modal"
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -71,6 +71,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const [deleteError, setDeleteError] = useState('');
     const [mods, setMods]               = useState<Mod[]>([]);
     const [modModal, setModModal]       = useState<{ mod?: Mod; index?: number } | null>(null);
+    const shownModModal                 = useRetained(modModal);
     const [tracks, setTracks]           = useState<AudioTrack[]>([]);
     const [uploadFile, setUploadFile]   = useState<File | null>(null);
     const [uploadTitle, setUploadTitle] = useState('');
@@ -373,11 +374,14 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         return null;
     })();
 
-    return createPortal(
-        <div className={`fixed inset-0 bg-black/40 z-[110] overflow-y-auto flex flex-col ${enterClass('nier-backdrop-enter')}`}>
-            <div className="flex flex-1 items-start sm:items-center justify-center p-2 sm:p-4">
-            <div className={`relative w-full max-w-4xl ${enterClass('nier-modal-enter')}`}>
-                <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
+    return (
+        <Modal
+            open={isOpen}
+            onClose={() => setIsOpen(false)}
+            label="Review"
+            backdropClassName="z-[110] overflow-y-auto flex flex-col items-center justify-start sm:justify-center p-2 sm:p-4"
+            className="w-full max-w-4xl"
+        >
             <article className="bg-nier-100-lighter relative w-full max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col">
 
                 {/* Header */}
@@ -727,16 +731,17 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                 </div>
 
             </article>
-            </div>
-            </div>
 
-            {modModal && (
+            {/* Kept mounted so it can play its exit; the record it is
+                editing is retained for the same reason. */}
+            {shownModModal && (
                 <ModModal
-                    mod={modModal.mod}
+                    open={!!modModal}
+                    mod={shownModModal.mod}
                     onSave={mod => {
                         setMods(prev => {
                             const next = [...prev];
-                            if (modModal.index != null) next[modModal.index] = mod;
+                            if (shownModModal.index != null) next[shownModModal.index] = mod;
                             else next.push(mod);
                             return next;
                         });
@@ -745,7 +750,6 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                     onClose={() => setModModal(null)}
                 />
             )}
-        </div>,
-        document.body
+        </Modal>
     );
 };

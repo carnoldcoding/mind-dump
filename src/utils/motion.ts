@@ -19,6 +19,20 @@ import { ScrambleTextPlugin } from 'gsap/ScrambleTextPlugin';
 
 gsap.registerPlugin(ScrambleTextPlugin);
 
+/**
+ * A timeline is built when its surface mounts, which for anything waiting on a
+ * fetch is *before* the thing it addresses exists — a shelf's cards, a list's
+ * sections. That build finds nothing, and `useRevealTimeline`'s `rebuildOn`
+ * builds it again once the data lands. The empty first pass is the design
+ * working, so GSAP's warning about it is noise on every page load.
+ *
+ * The cost of silencing it is real and worth stating: a genuine typo in a
+ * selector now fails quietly. The check that catches those is that every
+ * primitive is addressed by a `data-*` attribute this repo also writes, so a
+ * mismatch is greppable.
+ */
+gsap.config({ nullTargetWarn: false });
+
 type Target = gsap.TweenTarget;
 type Position = gsap.Position;
 

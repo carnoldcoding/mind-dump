@@ -13,8 +13,6 @@
  * otherwise make that impossible.
  */
 
-import { useSyncExternalStore } from 'react';
-
 export type MotionOverride = 'on' | 'off';
 
 let override: MotionOverride | null = null;
@@ -65,22 +63,6 @@ const prefersReducedMotion = (): boolean =>
 export const animationsDisabled = (): boolean => {
   if (override !== null) return override === 'off';
   return envDisabled() || prefersReducedMotion();
-};
-
-export const enterClass = (className: string): string =>
-  animationsDisabled() ? '' : className;
-
-/**
- * `enterClass` for components, and the one to reach for in a component.
- *
- * The plain function reads the seam once at render time and never hears about
- * it again, so flipping the dev toggle left every modal on whatever it had
- * already rendered until something unrelated re-rendered it. Subscribing here
- * is what makes the toggle reach the whole app rather than only the panels.
- */
-export const useEnterClass = (className: string): string => {
-  useSyncExternalStore(subscribeMotion, getMotionVersion, getMotionVersion);
-  return enterClass(className);
 };
 
 export const setMotionOverride = (next: MotionOverride | null): void => {

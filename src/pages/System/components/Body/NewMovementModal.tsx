@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { TextField } from "../../../../components/common/TextField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
-import { enterClass } from "../../../../utils/animations";
+import { Modal } from "../../../../components/common/Modal";
 import type { MovementTag } from "./entry";
 
 type Props = {
+    /** Kept mounted while closing, so the exit has something to play over. */
+    open: boolean;
     // Where this Movement lands in the list — the end of it. Sending the
     // unordered sentinel instead would tie every new Movement together.
     order: number;
@@ -18,16 +19,17 @@ type Props = {
 // Entry that rendered nowhere, purely so the movement's name would be
 // discoverable, plus the record itself. The Movement record is the Movement
 // now, so the placeholder is gone.
-const NewMovementModal = ({ order, onClose, onSaved }: Props) => {
+const NewMovementModal = ({ open, order, onClose, onSaved }: Props) => {
     const [name, setName]     = useState("");
     const [tag, setTag]       = useState<MovementTag>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError]   = useState("");
 
     useEffect(() => {
+        if (!open) return;
         document.body.style.overflow = "hidden";
         return () => { document.body.style.overflow = ""; };
-    }, []);
+    }, [open]);
 
     const handleSave = async () => {
         const workoutName = name.trim();
@@ -55,10 +57,8 @@ const NewMovementModal = ({ order, onClose, onSaved }: Props) => {
         }
     };
 
-    return createPortal(
-        <div className={`fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 ${enterClass('nier-backdrop-enter')}`}>
-            <div role="dialog" aria-label="New Movement" className={`relative w-full max-w-md ${enterClass('nier-modal-enter')}`}>
-                <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
+    return (
+        <Modal open={open} onClose={onClose} label="New Movement" className="w-full max-w-md">
                 <article className="bg-nier-100-lighter relative">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5">
@@ -96,9 +96,7 @@ const NewMovementModal = ({ order, onClose, onSaved }: Props) => {
                         </div>
                     </div>
                 </article>
-            </div>
-        </div>,
-        document.body
+        </Modal>
     );
 };
 

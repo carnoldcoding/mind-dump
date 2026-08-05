@@ -283,8 +283,17 @@ const Now = () => {
     useRevealTimeline(revealed, (tl) => {
         wipe(tl, '[data-panel-surface]');
         decode(tl, '[data-panel-title]', PANEL_TITLE, '<0.15');
-        domino(tl, '[data-now-section]', '<0.3');
     }, scope);
+
+    // The sections get their own timeline because they arrive on a different
+    // signal. The frame's is built at mount, when the fetch has not answered
+    // and there are no sections to address; these domino in when the list is
+    // actually there. Two timelines, two readinesses — not one timeline that
+    // has to be rebuilt, which would replay the frame's wipe.
+    const listScope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(revealed && !loading, (tl) => {
+        domino(tl, '[data-now-section]');
+    }, listScope, [loading]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     // Keyed rather than held by object identity: the store replaces Review
@@ -379,7 +388,7 @@ const Now = () => {
                             <span className="w-full flex-[5] bg-nier-150/50" />
                         </div>
 
-                        <div className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4 pl-4">
+                        <div ref={listScope} className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4 pl-4">
                             {loading ? (
                                 <div className="flex-1 flex items-center justify-center">
                                     <Loader />

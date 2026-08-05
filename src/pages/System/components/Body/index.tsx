@@ -12,6 +12,7 @@ import type { BodyDoc, Entry } from "./entry";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { fade, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
+import { useRetained } from "../../../../hooks/useRetained";
 import { Panel } from "../../../../components/common/Panel";
 
 type ActiveTab = "chart" | "history";
@@ -74,6 +75,14 @@ const BodyWindow = ({ onClose }: Props) => {
         () => movements.find(m => m.workoutName === editingName) ?? null,
         [movements, editingName]
     );
+
+    // Held so the edit modals can play their exit over the record that was on
+    // screen, rather than over an empty dialog — see useRetained. Three
+    // separate values because they answer three different questions: what is
+    // being edited, which entry, and which Movement that entry belongs to.
+    const shownMovement = useRetained(editingMovement);
+    const shownEntry = useRetained(editingEntry);
+    const shownSelected = useRetained(selected);
 
     // ── Mutations ───────────────────────────────────────────────────
     const handleDeleteMovement = useCallback(async (workoutName: string) => {
@@ -205,27 +214,34 @@ const BodyWindow = ({ onClose }: Props) => {
                     </div>
             </Panel>
 
-            {creating && (
-                <NewMovementModal
-                    order={movements.length}
-                    onClose={() => setCreating(false)}
-                    onSaved={(workoutName) => { setSelectedName(workoutName); fetchDocs(); }}
-                />
-            )}
+            {/* Rendered unconditionally and told whether they are open. A
+                modal the parent removes from the tree has nothing left to
+                animate, which is why nothing here used to have an exit. The
+                two that describe a selection hold on to it while they leave,
+                so the exit plays over the record the reader was looking at
+                rather than over an empty dialog. */}
+            <NewMovementModal
+                open={creating}
+                order={movements.length}
+                onClose={() => setCreating(false)}
+                onSaved={(workoutName) => { setSelectedName(workoutName); fetchDocs(); }}
+            />
 
-            {editingMovement && (
+            {shownMovement && (
                 <MovementEditModal
-                    movement={editingMovement}
+                    open={!!editingMovement}
+                    movement={shownMovement}
                     onClose={() => setEditingName(null)}
                     onSaved={fetchDocs}
                     onDelete={handleDeleteMovement}
                 />
             )}
 
-            {editingEntry && selected && (
+            {shownEntry && shownSelected && (
                 <EntryEditModal
-                    entry={editingEntry}
-                    movementName={selected.displayName}
+                    open={!!(editingEntry && selected)}
+                    entry={shownEntry}
+                    movementName={shownSelected.displayName}
                     onClose={() => setEditingEntry(null)}
                     onSaved={() => { fetchDocs(); setEditingEntry(null); }}
                     onDelete={id => { handleDeleteEntry(id); setEditingEntry(null); }}

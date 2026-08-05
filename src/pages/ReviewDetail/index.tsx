@@ -1,5 +1,4 @@
 import { useRef, useState, useEffect } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate, useLocation } from "react-router";
 import { useParams } from "react-router";
 import PageHeader from "../../components/common/PageHeader";
@@ -13,7 +12,8 @@ import { useRevealTimeline } from "../../hooks/useRevealTimeline";
 import { fade, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
-import { enterClass } from "../../utils/animations";
+import { Modal } from "../../components/common/Modal";
+import { useRetained } from "../../hooks/useRetained";
 import { ReviewCover } from "../../components/review/ReviewCover";
 // Every tab in the reference carries a glyph as well as a word, and the glyph
 // is what you navigate by once you know the menu. Shared with the Backlog,
@@ -150,6 +150,9 @@ const ReviewDetail = () => {
     const [tracks,      setTracks]      = useState<AudioTrack[]>([]);
     const [screenshots, setScreenshots] = useState<{ _id: string; url: string; title?: string }[]>([]);
     const [selectedImg, setSelectedImg] = useState<{ url: string; title?: string } | null>(null);
+    // Held so the lightbox can play its exit over the screenshot it was
+    // showing rather than over an empty frame — see useRetained.
+    const shownImg = useRetained(selectedImg);
     const [parent]                  = useState(location.pathname.split('/')[1]);
     const { slug }                  = useParams<{ category: string; slug: string }>();
     // The same entrance the grid panel uses: the frame wipes in and its
@@ -157,10 +160,14 @@ const ReviewDetail = () => {
     // between reviews remounts it and the timeline is built afresh — that is
     // what the old resetKey argument was for.
     const scope = useRef<HTMLDivElement>(null);
+    // Rebuilt when the record lands, because this page keeps its loading
+    // gate: the panel does not exist while the fetch is in flight, so a
+    // timeline built at mount would address nothing and go on addressing
+    // nothing once the panel appeared.
     useRevealTimeline(contentActive, (tl) => {
         wipe(tl, '[data-panel-surface]');
         fade(tl, '[data-detail-chrome]', '<0.2');
-    }, scope);
+    }, scope, [loading, slug]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleClose   = () => navigate(`/${parent}`);
@@ -468,20 +475,20 @@ const ReviewDetail = () => {
                     </div>
 
             </Panel>
-            {selectedImg && createPortal(
-                <div
-                    className={`fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 ${enterClass('nier-backdrop-enter')}`}
-                    onClick={() => setSelectedImg(null)}
+            {/* Kept mounted while it closes, and holding the screenshot it
+                was showing, so the exit plays over the image rather than over
+                an empty frame. */}
+            {shownImg && (
+                <Modal
+                    open={!!selectedImg}
+                    onClose={() => setSelectedImg(null)}
+                    label={shownImg.title || 'Screenshot'}
+                    className="w-full max-w-4xl"
                 >
-                    <div
-                        className="relative w-full max-w-4xl"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="absolute w-full h-full bg-nier-dark top-1 left-1" />
                         <article className="bg-nier-100-lighter relative flex flex-col">
                             <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                                 <span className="text-nier-text-dark text-sm uppercase tracking-widest truncate">
-                                    {selectedImg.title || 'Screenshot'}
+                                    {shownImg.title || 'Screenshot'}
                                 </span>
                                 <button
                                     onClick={() => setSelectedImg(null)}
@@ -490,15 +497,13 @@ const ReviewDetail = () => {
                             </div>
                             <div className="bg-nier-100 p-2">
                                 <img
-                                    src={selectedImg.url}
-                                    alt={selectedImg.title || 'Screenshot'}
+                                    src={shownImg.url}
+                                    alt={shownImg.title || 'Screenshot'}
                                     className="w-full max-h-[80vh] object-contain block"
                                 />
                             </div>
                         </article>
-                    </div>
-                </div>,
-                document.body
+                </Modal>
             )}
         </>
     );

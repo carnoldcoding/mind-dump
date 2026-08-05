@@ -367,8 +367,16 @@ const Review = () => {
     useRevealTimeline(contentActive, (tl) => {
         wipe(tl, '[data-panel-surface]');
         decode(tl, '[data-panel-title]', panelTitle, '<0.15');
-        domino(tl, '[data-shelf-card]', '<0.3');
     }, scope);
+
+    // The shelf gets its own timeline because it arrives on a different
+    // signal: the frame's is built at mount, before the fetch has answered
+    // and while there are no cards to address. Rebuilding one shared timeline
+    // when the data lands would replay the frame's wipe underneath them.
+    const shelfScope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(contentActive && !loading, (tl) => {
+        domino(tl, '[data-shelf-card]');
+    }, shelfScope, [loading]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleFieldChange = (field: string, value: any) => {
@@ -810,7 +818,7 @@ const Review = () => {
                                 centred spinner while the fetch was in flight,
                                 which threw the panel away and made the reveal
                                 wait on network latency. See docs/motion.md. */}
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto flex-1 items-start content-start">
+                            <div ref={shelfScope} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto flex-1 items-start content-start">
                                 {loading
                                     ? (
                                         <div className="col-span-full flex justify-center py-8">

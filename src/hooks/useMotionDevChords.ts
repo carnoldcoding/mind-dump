@@ -18,11 +18,11 @@ import { getMotionVersion, replayReveal, subscribeMotion, toggleMotion } from '.
 export const useMotionDevChords = () => {
   /**
    * Subscribed from the shell so a toggle re-renders the whole tree.
-   * `enterClass` is a plain read, and most of its callers are modals that
-   * early-return before they could legally call a hook — so rather than each
-   * of them subscribing, the one component above all of them does, and their
-   * next render picks the new value up. Blunt, but this is a dev-only control
-   * and the alternative is a hook call every modal is shaped wrong for.
+   *
+   * Every timeline now subscribes for itself and rebuilds, so this is no
+   * longer what makes the toggle reach the app — but the seam also decides
+   * the `motion-off` class and a few plain reads, and one subscription above
+   * everything is the cheapest way to be sure those re-render too.
    */
   useSyncExternalStore(subscribeMotion, getMotionVersion, getMotionVersion);
 

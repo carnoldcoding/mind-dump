@@ -32,6 +32,21 @@ export const useRevealTimeline = (
   ready: boolean,
   build: (timeline: gsap.core.Timeline) => void,
   scope: RefObject<HTMLElement | null>,
+  /**
+   * What makes this a *different* entrance, rather than the same one at a
+   * different moment — the same idea as React's `key`.
+   *
+   * Needed wherever the subject does not exist when the surface mounts. A
+   * shelf's cards arrive with the fetch, so a timeline built at mount
+   * addresses nothing at all and would still be addressing nothing once they
+   * turned up: GSAP resolves selectors when the tween is created, not when it
+   * plays. Passing `[loading]` rebuilds it against the cards that now exist.
+   *
+   * Leave it empty for a surface that is there from the first frame. Rebuilding
+   * replays, and a frame that re-wipes because its contents arrived is the
+   * flash this design exists to remove.
+   */
+  rebuildOn: unknown[] = [],
 ) => {
   const timeline = useRef<gsap.core.Timeline | null>(null);
 
@@ -65,7 +80,7 @@ export const useRevealTimeline = (
         timeline.current = null;
       };
     },
-    { scope, dependencies: [motionVersion] },
+    { scope, dependencies: [motionVersion, ...rebuildOn] },
   );
 
   // useGSAP runs in a layout effect, so the timeline exists by the time this
@@ -73,7 +88,8 @@ export const useRevealTimeline = (
   useEffect(() => {
     if (!ready || animationsDisabled()) return;
     timeline.current?.play();
-  }, [ready, motionVersion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- rebuildOn is spread, and its identity is unstable at every call site.
+  }, [ready, motionVersion, ...rebuildOn]);
 
   return timeline;
 };

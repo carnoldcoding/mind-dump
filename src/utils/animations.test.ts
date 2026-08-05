@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   animationsDisabled,
-  enterClass,
   syncMotionClass,
   getMotionVersion,
   replayReveal,
@@ -139,23 +138,6 @@ describe('motion subscribers', () => {
     setMotionOverride('off');
 
     expect(listener).not.toHaveBeenCalled();
-  });
-});
-
-describe('enterClass', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    resetMotionOverride();
-  });
-
-  it('returns the class name unchanged when animations are enabled', () => {
-    vi.stubEnv('VITE_DISABLE_ANIMATIONS', undefined);
-    expect(enterClass('nier-enter')).toBe('nier-enter');
-  });
-
-  it('returns an empty string when animations are disabled', () => {
-    vi.stubEnv('VITE_DISABLE_ANIMATIONS', 'true');
-    expect(enterClass('nier-enter')).toBe('');
   });
 });
 
