@@ -23,15 +23,22 @@ library does. These three are disjoint, and all three answer to
 The test for one vocabulary is not "one library". It is that these three do not
 overlap and none of them escapes the seam.
 
-### Not migrated yet
+### The boot sequence is legacy, deliberately
 
-One thing this vocabulary claims but does not yet own. It is work, not an
-exception:
+Boot's **clock** is a timeline like everything else — it is what raises the
+signal every surface waits on, and it answers to the seam. Its **visuals** are
+still CSS keyframes: the corner lines, the 480-polygon triangle grid, the
+border wipes, the nav domino.
 
-- **Boot's own visuals** are still CSS keyframes, which is why
-  `STAGE_DURATIONS` in `BootSequenceContext` still describes durations it does
-  not own. Boot's *clock* is a timeline; its corner lines, triangle grid,
-  border wipes and nav domino are not.
+That is a decision, not a leftover. It works, nothing waits on it, and
+converting a staggered mesh that size is real risk on the one sequence that was
+never the problem. Left as legacy until there is a reason to touch it.
+
+The cost, so nobody rediscovers it as a bug: `STAGE_DURATIONS` in
+`BootSequenceContext` describes durations it does not own, and a keyframe
+retuned in `animations.css` has to be matched there by hand. That is exactly
+the drift ADR-0006 was written about, surviving in the one place still shaped
+the old way. Treat both numbers as one edit.
 
 ## The model
 

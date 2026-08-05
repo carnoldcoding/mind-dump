@@ -10,9 +10,11 @@ const STAGE_ORDER: BootStage[] = ['lines', 'triangles', 'borders', 'nav', 'heade
 /**
  * Seconds, because this is a GSAP timeline now and GSAP's unit is seconds.
  *
- * These still describe boot's own CSS keyframes rather than owning them — that
- * duplication predates the move to a timeline, and it closes when boot's
- * visuals become tweens on this same timeline.
+ * These describe boot's own CSS keyframes rather than owning them, and that is
+ * now a standing cost rather than a temporary one: boot's visuals stay as
+ * keyframes deliberately (see docs/motion.md). Retuning one of those keyframes
+ * means editing the matching number here in the same breath — this is the last
+ * place in the app shaped the way ADR-0006 was written about.
  */
 const STAGE_DURATIONS: Record<Exclude<BootStage, 'done'>, number> = {
   lines: 0.5,
