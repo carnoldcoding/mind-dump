@@ -9,7 +9,7 @@ type Params = Record<string, string | undefined>;
 /**
  * One candidate from a metadata provider, already mapped onto the fields a
  * Review carries — the backend translates each provider's vocabulary, so
- * nothing here knows RAWG from TMDB.
+ * nothing here knows IGDB from TMDB.
  */
 export type MetadataCandidate = {
     sourceId: string | null;
@@ -79,7 +79,7 @@ export const backend = {
             ...gated,
             params: { type, q: query },
         }),
-    // The full record for one chosen candidate. RAWG and TMDB return thin
+    // The full record for one chosen candidate. IGDB and TMDB return thin
     // search results — no developers, no director, no genre names — so this is
     // where most of what a lookup is for actually arrives.
     metadataDetails: (type: string, id: string) =>
