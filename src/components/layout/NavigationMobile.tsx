@@ -1,7 +1,6 @@
 import { Link, useLocation } from "react-router";
 import { navItems } from "./NavItems";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
-import { useStageState } from "../../context/BootSequenceContext";
 
 interface NavigationMobileProps{
     isOpen: boolean;
@@ -11,7 +10,6 @@ interface NavigationMobileProps{
 const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     const location = useLocation();
     const { trusted } = useTrustedDevice();
-    const { active: borderActive, animating: borderAnimating } = useStageState('borders');
     const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
     return (
         <>
@@ -24,7 +22,7 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
             bar wears that class too and wants no body at all. Of these 5rem
             the bottom 1.75px + 1.25rem is line and pattern, leaving the row
             above room to sit clear of them. */}
-        <header className={`nier-dot-pattern fixed top-0 left-0 w-screen h-20 bg-nier-50 z-101 ${!borderActive ? 'invisible' : ''} ${borderAnimating ? 'nier-boot-border-wipe' : ''}`}>
+        <header data-boot-border data-top-rule className="nier-dot-pattern fixed top-0 left-0 w-screen h-20 bg-nier-50 z-101">
             <div className="flex items-center justify-end h-[calc(5rem-1.25rem-1.75px)] px-4">
                 <button
                     onClick={onClose}

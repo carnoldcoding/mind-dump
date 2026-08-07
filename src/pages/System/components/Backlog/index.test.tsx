@@ -279,7 +279,7 @@ describe("capture by lookup", () => {
 
     it("copies the cover onto our own storage", async () => {
         mocked.searchMetadata.mockResolvedValue({
-            results: [candidate({ image: "https://media.rawg.io/nioh.jpg" })],
+            results: [candidate({ image: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg" })],
         });
         await showFolder([]);
 
@@ -287,7 +287,7 @@ describe("capture by lookup", () => {
         await settleSearch();
         fireEvent.click(within(screen.getByRole("listbox", { name: "Matches" })).getAllByRole("option")[0]);
 
-        await waitFor(() => expect(mocked.storeCover).toHaveBeenCalledWith("https://media.rawg.io/nioh.jpg"));
+        await waitFor(() => expect(mocked.storeCover).toHaveBeenCalledWith("https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg"));
         expect(mocked.saveReview.mock.calls[0][0]).toMatchObject({
             image_path: "https://cdn.example/stored.jpg",
         });
@@ -296,7 +296,7 @@ describe("capture by lookup", () => {
     // A storage problem should not cost the capture.
     it("still captures when the cover cannot be copied", async () => {
         mocked.searchMetadata.mockResolvedValue({
-            results: [candidate({ image: "https://media.rawg.io/nioh.jpg" })],
+            results: [candidate({ image: "https://images.igdb.com/igdb/image/upload/t_cover_big/co1r7f.jpg" })],
         });
         mocked.storeCover.mockRejectedValue(new Error("R2 down"));
         await showFolder([]);
