@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 
 type FieldRowProps = {
-    /** Which field this row holds, for the hint bar. Null for a group of them. */
-    field?: string | null;
+    /** Which field this row holds, so the hint bar can describe it. */
+    field: string;
     onFocusField: (field: string | null) => void;
     children: ReactNode;
 };
@@ -22,7 +22,7 @@ type FieldRowProps = {
  * Every row reserves the caret's width whether or not it is showing, so a row
  * does not shift sideways as focus arrives.
  */
-export const FieldRow = ({ field = null, onFocusField, children }: FieldRowProps) => (
+export const FieldRow = ({ field, onFocusField, children }: FieldRowProps) => (
     <div
         // How the section's entrance addresses its rows. The timeline is built
         // against a selector, so a row that does not carry this is simply not

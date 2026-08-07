@@ -418,6 +418,14 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         [activeTab, isOpen],
     );
 
+    // A fallback has to be committed, not just displayed. Leaving the original
+    // choice in place would make it temporary: switching back to a game would
+    // return the reader to Mods unasked, mid-edit on Data — the same move the
+    // fallback exists to prevent, only later and more surprising.
+    useEffect(() => {
+        if (activeTab !== chosenTab) setChosenTab(activeTab);
+    }, [activeTab, chosenTab]);
+
     if (!isOpen) return null;
 
     const saveLabel = (() => {
@@ -513,20 +521,20 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                 />
                             </FieldRow>
 
+                            <FieldRow field="rating" onFocusField={setFocusedField}>
+                                <NumTextField
+                                    label="Rating"
+                                    value={review.rating?.toString() || ''}
+                                    onChange={(v) => handleFieldChange('rating', v)}
+                                />
+                            </FieldRow>
+
                             <FieldRow field="status" onFocusField={setFocusedField}>
                                 <SelectField
                                     label="Status"
                                     value={review.status}
                                     onChange={(v) => handleFieldChange('status', v)}
                                     options={['todo', 'active', 'done']}
-                                />
-                            </FieldRow>
-
-                            <FieldRow field="rating" onFocusField={setFocusedField}>
-                                <NumTextField
-                                    label="Rating"
-                                    value={review.rating?.toString() || ''}
-                                    onChange={(v) => handleFieldChange('rating', v)}
                                 />
                             </FieldRow>
 

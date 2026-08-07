@@ -25,18 +25,31 @@ type TabBarProps = {
 export const TabBar = ({ tabs, active, onSelect, onHover }: TabBarProps) => {
     const selectable = tabs.filter(tab => tab.available);
 
+    /**
+     * Selection and focus move together, which is what roving tabindex means.
+     *
+     * Selecting alone is not enough: the tab left behind drops to
+     * `tabIndex={-1}` while still holding focus, so the ring and the screen
+     * reader lag a tab behind what is showing, and the next Tab leaves from
+     * the wrong node.
+     */
+    const go = (id: TabId) => {
+        onSelect(id);
+        document.getElementById(`review-tab-${id}`)?.focus();
+    };
+
     const step = (delta: number) => {
         const at = selectable.findIndex(tab => tab.id === active);
         // Wraps, so the bar has no dead ends — the reference's does the same.
         const next = selectable[(at + delta + selectable.length) % selectable.length];
-        if (next) onSelect(next.id);
+        if (next) go(next.id);
     };
 
     const onKeyDown = (event: React.KeyboardEvent) => {
         if (event.key === 'ArrowRight') { event.preventDefault(); step(1); }
         else if (event.key === 'ArrowLeft') { event.preventDefault(); step(-1); }
-        else if (event.key === 'Home') { event.preventDefault(); onSelect(selectable[0].id); }
-        else if (event.key === 'End') { event.preventDefault(); onSelect(selectable[selectable.length - 1].id); }
+        else if (event.key === 'Home') { event.preventDefault(); go(selectable[0].id); }
+        else if (event.key === 'End') { event.preventDefault(); go(selectable[selectable.length - 1].id); }
     };
 
     return (

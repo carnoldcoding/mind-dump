@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hintFor, resolveTab, tabsFor } from './tabs';
+import { hintFor, resolveTab, tabsFor, type Category, type Subject } from './tabs';
 
 describe('which tabs a Review has', () => {
     it('offers every tab on a saved game Review', () => {
@@ -25,7 +25,7 @@ describe('which tabs a Review has', () => {
     // Mods belong to a game. CONTEXT.md: "Only meaningful for game-category
     // Reviews."
     it('makes Mods available only to games', () => {
-        const available = (type: string) =>
+        const available = (type: Category) =>
             tabsFor({ type, saved: true }).find(t => t.id === 'mods')!.available;
 
         expect(available('game')).toBe(true);
@@ -44,11 +44,13 @@ describe('which tabs a Review has', () => {
     });
 
     it('always offers Data and Critique', () => {
-        for (const review of [
+        const subjects: Subject[] = [
             { type: 'game', saved: true },
             { type: 'cinema', saved: false },
             { type: 'book', saved: false },
-        ]) {
+        ];
+
+        for (const review of subjects) {
             const bar = tabsFor(review);
             expect(bar.find(t => t.id === 'data')!.available).toBe(true);
             expect(bar.find(t => t.id === 'critique')!.available).toBe(true);
@@ -72,7 +74,23 @@ describe('which tab is showing', () => {
     // The first autosave makes Media usable. Nothing should move on its own at
     // that moment — the reader did not ask to go anywhere.
     it('leaves the reader where they are when a different tab becomes available', () => {
+        expect(resolveTab('critique', tabsFor({ type: 'game', saved: false }))).toBe('critique');
         expect(resolveTab('critique', tabsFor({ type: 'game', saved: true }))).toBe('critique');
+    });
+
+    // The fallback has to be committed, not just displayed. A reader knocked
+    // off Mods onto Data and then back to a game Category must stay on Data:
+    // being returned to Mods mid-edit is the same unasked-for move the
+    // fallback exists to prevent, only later and more surprising.
+    it('does not send the reader back when a section becomes available again', () => {
+        const asGame = tabsFor({ type: 'game', saved: true });
+        const asCinema = tabsFor({ type: 'cinema', saved: true });
+
+        const afterCategoryChange = resolveTab('mods', asCinema);
+        expect(afterCategoryChange).toBe('data');
+
+        // The editor writes that back, so this is what it asks for next.
+        expect(resolveTab(afterCategoryChange, asGame)).toBe('data');
     });
 
     it('falls back to Data for a tab it does not know', () => {

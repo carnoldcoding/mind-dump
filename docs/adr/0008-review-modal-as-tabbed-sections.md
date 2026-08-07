@@ -1,12 +1,8 @@
-# 8. The Review editor is tabbed, not a scroll
+---
+status: accepted
+---
 
-Date: 2026-08-07
-
-## Status
-
-Accepted.
-
-## Context
+# The Review editor is divided into sections, not scrolled
 
 `ReviewModal` is where a Review is authored, and it had grown to hold
 everything a Review can carry in one continuous scroll: identity, metadata,
@@ -25,7 +21,7 @@ fixed frames with a bar of sections across the top, an inverted marker on the
 one that is open, and categories that stay in place when they are unavailable,
 greyed rather than removed.
 
-## Decision
+## Four sections, and one shape for the bar
 
 The editor divides into four sections — **Data**, **Critique**, **Mods**,
 **Media** — reached from a bar, with one showing at a time.
@@ -62,7 +58,7 @@ in it. A global arrow handler was rejected because the modal is full of inputs
 where the arrows belong to the text cursor, and a bar claiming them would fight
 every field in it.
 
-## Alternatives considered
+## What was rejected
 
 **Restyle the scroll.** Keep one column and add the reference's chrome —
 dotted rules between groups, inverted headings, a bottom band. Cheapest, and it
