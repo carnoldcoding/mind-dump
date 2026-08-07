@@ -21,6 +21,11 @@ import type { AudioTrack } from "../../../../types"
 import { sectionsFor } from "../../../../utils/critique"
 import AudioPlayer from "../../../ReviewDetail/AudioPlayer"
 import { Modal } from "../../../../components/common/Modal"
+import { TabBar } from "./TabBar"
+import { FieldRow } from "./FieldRow"
+import { DEFAULT_TAB, hintFor, resolveTab, tabsFor, type TabId } from "./tabs"
+import { useRevealTimeline } from "../../../../hooks/useRevealTimeline"
+import { domino } from "../../../../utils/motion"
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -77,6 +82,21 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const [uploadTitle, setUploadTitle] = useState('');
     const audioUpload = useMediaUpload('/api/audio/upload');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // ── Sections ─────────────────────────────────────────────────────
+    // What the reader asked for, which is not always what is showing: a
+    // Category change can take a tab away underneath them. resolveTab decides.
+    const [chosenTab, setChosenTab] = useState<TabId>(DEFAULT_TAB);
+    const [hoveredTab, setHoveredTab] = useState<TabId | undefined>(undefined);
+    const [focusedField, setFocusedField] = useState<string | null>(null);
+
+    /**
+     * The id of a Review this modal created, so Media stops being dead on a
+     * newly captured one. Autosave writes the record within seconds; without
+     * keeping what the write returned there is nothing to file an upload
+     * under, and the tab stayed unavailable for the whole session.
+     */
+    const [createdId, setCreatedId] = useState<string | null>(null);
 
     const [images, setImages]               = useState<{ _id: string; url: string; title?: string }[]>([]);
     const [imgFiles, setImgFiles]           = useState<File[]>([]);
@@ -144,8 +164,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             setImgTitle('');
             setSlugManual(false);
             isNewlySaved.current = false;
+            setCreatedId(null);
         }
 
+        // Every open starts on Data. The editor is opened from a list, so
+        // where the last Review was left says nothing about this one.
+        setChosenTab(DEFAULT_TAB);
+        setFocusedField(null);
         setSaveStatus('idle');
     }, [editingReview, isOpen]);
 
@@ -185,9 +210,17 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         setSaveStatus('saving');
 
         try {
-            await backend.saveReview({ ...parsed, type: currentType, mods: modsRef.current }, isUpdate);
+            const written = await backend.saveReview(
+                { ...parsed, type: currentType, mods: modsRef.current },
+                isUpdate,
+            );
             setSaveStatus('saved');
             isNewlySaved.current = true;
+            // add_post answers with the id it inserted. Keeping it is what
+            // lets Media open on a Review this modal has only just created —
+            // uploads are filed under it, and until now the response was
+            // dropped and the tab stayed shut until a reopen.
+            if (!isUpdate && written?.id) setCreatedId(String(written.id));
             if (closeAfter) {
                 onReviewAdded();
                 resetAndClose();
@@ -306,14 +339,14 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     };
 
     const handleAudioUpload = async () => {
-        if (!uploadFile || !editingReview) return;
+        if (!uploadFile || !reviewId) return;
         const file  = uploadFile;
         const title = uploadTitle || file.name.replace(/\.[^.]+$/, '');
 
         const ok = await audioUpload.upload([file], () => {
             const form = new FormData();
             form.append('file', file);
-            form.append('post_id', editingReview._id);
+            form.append('post_id', reviewId);
             form.append('title', title);
             return form;
         });
@@ -322,7 +355,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             setUploadFile(null);
             setUploadTitle('');
             if (fileInputRef.current) fileInputRef.current.value = '';
-            fetchTracks(editingReview._id);
+            fetchTracks(reviewId);
         }
     };
 
@@ -339,13 +372,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     };
 
     const handleImageUpload = async () => {
-        if (!imgFiles.length || !editingReview) return;
+        if (!imgFiles.length || !reviewId) return;
         const total = imgFiles.length;
 
         await imageUpload.upload(imgFiles, file => {
             const form = new FormData();
             form.append('file', file);
-            form.append('post_id', editingReview._id);
+            form.append('post_id', reviewId);
             form.append('type', 'screenshot');
             form.append('title', (total === 1 && imgTitle) ? imgTitle : file.name.replace(/\.[^.]+$/, ''));
             return form;
@@ -354,7 +387,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         setImgFiles([]);
         setImgTitle('');
         if (imgFileInputRef.current) imgFileInputRef.current.value = '';
-        fetchImages(editingReview._id);
+        fetchImages(reviewId);
     };
 
     const handleImageDelete = async (imageId: string) => {
@@ -363,6 +396,35 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             setImages(prev => prev.filter(img => img._id !== imageId));
         } catch { /* network error */ }
     };
+
+    // ── What is showing ──────────────────────────────────────────────
+    // Either the Review we were handed, or the one we have since written.
+    const reviewId: string | null = editingReview?._id ?? createdId;
+    const tabs = tabsFor({ type, saved: !!reviewId });
+    const activeTab = resolveTab(chosenTab, tabs);
+    const hint = hintFor({ field: focusedField, tab: activeTab, tabs, hovered: hoveredTab });
+
+    // The rows of whichever section is open arrive one after another. Rebuilt
+    // on the tab, which is what replays it — a different section is a
+    // different entrance, not the same one at a different moment.
+    //
+    // `ready` is true rather than gated on the boot signal: the modal is not
+    // part of the page's reveal, and Modal has already played it in.
+    const panelScope = useRef<HTMLDivElement>(null);
+    useRevealTimeline(
+        isOpen,
+        (timeline) => domino(timeline, '[data-tab-row]'),
+        panelScope,
+        [activeTab, isOpen],
+    );
+
+    // A fallback has to be committed, not just displayed. Leaving the original
+    // choice in place would make it temporary: switching back to a game would
+    // return the reader to Mods unasked, mid-edit on Data — the same move the
+    // fallback exists to prevent, only later and more surprising.
+    useEffect(() => {
+        if (activeTab !== chosenTab) setChosenTab(activeTab);
+    }, [activeTab, chosenTab]);
 
     if (!isOpen) return null;
 
@@ -374,6 +436,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         return null;
     })();
 
+
     return (
         <Modal
             open={isOpen}
@@ -382,111 +445,142 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             backdropClassName="z-[110] overflow-y-auto flex flex-col items-center justify-start sm:justify-center p-2 sm:p-4"
             className="w-full max-w-4xl"
         >
-            <article className="bg-nier-100-lighter relative w-full max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col">
+            {/* One height whatever the section. The frame is the constant and
+                its contents change inside it, so the bar and the hint line do
+                not move under the pointer when a section is switched. */}
+            <article className="bg-nier-100-lighter relative w-full h-[calc(100dvh-1rem)] sm:h-[calc(100dvh-2rem)] sm:max-h-[46rem] flex flex-col">
 
-                {/* Header */}
+                {/* Header. The section is a suffix in the reference's register:
+                    the subject, then which part of it is open. */}
                 <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 gap-3 min-w-0">
                     <h3 className="text-nier-text-dark text-xl uppercase tracking-wide truncate min-w-0">
                         {editingReview ? `Edit — ${editingReview.title}` : 'New Review'}
+                        <span className="text-sm tracking-[0.2em] text-nier-text-dark/50 ml-3">
+                            · {tabs.find(t => t.id === activeTab)?.label}
+                        </span>
                     </h3>
-                    <div
+                    <button
+                        type="button"
+                        aria-label="Close"
                         onClick={handleClose}
                         className="text-3xl leading-none cursor-pointer hover:text-nier-dark transition-colors duration-150 flex-shrink-0"
-                    >×</div>
+                    >×</button>
                 </div>
 
-                {/* Scrollable body */}
-                <div className="overflow-y-scroll flex-1 p-4 flex flex-col gap-4">
+                <TabBar tabs={tabs} active={activeTab} onSelect={setChosenTab} onHover={setHoveredTab} />
 
-                    {/* Row 1: Title · Slug · Type */}
-                    <div className="flex gap-4 flex-col md:flex-row">
-                        <TextField
-                            label="Title"
-                            value={review.title || ''}
-                            onChange={(v: string) => handleFieldChange('title', v)}
-                        />
-                        <div className="w-full flex flex-col gap-0.5">
-                            <TextField
-                                label="Slug"
-                                value={review.slug || ''}
-                                onChange={handleSlugChange}
-                            />
-                            {!slugManual && review.slug && (
-                                <p className="text-xs text-nier-text-dark/40 px-1 leading-none">auto-generated</p>
-                            )}
-                        </div>
-                        <SelectField
-                            label="Type"
-                            value={type}
-                            onChange={handleTypeChange}
-                            options={['game', 'cinema', 'book']}
-                        />
-                    </div>
+                <div
+                    ref={panelScope}
+                    role="tabpanel"
+                    id={`review-panel-${activeTab}`}
+                    aria-labelledby={`review-tab-${activeTab}`}
+                    className="overflow-y-auto flex-1 px-4 py-4 flex flex-col gap-3"
+                >
+                    {activeTab === 'data' && (
+                        <>
+                            <FieldRow field="title" onFocusField={setFocusedField}>
+                                <TextField
+                                    label="Title"
+                                    value={review.title || ''}
+                                    onChange={(v: string) => handleFieldChange('title', v)}
+                                />
+                            </FieldRow>
 
-                    {/* Row 2: Creator · Release Date · Rating · Status */}
-                    <div className="flex gap-4 flex-col md:flex-row">
-                        <TextField
-                            label="Creator"
-                            value={review.creator || ''}
-                            autofillData={creatorList}
-                            onChange={(v: string) => handleFieldChange('creator', v)}
-                        />
-                        <DateField
-                            label="Release Date"
-                            value={review.releaseDate || ''}
-                            onChange={(v) => handleFieldChange('releaseDate', v)}
-                        />
-                        <NumTextField
-                            label="Rating"
-                            value={review.rating?.toString() || ''}
-                            onChange={(v) => handleFieldChange('rating', v)}
-                        />
-                        <SelectField
-                            label="Status"
-                            value={review.status}
-                            onChange={(v) => handleFieldChange('status', v)}
-                            options={['todo', 'active', 'done']}
-                        />
-                    </div>
+                            <FieldRow field="slug" onFocusField={setFocusedField}>
+                                <TextField label="Slug" value={review.slug || ''} onChange={handleSlugChange} />
+                                {!slugManual && review.slug && (
+                                    <p className="text-xs text-nier-text-dark/40 px-1 leading-none pt-0.5">auto-generated</p>
+                                )}
+                            </FieldRow>
 
-                    {/* Row 3: Genres · Image */}
-                    <div className="flex gap-4 flex-col md:flex-row">
-                        <MutliSelectField
-                            label="Genres"
-                            options={genreOptions}
-                            value={review.genres || []}
-                            onChange={(v) => handleFieldChange('genres', v)}
-                        />
-                        <ImageTextField
-                            label="Image Path"
-                            value={review.imagePath || ''}
-                            onChange={(v) => handleFieldChange('imagePath', v)}
-                        />
-                    </div>
+                            {/* CONTEXT.md calls this a Category. `type` is the
+                                field it is stored in, not the word for it. */}
+                            <FieldRow field="type" onFocusField={setFocusedField}>
+                                <SelectField
+                                    label="Category"
+                                    value={type}
+                                    onChange={handleTypeChange}
+                                    options={['game', 'cinema', 'book']}
+                                />
+                            </FieldRow>
 
-                    {/* Row 4: Description */}
-                    <TextField
-                        label="Description"
-                        value={review.description || ''}
-                        onChange={(v: string) => handleFieldChange('description', v)}
-                    />
+                            <FieldRow field="creator" onFocusField={setFocusedField}>
+                                <TextField
+                                    label="Creator"
+                                    value={review.creator || ''}
+                                    autofillData={creatorList}
+                                    onChange={(v: string) => handleFieldChange('creator', v)}
+                                />
+                            </FieldRow>
 
-                    {/* Review sections */}
-                    <div className="flex flex-col gap-3">
-                        {sectionsFor(type).map((field) => (
+                            <FieldRow field="releaseDate" onFocusField={setFocusedField}>
+                                <DateField
+                                    label="Release Date"
+                                    value={review.releaseDate || ''}
+                                    onChange={(v) => handleFieldChange('releaseDate', v)}
+                                />
+                            </FieldRow>
+
+                            <FieldRow field="rating" onFocusField={setFocusedField}>
+                                <NumTextField
+                                    label="Rating"
+                                    value={review.rating?.toString() || ''}
+                                    onChange={(v) => handleFieldChange('rating', v)}
+                                />
+                            </FieldRow>
+
+                            <FieldRow field="status" onFocusField={setFocusedField}>
+                                <SelectField
+                                    label="Status"
+                                    value={review.status}
+                                    onChange={(v) => handleFieldChange('status', v)}
+                                    options={['todo', 'active', 'done']}
+                                />
+                            </FieldRow>
+
+                            <FieldRow field="genres" onFocusField={setFocusedField}>
+                                <MutliSelectField
+                                    label="Genres"
+                                    options={genreOptions}
+                                    value={review.genres || []}
+                                    onChange={(v) => handleFieldChange('genres', v)}
+                                />
+                            </FieldRow>
+
+                            <FieldRow field="imagePath" onFocusField={setFocusedField}>
+                                <ImageTextField
+                                    label="Image Path"
+                                    value={review.imagePath || ''}
+                                    onChange={(v) => handleFieldChange('imagePath', v)}
+                                />
+                            </FieldRow>
+
+                            <FieldRow field="description" onFocusField={setFocusedField}>
+                                <TextField
+                                    label="Description"
+                                    value={review.description || ''}
+                                    onChange={(v: string) => handleFieldChange('description', v)}
+                                />
+                            </FieldRow>
+                        </>
+                    )}
+
+                    {/* A Category offers at most four sections and requires
+                        none of them, so nothing here counts what is written or
+                        marks a section absent. See CONTEXT.md. */}
+                    {activeTab === 'critique' && sectionsFor(type).map((field) => (
+                        <FieldRow key={field} field={field} onFocusField={setFocusedField}>
                             <BigTextField
-                                key={field}
                                 label={field}
                                 value={(review.review as any)?.[field] || ''}
                                 onChange={(v) => handleFieldChange(field, v)}
                             />
-                        ))}
-                    </div>
+                        </FieldRow>
+                    ))}
 
-                    {/* Mods — game only */}
-                    {type === 'game' && (
-                        <div className="flex flex-col gap-2 border-t border-nier-150 pt-4">
-                            <div className="flex items-center justify-between">
+                    {activeTab === 'mods' && (
+                        <>
+                            <div data-tab-row className="flex items-center justify-between">
                                 <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">
                                     Mods{mods.length > 0 ? ` (${mods.length})` : ''}
                                 </span>
@@ -498,11 +592,11 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                 </button>
                             </div>
                             {mods.length === 0 ? (
-                                <p className="text-xs text-nier-text-dark/35 italic">No mods added.</p>
+                                <p data-tab-row className="text-xs text-nier-text-dark/35 italic">No mods added.</p>
                             ) : (
                                 <ul className="flex flex-col divide-y divide-nier-150/30 border border-nier-150">
                                     {mods.map((mod, i) => (
-                                        <li key={i} className="flex items-center justify-between gap-3 px-3 py-2 group hover:bg-nier-150/20 transition-colors">
+                                        <li key={i} data-tab-row className="flex items-center justify-between gap-3 px-3 py-2 group hover:bg-nier-150/20 transition-colors">
                                             <div className="flex flex-col gap-0.5 min-w-0">
                                                 <span className="text-sm text-nier-text-dark truncate">{mod.name}</span>
                                                 {mod.author && <span className="text-xs text-nier-text-dark/50">{mod.author}</span>}
@@ -521,26 +615,21 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                     ))}
                                 </ul>
                             )}
-                        </div>
+                        </>
                     )}
 
-                    {/* Screenshots — only available when editing an existing review */}
-                    {editingReview && (
-                        <div className="flex flex-col gap-2 border-t border-nier-150 pt-4">
-                            <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">
+                    {activeTab === 'media' && (
+                        <>
+                            <span data-tab-row className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">
                                 Screenshots{images.length > 0 ? ` (${images.length})` : ''}
                             </span>
 
                             {images.length > 0 && (
-                                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                <div data-tab-row className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                                     {images.map(img => (
                                         <div key={img._id} className="relative group aspect-video bg-nier-150/20 overflow-hidden">
                                             <a href={img.url} target="_blank" rel="noreferrer">
-                                                <img
-                                                    src={img.url}
-                                                    alt={img.title || 'Screenshot'}
-                                                    className="w-full h-full object-cover"
-                                                />
+                                                <img src={img.url} alt={img.title || 'Screenshot'} className="w-full h-full object-cover" />
                                             </a>
                                             <button
                                                 onClick={() => handleImageDelete(img._id)}
@@ -556,7 +645,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                 </div>
                             )}
 
-                            <div className="flex flex-col gap-1.5">
+                            <div data-tab-row className="flex flex-col gap-1.5">
                                 <div className="flex flex-col sm:flex-row gap-2">
                                     <div
                                         className="sm:flex-1 flex items-center gap-2 px-3 h-9 border border-dashed border-nier-150 cursor-pointer hover:bg-nier-150/20 transition-colors"
@@ -615,18 +704,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                     }}
                                 />
                             </div>
-                        </div>
-                    )}
 
-                    {/* Soundtrack — only available when editing an existing review */}
-                    {editingReview && (
-                        <div className="flex flex-col gap-2 border-t border-nier-150 pt-4">
-                            <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">
+                            <span data-tab-row className="text-[10px] uppercase tracking-widest text-nier-text-dark/50 border-t border-nier-150 pt-4">
                                 Soundtrack{tracks.length > 0 ? ` (${tracks.length})` : ''}
                             </span>
 
                             {tracks.length > 0 && (
-                                <ul className="flex flex-col divide-y divide-nier-150/30 border border-nier-150">
+                                <ul data-tab-row className="flex flex-col divide-y divide-nier-150/30 border border-nier-150">
                                     {tracks.map((track, i) => (
                                         <li key={track._id} className="flex items-center gap-3 px-3 py-2 group hover:bg-nier-150/20 transition-colors">
                                             <span className="text-[10px] text-nier-text-dark/40 font-mono shrink-0 tabular-nums">
@@ -643,7 +727,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                 </ul>
                             )}
 
-                            <div className="flex flex-col gap-1.5">
+                            <div data-tab-row className="flex flex-col gap-1.5">
                                 <div className="flex flex-col sm:flex-row gap-2">
                                     <div
                                         className="sm:flex-1 flex items-center gap-2 px-3 h-9 border border-dashed border-nier-150 cursor-pointer hover:bg-nier-150/20 transition-colors"
@@ -689,12 +773,15 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                     }}
                                 />
                             </div>
-                        </div>
+                        </>
                     )}
                 </div>
 
-                {/* Footer */}
-                <div className="flex items-center justify-between px-5 py-3 border-t border-nier-150 flex-shrink-0 min-h-[56px]">
+                {/* The bottom band. It describes, in the flat third person the
+                    reference uses, and the actions sit at the other end of it.
+                    Deleting takes the whole row: it is the one moment the band
+                    stops describing and starts asking for something. */}
+                <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-nier-150 flex-shrink-0 min-h-[56px]">
                     {deleteStage === 'confirm' ? (
                         <div className="flex flex-col gap-1.5 w-full">
                             <p className="text-xs text-nier-text-dark/60">
@@ -715,12 +802,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                         </div>
                     ) : (
                         <>
-                            <p className={`text-sm italic transition-opacity duration-200 ${
-                                saveLabel ? 'opacity-100' : 'opacity-0'
-                            } ${saveStatus === 'error' ? 'text-red-700' : 'text-nier-text-dark/60'}`}>
-                                {saveLabel ?? '—'}
-                            </p>
-                            <div className="flex gap-2">
+                            <p className="text-xs text-nier-text-dark/60 truncate min-w-0">{hint}</p>
+                            <div className="flex gap-2 items-center shrink-0">
+                                <span className={`text-sm italic transition-opacity duration-200 ${
+                                    saveLabel ? 'opacity-100' : 'opacity-0'
+                                } ${saveStatus === 'error' ? 'text-red-700' : 'text-nier-text-dark/60'}`}>
+                                    {saveLabel ?? '—'}
+                                </span>
                                 {editingReview && (
                                     <Button type="secondary" label="Delete" handleClick={() => setDeleteStage('confirm')} />
                                 )}

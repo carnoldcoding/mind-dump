@@ -151,7 +151,7 @@ export const ReviewList = () => {
             <div className="min-w-[48rem]">
                 <div className="grid grid-cols-6 bg-nier-150 text-center h-10 px-4 border-b border-b-nier-dark/50">
                     <div className="col-span-2 flex items-center justify-center"><p className="text-sm uppercase tracking-wide select-none">Title</p></div>
-                    <div className="col-span-1 flex items-center justify-center"><p className="text-sm uppercase tracking-wide select-none">Type</p></div>
+                    <div className="col-span-1 flex items-center justify-center"><p className="text-sm uppercase tracking-wide select-none">Category</p></div>
                     <div className="col-span-1 flex items-center justify-center"><p className="text-sm uppercase tracking-wide select-none">Rating</p></div>
                     <div className="col-span-1 flex items-center justify-center"><p className="text-sm uppercase tracking-wide select-none">Status</p></div>
                     <div className="flex items-center justify-center"><p className="text-sm uppercase tracking-wide select-none">Actions</p></div>
