@@ -7,6 +7,7 @@ Read these before making non-trivial changes:
 - [`CONTEXT.md`](./CONTEXT.md) — domain vocabulary (Review, Status, Movement, Entry, etc.). Use these terms, not ad-hoc synonyms.
 - [`docs/architecture.md`](./docs/architecture.md) — stack, routing, auth, backend boundary, directory conventions, known data-model drift.
 - [`docs/branching.md`](./docs/branching.md) — git workflow: `dev` is the trunk, `main` is release-only. Branch off `dev`, PR back into `dev`; `main` receives merges from `releases/*` alone.
+- [`docs/chrome.md`](./docs/chrome.md) — the visual grammar the surfaces are drawn in: palette, frame and shadow, dot rule, inverted, dimmed, caret, hint bar. Read before styling a new surface "like the rest of the app".
 - [`docs/motion.md`](./docs/motion.md) — the three motion mechanisms (GSAP timelines, CSS transitions, CSS keyframes) and where the boundary between them is, the five primitives (Wipe, Domino, Growth, Decode, Fade), phase and Response, the reveal sequence, and how to turn motion off. Read before touching anything that animates.
 
 ## Commands
