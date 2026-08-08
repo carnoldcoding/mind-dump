@@ -1,10 +1,10 @@
-import type { Facet, QueueControls, SortKey } from './queue';
+import type { Facet, UnstartedControls, SortKey } from './unstarted';
 
-type QueueBarProps = {
-    controls: QueueControls;
+type UnstartedBarProps = {
+    controls: UnstartedControls;
     genres: Facet[];
     creators: Facet[];
-    onChange: (next: Partial<QueueControls>) => void;
+    onChange: (next: Partial<UnstartedControls>) => void;
     onRandom: () => void;
     searchRef: React.Ref<HTMLInputElement>;
     /** Down and Up move the pick, so the list is drivable without leaving here. */
@@ -44,7 +44,7 @@ const FacetSelect = ({ label, value, options, onChange }: {
 );
 
 /**
- * Search, sort and the facet filters, in one row above the queue.
+ * Search, sort and the facet filters, in one row above the list.
  *
  * The search field is where the window puts focus on open, and it drives the
  * list: Down and Up move the pick through the rows and Enter opens one. That
@@ -52,9 +52,9 @@ const FacetSelect = ({ label, value, options, onChange }: {
  * arrows are safe to claim here — moving through results is what they mean
  * while typing into a field that filters them.
  */
-export const QueueBar = ({
+export const UnstartedBar = ({
     controls, genres, creators, onChange, onRandom, searchRef, onListKey,
-}: QueueBarProps) => {
+}: UnstartedBarProps) => {
     const sort = SORTS.find(s => s.key === controls.sort) ?? SORTS[0];
 
     return (
@@ -65,7 +65,7 @@ export const QueueBar = ({
                     type="search"
                     value={controls.query}
                     placeholder="Search titles"
-                    aria-label="Search the queue by title"
+                    aria-label="Search Not Started by title"
                     onChange={event => onChange({ query: event.target.value })}
                     onKeyDown={onListKey}
                     className={`${field} flex-1 min-w-40`}
@@ -94,7 +94,7 @@ export const QueueBar = ({
                     {controls.ascending ? '↑' : '↓'}
                 </button>
 
-                {/* The control a queue of hundreds actually needs. It picks
+                {/* The control a list of hundreds actually needs. It picks
                     from whatever is showing and only picks — nothing is
                     started or changed by it. */}
                 <button

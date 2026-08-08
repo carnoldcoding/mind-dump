@@ -1,4 +1,4 @@
-import type { Facet } from './queue';
+import type { Facet } from './unstarted';
 
 type CategoryRailProps = {
     categories: Facet[];

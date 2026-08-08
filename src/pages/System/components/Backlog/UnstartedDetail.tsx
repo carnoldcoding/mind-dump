@@ -4,7 +4,7 @@ import { daysWaiting } from '../../../../utils/capturedAt';
 import { SECTION_GLYPH, writtenSections } from '../../../../utils/critique';
 import type { Review } from '../../../../store/reviews';
 
-type QueueDetailProps = {
+type UnstartedDetailProps = {
     review: Review;
     onClose: () => void;
     onStart: (review: Review) => void;
@@ -17,14 +17,14 @@ type QueueDetailProps = {
  *
  * It takes that space rather than a fourth column because at this width a
  * fourth would squeeze the list to about 500px, and because the two are never
- * both wanted: the Readouts describe the queue you are scanning, and this
+ * both wanted: the Readouts describe the list you are scanning, and this
  * describes the one thing you have stopped on.
  *
  * Hover does not fill this — only a click does. Hover keeps driving the
  * caption bar, so running the pointer down twenty rows costs one line of text
  * rather than twenty renders of a panel.
  */
-export const QueueDetail = ({ review, onClose, onStart, onEdit, onRemove }: QueueDetailProps) => {
+export const UnstartedDetail = ({ review, onClose, onStart, onEdit, onRemove }: UnstartedDetailProps) => {
     const waiting = daysWaiting(review._id);
     const written = writtenSections(review as never);
 
@@ -38,7 +38,14 @@ export const QueueDetail = ({ review, onClose, onStart, onEdit, onRemove }: Queu
     useEffect(() => setConfirming(false), [review._id]);
 
     return (
-        <div className="flex flex-col gap-2 p-2 h-full overflow-y-auto">
+        <div
+            id="unstarted-detail"
+            // Focusable so Enter from the search field can land here, which is
+            // how the actions are reached without a pointer.
+            tabIndex={-1}
+            onKeyDown={event => { if (event.key === 'Escape') onClose(); }}
+            className="flex flex-col gap-2 p-2 h-full overflow-y-auto outline-none"
+        >
             <div className="flex items-start justify-between gap-2">
                 <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">Selected</span>
                 <button

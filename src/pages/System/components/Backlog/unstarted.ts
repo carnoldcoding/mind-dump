@@ -1,4 +1,4 @@
-// Narrowing and ordering the unstarted queue.
+// Narrowing and ordering Not Started.
 //
 // Pure, and separate from the window for the usual reason: this is where the
 // wrong answer is invisible. A filter that quietly drops rows, or a sort that
@@ -12,7 +12,7 @@ import { CATEGORIES } from '../../../../utils/categories';
 
 export type SortKey = 'waiting' | 'title' | 'release';
 
-export type QueueControls = {
+export type UnstartedControls = {
     /** Title text. Matched by rankByTitle, the same as every other search. */
     query: string;
     /** A Category, or null for all of them. */
@@ -24,7 +24,7 @@ export type QueueControls = {
     ascending: boolean;
 };
 
-export const EMPTY_QUEUE: QueueControls = {
+export const NO_CONTROLS: UnstartedControls = {
     query: '',
     category: null,
     genre: null,
@@ -34,7 +34,7 @@ export const EMPTY_QUEUE: QueueControls = {
 };
 
 /**
- * The queue as the controls describe it.
+ * Not Started, as the controls describe it.
  *
  * Every control narrows: they combine with AND, so two that share nothing come
  * back empty rather than falling back to whichever matched. An empty result is
@@ -44,7 +44,7 @@ export const EMPTY_QUEUE: QueueControls = {
  * a prefix match above a substring one, and that ranking is the point of
  * searching. An explicit sort key overrides it.
  */
-export function applyQueue(items: Review[], controls: QueueControls): Review[] {
+export function applyControls(items: Review[], controls: UnstartedControls): Review[] {
     let result = items;
 
     if (controls.category) result = result.filter(r => r.type === controls.category);
@@ -52,13 +52,14 @@ export function applyQueue(items: Review[], controls: QueueControls): Review[] {
     if (controls.creator) result = result.filter(r => r.creator === controls.creator);
     if (controls.query) result = rankByTitle(result, controls.query);
 
-    // A search already ordered what it matched. Only an explicit key overrides
-    // that, so typing and then not choosing a sort leaves the best match on top.
+    // A search already ordered what it matched, so with the default key and a
+    // query the ranking stands. Reversing is still honoured either way — it is
+    // an explicit instruction, and silently ignoring it while typing was a bug.
     const ordered = [...result];
-    if (controls.sort !== 'waiting' || !controls.query) {
-        ordered.sort(comparatorFor(controls.sort));
-        if (!controls.ascending) ordered.reverse();
-    }
+    const rankingStands = controls.sort === 'waiting' && controls.query !== '';
+
+    if (!rankingStands) ordered.sort(comparatorFor(controls.sort));
+    if (!controls.ascending) ordered.reverse();
 
     return ordered;
 }
@@ -74,15 +75,21 @@ function comparatorFor(sort: SortKey): (a: Review, b: Review) => number {
     }
 
     if (sort === 'release') {
-        // Missing dates sort last in either direction rather than reading as
-        // 1970 and taking the top of an oldest-first list.
+        // Missing dates sort last in the default direction rather than reading
+        // as 1970 and taking the top. Reversing is a whole-array flip, so they
+        // do come first when reversed — which is the honest consequence of
+        // "unknown is not newest" rather than a second rule.
         return (a, b) => releaseTime(b) - releaseTime(a);
     }
 
-    // Waiting: the longest-queued first. An id that carries no capture time
-    // sorts last, the same reasoning as a missing release date.
-    return (a, b) => (daysWaiting(b._id) ?? -1) - (daysWaiting(a._id) ?? -1);
+    // Waiting: the longest-waiting first, on the same terms — an id carrying
+    // no capture time is unknown rather than new.
+    return byLongestWaiting;
 }
+
+/** Longest-waiting first. Shared, so the window and this cannot disagree. */
+export const byLongestWaiting = (a: Review, b: Review): number =>
+    (daysWaiting(b._id) ?? -1) - (daysWaiting(a._id) ?? -1);
 
 function releaseTime(review: Review): number {
     const value = review.release_date?.trim();
@@ -102,7 +109,7 @@ export type Facets = {
 };
 
 /**
- * What each control can offer, counted against the queue the *other* controls
+ * What each control can offer, counted against what the *other* controls
  * have already narrowed.
  *
  * Each control excludes itself from its own counts. Without that, choosing
@@ -115,12 +122,12 @@ export type Facets = {
  * them are always listed, including empty ones, so the rail keeps its shape —
  * the same rule the editor's section bar follows, in docs/chrome.md.
  */
-export function facetsFor(items: Review[], controls: QueueControls): Facets {
-    const without = (key: keyof QueueControls) =>
-        applyQueue(items, { ...controls, [key]: key === 'query' ? '' : null });
+export function facetsFor(items: Review[], controls: UnstartedControls): Facets {
+    const without = (key: keyof UnstartedControls) =>
+        applyControls(items, { ...controls, [key]: key === 'query' ? '' : null });
 
     const forCategories = without('category');
-    const inCategory = applyQueue(items, { ...controls, genre: null, creator: null });
+    const inCategory = applyControls(items, { ...controls, genre: null, creator: null });
 
     const tally = (rows: Review[], read: (r: Review) => string[]) => {
         const counts = new Map<string, number>();
@@ -145,8 +152,8 @@ export function facetsFor(items: Review[], controls: QueueControls): Facets {
     };
 }
 
-/** What the Readout column reports about the queue currently showing. */
-export type QueueReadouts = {
+/** What the Readout column reports about what is currently showing. */
+export type UnstartedReadouts = {
     showing: number;
     /** Days the longest-queued row has waited, or null when nothing is showing. */
     oldest: number | null;
@@ -158,23 +165,32 @@ export type QueueReadouts = {
 const THIRTY_DAYS_MS = 30 * 86_400_000;
 
 /**
- * Figures about the queue as filtered, not about the collection.
+ * Figures about what is showing, not about the collection.
  *
  * These deliberately do not repeat the rail. The rail already says how many
  * are in each Category, and CONTEXT.md is explicit that a surface's readouts
  * should answer what another surface cannot rather than putting the same
  * number on screen twice.
  *
- * `added30` against `started30` is the pair worth having: whether the queue is
- * growing faster than it is being cleared. Both count the same window so they
- * can be read against each other.
+ * `added30` against `started30` is the pair worth having: whether Not Started
+ * is growing faster than it is being cleared. Both count the same window, and
+ * `started30` counts across everything unfinished rather than across the
+ * unstarted — starting something takes it out of the list this describes, so
+ * counting it there could only ever return zero.
  */
-export function queueReadouts(
+export function unstartedReadouts(
     items: Review[],
-    controls: QueueControls,
+    /**
+     * Everything unfinished, Started included. `started30` has to count
+     * against this rather than against `items`: a Review that started is no
+     * longer `todo`, so counting it among the unstarted could only ever
+     * return zero — which is exactly what it did.
+     */
+    unfinished: Review[],
+    controls: UnstartedControls,
     now: Date = new Date(),
-): QueueReadouts {
-    const showing = applyQueue(items, controls);
+): UnstartedReadouts {
+    const showing = applyControls(items, controls);
 
     // Rows whose id carries no capture time are excluded rather than counted
     // as waiting zero days — fixtures across this repo use ids like `id-Nioh`,
@@ -194,7 +210,9 @@ export function queueReadouts(
             const captured = capturedAt(review._id);
             return captured !== undefined && captured.getTime() >= since;
         }).length,
-        started30: showing.filter(review => {
+        // Narrowed the same way as the rest, minus the Status the list is
+        // built on, so "added against started" compares like with like.
+        started30: applyControls(unfinished, { ...controls, query: '' }).filter(review => {
             const value = review.date_started?.trim();
             if (!value) return false;
             const time = new Date(value).getTime();

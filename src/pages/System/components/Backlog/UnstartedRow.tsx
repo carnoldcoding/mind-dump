@@ -2,7 +2,7 @@ import { ReviewCover } from '../../../../components/review/ReviewCover';
 import { daysWaiting } from '../../../../utils/capturedAt';
 import type { Review } from '../../../../store/reviews';
 
-type QueueRowProps = {
+type UnstartedRowProps = {
     review: Review;
     picked: boolean;
     onHover: (review: Review | undefined) => void;
@@ -21,12 +21,13 @@ type QueueRowProps = {
  * something without reading, and ReviewCover already loads lazily, so the
  * ones below the fold cost nothing.
  */
-export const QueueRow = ({ review, picked, onHover, onPick, onStart }: QueueRowProps) => {
+export const UnstartedRow = ({ review, picked, onHover, onPick, onStart }: UnstartedRowProps) => {
     const waiting = daysWaiting(review._id);
 
     return (
         <li
-            data-queue-row
+            id={`unstarted-row-${review.type}-${review.slug}`}
+            data-unstarted-row
             onMouseEnter={() => onHover(review)}
             onMouseLeave={() => onHover(undefined)}
         >

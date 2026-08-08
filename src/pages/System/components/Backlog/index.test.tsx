@@ -576,7 +576,7 @@ describe("grooming", () => {
         expect(mocked.deleteReview).not.toHaveBeenCalled();
     });
 
-    // One detail panel serves the whole queue, so arming has to be cleared
+    // One detail panel serves the whole list, so arming has to be cleared
     // when the pick moves. Otherwise the panel arrives already armed for a
     // Review that was never pressed, and one press removes it.
     it("disarms when the pick moves to another Review", async () => {
@@ -674,7 +674,7 @@ describe("the Backlog's state column", () => {
     // The column stopped counting per Category and per Status when the rail
     // and the section heading started carrying those numbers. Repeating them
     // here is the duplication CONTEXT.md warns against, so these describe how
-    // the queue is behaving instead.
+    // the list is behaving instead.
     it("counts what the controls are showing", async () => {
         await showFolder([
             review("A", { status: "active" }),
@@ -714,7 +714,20 @@ describe("the Backlog's state column", () => {
 
     // The split by Category moved to the rail, which is where it is now also
     // a control rather than only a figure.
-    it("splits the queue by Category on the rail", async () => {
+    // The entrance is built against `[data-backlog-shelf] > li`. Wrapping the
+    // rows in a div once made that selector match nothing, so Not Started
+    // stopped animating in and nothing failed.
+    it("keeps the rows as direct children of the shelf, for the entrance", async () => {
+        await showFolder([review("A", { status: "todo" }), review("B", { status: "todo" })]);
+
+        const shelf = screen.getByRole("list", { name: "Not Started" });
+
+        expect(shelf.getAttribute("data-backlog-shelf")).not.toBeNull();
+        expect([...shelf.children].every(child => child.tagName === "LI")).toBe(true);
+        expect(shelf.querySelectorAll(":scope > li").length).toBe(2);
+    });
+
+    it("splits Not Started by Category on the rail", async () => {
         await showFolder([
             review("A", { type: "game", status: "todo" }),
             review("B", { type: "cinema", status: "todo" }),
