@@ -67,6 +67,15 @@ there — not for anything that is merely urgent.
 Releases follow semantic versioning, and **the tag is the version**. There is
 no `version` field in `package.json` in either repo.
 
+One thing to watch when merging `main` into a release branch, including with
+GitHub's "Update branch" button: git treats *"they added a line we do not
+have"* as an addition to keep, even when your side deliberately deleted it.
+Removing the `version` field came back this way once — `main` still carried it
+from an earlier release, so updating the branch from `main` restored it and it
+reached `main` again in the release. The same applies to any deletion of
+something the other branch introduced independently. Check the diff between the
+release branch and `dev` before merging to `main`; it should be empty.
+
 - **patch** (`0.4.0` → `0.4.1`) — fixes only, nothing new to learn as a user.
 - **minor** (`0.3.0` → `0.4.0`) — new capability, existing behaviour intact.
 - **major** (`0.x` → `1.0`) — behaviour removed or changed out from under you.
