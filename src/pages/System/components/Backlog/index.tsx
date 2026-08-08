@@ -35,7 +35,7 @@ import {
     type Review,
     type ReviewStatus,
 } from "../../../../store/reviews";
-import { todayIso } from "../../../../utils/completionDate";
+import { datesForTransition } from "../../../../utils/lifecycle";
 import { daysWaiting } from "../../../../utils/capturedAt";
 import { writtenSections, SECTION_GLYPH } from "../../../../utils/critique";
 import { CATEGORIES } from "../../../../utils/categories";
@@ -409,7 +409,7 @@ const BacklogWindow = ({ onClose }: Props) => {
             await backend.saveReview({
                 ...review,
                 status,
-                date_completed: status === 'done' ? todayIso() : review.date_completed,
+                ...datesForTransition(review.status, status),
             }, true);
             if (status === 'done') setJustFinished(review.title);
             invalidateReviews();
