@@ -10,7 +10,7 @@ import { backend } from "../../../../api/backend"
 import { useMediaUpload } from "./useMediaUpload"
 import { NumTextField } from "../../../../components/common/NumTextField"
 import { transformKeysToSnakeCase } from "../../../../utils/helpers"
-import { todayIso } from "../../../../utils/completionDate"
+import { datesForTransition } from "../../../../utils/lifecycle"
 import { generateSlug } from "../../../../utils/slug"
 import { toIsoDate } from "./migration"
 import { gameGenres, movieGenres, bookGenres } from "../../../../utils/genres"
@@ -34,6 +34,7 @@ interface BaseReview<TType extends string, TReview> {
     creator: string;
     description: string;
     releaseDate: string;
+    dateStarted: string;
     dateCompleted: string;
     genres: string[];
     review: TReview;
@@ -61,7 +62,7 @@ interface Arguments {
 }
 
 const EMPTY_REVIEW: Partial<Review> = {
-    title: '', slug: '', description: '', releaseDate: '', dateCompleted: '',
+    title: '', slug: '', description: '', releaseDate: '', dateStarted: '', dateCompleted: '',
     creator: '', genres: [], review: {} as any, rating: 0, imagePath: '', status: '',
 };
 
@@ -139,6 +140,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                 // both formats; converting on the way in means editing one
                 // leaves it canonical.
                 releaseDate:   toIsoDate(editingReview.release_date || '') || '',
+                dateStarted:   editingReview.date_started   || '',
                 dateCompleted: editingReview.date_completed || '',
                 creator:       editingReview.creator || editingReview.developers?.[0] || editingReview.director || editingReview.author || '',
                 genres:        editingReview.genres        || [],
@@ -297,13 +299,17 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             return;
         }
 
-        // Auto-set dateCompleted when status flips to done. ISO, because this
-        // is the value everything else orders by — see issue #18.
-        if (field === 'status' && value === 'done' && previousStatus !== 'done') {
+        // A Status change stamps a date. The rule lives in one place because
+        // the Backlog's Start and Finish controls apply it too, and it used to
+        // be written out at both.
+        if (field === 'status') {
+            const stamped = datesForTransition(previousStatus, value);
             setReview(prev => ({
                 ...prev,
                 status: value,
-                dateCompleted: todayIso(),
+                // The editor's state is camelCase; the record is snake_case.
+                ...(stamped.date_started ? { dateStarted: stamped.date_started } : {}),
+                ...(stamped.date_completed ? { dateCompleted: stamped.date_completed } : {}),
             }));
             return;
         }
@@ -328,7 +334,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             title: prev.title, slug: prev.slug, description: prev.description,
             creator: prev.creator, releaseDate: prev.releaseDate,
             rating: prev.rating, status: prev.status, imagePath: prev.imagePath,
-            genres: prev.genres, dateCompleted: prev.dateCompleted,
+            genres: prev.genres, dateStarted: prev.dateStarted, dateCompleted: prev.dateCompleted,
             review: reviewDefaults[t],
         } as Partial<Review>));
     };
