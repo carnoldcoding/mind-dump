@@ -26,7 +26,7 @@
 // see CONTEXT.md. A denominator here would be the interface imposing exactly
 // the uniformity that shape exists to avoid.
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { backend } from "../../../../api/backend";
 import {
     useReviews,
@@ -38,7 +38,6 @@ import {
 import { datesForTransition } from "../../../../utils/lifecycle";
 import { daysWaiting } from "../../../../utils/capturedAt";
 import { writtenSections, SECTION_GLYPH } from "../../../../utils/critique";
-import { CATEGORIES } from "../../../../utils/categories";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { domino, fade, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
@@ -46,6 +45,11 @@ import { Panel } from "../../../../components/common/Panel";
 import { ReviewCover } from "../../../../components/review/ReviewCover";
 import { ReviewModal } from "../ReviewPanel/ReviewModal";
 import { Capture } from "./Capture";
+import { CategoryRail } from "./CategoryRail";
+import { UnstartedBar } from "./UnstartedBar";
+import { UnstartedRow } from "./UnstartedRow";
+import { UnstartedDetail } from "./UnstartedDetail";
+import { applyControls, byLongestWaiting, NO_CONTROLS, facetsFor, unstartedReadouts, type UnstartedControls, type UnstartedReadouts } from "./unstarted";
 
 type Props = {
     onClose: () => void;
@@ -257,49 +261,37 @@ const Readout = ({ label, value }: { label: string; value: React.ReactNode }) =>
  * would only be interesting against a total, and there is no total to be
  * against — so the sections stay on the cards, where they say which rather
  * than how many.
+ *
+ * Shares its column with the picked Review's detail. It shows when nothing is
+ * picked, which is when the list rather than one row is what you are looking
+ * at.
  */
-const State = ({ started, notStarted, error }: {
-    started: Review[];
-    notStarted: Review[];
+const State = ({ readouts, error }: {
+    readouts: UnstartedReadouts;
     /** A write that failed, or a collection that never arrived. */
     error: boolean;
 }) => {
-    const all = [...started, ...notStarted];
-    const oldest = all
-        .map(review => daysWaiting(review._id))
-        .filter((days): days is number => days !== undefined)
-        .sort((a, b) => b - a)[0];
-
     return (
         <div aria-label="Backlog state" className="flex flex-col">
             <h3 className="bg-nier-dark text-nier-text-light text-[10px] uppercase tracking-widest px-2 py-1">
                 State
             </h3>
+            {/* No per-Category counts: the rail carries those, and CONTEXT.md
+                is explicit that a surface's readouts should answer what
+                another cannot rather than say the same thing twice. These
+                describe the list as filtered, and how it is behaving. */}
             <div className="flex flex-col gap-1 px-2 py-3">
-                {/* "Started" and "Not Started" are the Backlog's two labels
-                    (CONTEXT.md). This column used to say "Queued" for the
-                    second one, so the same screen called `todo` two names. */}
-                <Readout label="Started" value={started.length} />
-                <Readout label="Not Started" value={notStarted.length} />
+                <Readout label="Showing" value={readouts.showing} />
+                <Readout label="Oldest" value={readouts.oldest === null ? '—' : `${readouts.oldest}d`} />
+                <Readout label="Median wait" value={readouts.medianWait === null ? '—' : `${readouts.medianWait}d`} />
             </div>
-            {/* Every Category, including the ones with nothing on them: a
-                shelf that is clear is worth seeing as clear. */}
+            {/* The pair worth having together: whether the list is growing
+                faster than it is being cleared. Same window, so they can be
+                read against each other. */}
             <div className="flex flex-col gap-1 px-2 py-3 border-t border-nier-150">
-                {CATEGORIES.map(category => (
-                    <Readout
-                        key={category.type}
-                        label={category.type}
-                        value={all.filter(review => review.type === category.type).length}
-                    />
-                ))}
+                <Readout label="Added 30d" value={readouts.added30} />
+                <Readout label="Started 30d" value={readouts.started30} />
             </div>
-            {oldest !== undefined && (
-                <div className="flex flex-col gap-1 px-2 pb-3 border-t border-nier-150 pt-3">
-                    <Readout label="Oldest" value={`${oldest}d`} />
-                </div>
-            )}
-            {/* The reference's row of empty slots. Furniture, and honest about
-                it: there is nothing to put in them. */}
             <div aria-hidden="true" className="flex flex-wrap gap-1 px-2 pt-2 border-t border-nier-150">
                 {Array.from({ length: 11 }, (_, i) => (
                     <span key={i} className="h-2 w-2 border border-nier-text-dark/40 mt-2" />
@@ -376,20 +368,79 @@ const BacklogWindow = ({ onClose }: Props) => {
         [reviews],
     );
 
-    // Longest-waiting first, so the folder opens on what has been avoided
-    // longest rather than on whatever the API happened to return first.
-    // Anything whose id carries no date sorts last: unknown is not old.
-    const byLongestWaiting = (a: Review, b: Review) =>
-        (daysWaiting(b._id) ?? -1) - (daysWaiting(a._id) ?? -1);
-
     const started = useMemo(
         () => unfinished.filter(r => r.status === 'active').sort(byLongestWaiting),
         [unfinished],
     );
-    const unstarted = useMemo(
-        () => unfinished.filter(r => r.status === 'todo').sort(byLongestWaiting),
-        [unfinished],
+    // ── Not Started ──────────────────────────────────────────────────
+    // Started is not run through
+    // them: it holds two or three things and is the answer to "what
+    // am I on", which no filter should be able to hide.
+    const [controls, setControls] = useState<UnstartedControls>(NO_CONTROLS);
+    const [pickedKey, setPickedKey] = useState<string | null>(null);
+    const searchRef = useRef<HTMLInputElement>(null);
+
+    const todo = useMemo(() => unfinished.filter(r => r.status === 'todo'), [unfinished]);
+    const unstarted = useMemo(() => applyControls(todo, controls), [todo, controls]);
+    const facets = useMemo(() => facetsFor(todo, controls), [todo, controls]);
+    const readouts = useMemo(
+        () => unstartedReadouts(todo, unfinished, controls),
+        [todo, unfinished, controls],
     );
+
+    const picked = unstarted.find(review => keyOf(review) === pickedKey);
+
+    // A pick that the controls have filtered out is no longer on screen, so
+    // holding it would leave the detail panel describing something the list
+    // does not contain.
+    useEffect(() => {
+        if (pickedKey && !picked) setPickedKey(null);
+    }, [pickedKey, picked]);
+
+    const changeControls = (next: Partial<UnstartedControls>) => setControls(prev => ({ ...prev, ...next }));
+
+    // Typing is the fastest way into a list of hundreds, so the window opens
+    // ready for it. Once only: refocusing whenever the collection changed
+    // would pull the caret back mid-edit somewhere else.
+    const focused = useRef(false);
+    useEffect(() => {
+        if (focused.current) return;
+        focused.current = true;
+        searchRef.current?.focus();
+    }, []);
+
+    /** Move the pick through what is showing, and keep it in view. */
+    const movePick = (delta: number) => {
+        if (unstarted.length === 0) return;
+        const at = unstarted.findIndex(review => keyOf(review) === pickedKey);
+        const next = at === -1
+            ? unstarted[delta > 0 ? 0 : unstarted.length - 1]
+            : unstarted[Math.min(Math.max(at + delta, 0), unstarted.length - 1)];
+        setPickedKey(keyOf(next));
+        document.getElementById(`unstarted-row-${keyOf(next)}`)?.scrollIntoView({ block: 'nearest' });
+    };
+
+    const onListKey = (event: React.KeyboardEvent) => {
+        if (event.key === 'ArrowDown') { event.preventDefault(); movePick(1); }
+        else if (event.key === 'ArrowUp') { event.preventDefault(); movePick(-1); }
+        else if (event.key === 'Escape' && controls.query) { event.preventDefault(); changeControls({ query: '' }); }
+        // Moving the pick already opens the detail, so Enter's job is to put
+        // focus in it — otherwise its Start, Edit and Remove are reachable
+        // only with a pointer.
+        else if (event.key === 'Enter' && pickedKey) {
+            event.preventDefault();
+            document.getElementById('unstarted-detail')?.focus();
+        }
+    };
+
+    // Picks from what is showing rather than from the whole list, so a filter
+    // is a way of narrowing what you are willing to be given.
+    const pickAtRandom = () => {
+        if (unstarted.length === 0) return;
+        const chosen = unstarted[Math.floor(Math.random() * unstarted.length)];
+        setPickedKey(keyOf(chosen));
+        document.getElementById(`unstarted-row-${keyOf(chosen)}`)?.scrollIntoView({ block: 'center' });
+    };
 
     const listed = useMemo(() => [...started, ...unstarted], [started, unstarted]);
     // No fallback to the first card. Selection here means "what the pointer is
@@ -468,21 +519,83 @@ const BacklogWindow = ({ onClose }: Props) => {
 
                     {error && <p className="text-sm text-red-700 px-1">{error}</p>}
 
-                    <div className="flex gap-4 min-h-0">
-                        {/* The gutter rail: two-tone, and the only thing left
-                            of the content, exactly as the reference has it. */}
-                        <div aria-hidden="true" className="hidden sm:flex w-1 flex-shrink-0 flex-col">
-                            <span className="w-full flex-[2] bg-nier-shadow" />
-                            <span className="w-full flex-[5] bg-nier-150/50" />
-                        </div>
-
+                    <div className="relative flex gap-4 min-h-0">
                         <div className="flex-1 min-w-0 flex flex-col gap-4">
+                            {/* Pinned. It answers "what am I on", holds two or
+                                three things, and no control may hide it. */}
                             <Section label="Started" items={started} selected={selected} {...actions} />
-                            <Section label="Not Started" items={unstarted} selected={selected} {...actions} />
+
+                            <section className="flex flex-col gap-2 min-h-0">
+                                <h3 className="bg-nier-dark text-nier-text-light text-[10px] uppercase tracking-widest px-2 py-1 flex items-baseline justify-between">
+                                    <span>Not Started</span>
+                                    <span className="text-nier-text-light/60">{readouts.showing}</span>
+                                </h3>
+
+                                <UnstartedBar
+                                    controls={controls}
+                                    genres={facets.genres}
+                                    creators={facets.creators}
+                                    onChange={changeControls}
+                                    onRandom={pickAtRandom}
+                                    searchRef={searchRef}
+                                    onListKey={onListKey}
+                                />
+
+                                <div className="flex gap-2 min-h-0">
+                                    <CategoryRail
+                                        categories={facets.categories}
+                                        active={controls.category}
+                                        onSelect={category => changeControls({ category })}
+                                    />
+
+                                    {unstarted.length === 0 ? (
+                                        <p className="text-sm text-nier-text-dark/40 px-2 py-3 flex-1">
+                                            {todo.length === 0 ? 'Nothing here.' : 'Nothing matches those controls.'}
+                                        </p>
+                                    ) : (
+                                        <ul
+                                            aria-label="Not Started"
+                                            data-backlog-shelf
+                                            // No key handler here: nothing in
+                                            // the list is focusable, so one
+                                            // would never fire. The search
+                                            // field drives the pick.
+                                            className="flex-1 min-w-0 flex flex-col divide-y divide-nier-150/30 border border-nier-150 overflow-y-auto max-h-96"
+                                        >
+                                            {unstarted.map(review => (
+                                                <UnstartedRow
+                                                    key={keyOf(review)}
+                                                    review={review}
+                                                    picked={keyOf(review) === pickedKey}
+                                                    onHover={r => setSelectedKey(r ? keyOf(r) : null)}
+                                                    onPick={r => setPickedKey(keyOf(r))}
+                                                    onStart={r => setStatus(r, 'active')}
+                                                />
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            </section>
                         </div>
 
-                        <div className="hidden md:block w-40 flex-shrink-0 bg-nier-100-lighter/40">
-                            <State started={started} notStarted={unstarted} error={error !== null} />
+                        {/* One column, two jobs. The Readouts describe the
+                            queue being scanned; the detail describes the one
+                            thing stopped on. They are never both wanted. */}
+                        <div className={picked
+                            ? 'absolute inset-0 z-10 bg-nier-100-lighter md:static md:z-auto md:w-44 md:flex-shrink-0 md:bg-nier-100-lighter/40'
+                            : 'hidden md:block w-44 flex-shrink-0 bg-nier-100-lighter/40'
+                        }>
+                            {picked ? (
+                                <UnstartedDetail
+                                    review={picked}
+                                    onClose={() => setPickedKey(null)}
+                                    onStart={r => setStatus(r, 'active')}
+                                    onEdit={openEdit}
+                                    onRemove={remove}
+                                />
+                            ) : (
+                                <State readouts={readouts} error={error !== null} />
+                            )}
                         </div>
                     </div>
                 </div>

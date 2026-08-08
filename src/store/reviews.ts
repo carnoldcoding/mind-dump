@@ -30,6 +30,12 @@ export type Review = {
     release_date?: string;
     /** Whoever made it — a game's developer, a film's director, a book's author. */
     creator?: string;
+    /**
+     * Canonical start date: ISO `YYYY-MM-DD`, stamped when Status becomes
+     * `active`. Absent on anything captured before the field existed, and on
+     * anything never started — see utils/lifecycle.
+     */
+    date_started?: string;
     /** Canonical completion date: ISO `YYYY-MM-DD`, empty until finished. */
     date_completed?: string;
     [key: string]: unknown;
