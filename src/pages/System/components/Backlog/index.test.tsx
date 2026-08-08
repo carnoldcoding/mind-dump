@@ -57,6 +57,15 @@ const showFolder = async (docs: ReturnType<typeof review>[]) => {
 
 const captureButton = () => screen.getByRole("button", { name: "Capture" });
 
+/**
+ * Pick a queued row, which is what fills the detail panel.
+ *
+ * Editing and removing moved there when Not Started became a list of compact
+ * rows: at hundreds of items a row is one line, so the actions live where
+ * there is room to label them. Hovering still only drives the caption bar.
+ */
+const pick = (title: string) => fireEvent.click(screen.getByLabelText(`Select ${title}`));
+
 const capture = (title: string) => {
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: title } });
     fireEvent.click(captureButton());
@@ -517,6 +526,8 @@ describe("grooming", () => {
     it("removes something gone off, on the second press", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
 
+        pick("Nioh 3");
+
         fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
         fireEvent.click(screen.getByLabelText("Confirm removing Nioh 3"));
 
@@ -530,6 +541,8 @@ describe("grooming", () => {
     it("does not remove on the first press", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
 
+        pick("Nioh 3");
+
         fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
 
         expect(mocked.deleteReview).not.toHaveBeenCalled();
@@ -538,6 +551,8 @@ describe("grooming", () => {
 
     it("goes back to safe when the pointer leaves without confirming", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
+
+        pick("Nioh 3");
 
         fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
         fireEvent.mouseLeave(screen.getByLabelText("Confirm removing Nioh 3"));
@@ -552,6 +567,8 @@ describe("grooming", () => {
     it("can be disarmed without a pointer", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
 
+        pick("Nioh 3");
+
         fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
         fireEvent.click(screen.getByLabelText("Keep Nioh 3"));
 
@@ -559,19 +576,23 @@ describe("grooming", () => {
         expect(mocked.deleteReview).not.toHaveBeenCalled();
     });
 
-    // Arming one card must not arm the others: they share a component, and a
-    // single "is the confirm showing" flag would put every card in that state
-    // at once.
-    it("arms only the card that was pressed", async () => {
+    // One detail panel serves the whole queue, so arming has to be cleared
+    // when the pick moves. Otherwise the panel arrives already armed for a
+    // Review that was never pressed, and one press removes it.
+    it("disarms when the pick moves to another Review", async () => {
         await showFolder([
             review("Nioh 3", { status: "todo" }),
             review("Doom", { status: "todo" }),
         ]);
 
+        pick("Nioh 3");
         fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
-
         expect(screen.getByLabelText("Confirm removing Nioh 3")).toBeDefined();
+
+        pick("Doom");
+
         expect(screen.getByLabelText("Remove Doom")).toBeDefined();
+        expect(screen.queryByLabelText("Confirm removing Doom")).toBeNull();
     });
 });
 
@@ -592,7 +613,8 @@ describe("what a card says about a Review", () => {
             }),
         ]);
 
-        const marks = within(card("Nioh 3")).getByLabelText("Sections written");
+        pick("Nioh 3");
+        const marks = screen.getByLabelText("Sections written");
 
         // story and sound, and no mark standing in for the two that aren't.
         expect(marks.textContent).toBe("✦♪");
@@ -610,8 +632,10 @@ describe("what a card says about a Review", () => {
     it("says a Review with nothing written has nothing written", async () => {
         await showFolder([review("Nioh 3", { type: "game", review: {} })]);
 
-        expect(within(card("Nioh 3")).getByLabelText("Sections written").textContent)
-            .toBe("—");
+        // Nothing written draws nothing at all in the panel, rather than a
+        // dash standing in for sections that were never a target.
+        pick("Nioh 3");
+        expect(screen.queryByLabelText("Sections written")).toBeNull();
     });
 
     it("says how long it has been waiting", async () => {
@@ -647,18 +671,26 @@ describe("the Backlog's state column", () => {
         within(screen.getByLabelText("Backlog state")).getByText(label)
             .parentElement?.textContent;
 
-    // "Started" and "Not Started" are the Backlog's two labels (CONTEXT.md).
-    // The column used to invent "Queued" for the same Status, so one screen
-    // called `todo` two different things.
-    it("counts what is started against what is not", async () => {
+    // The column stopped counting per Category and per Status when the rail
+    // and the section heading started carrying those numbers. Repeating them
+    // here is the duplication CONTEXT.md warns against, so these describe how
+    // the queue is behaving instead.
+    it("counts what the controls are showing", async () => {
         await showFolder([
             review("A", { status: "active" }),
-            review("B", { status: "active" }),
+            review("B", { status: "todo" }),
             review("C", { status: "todo" }),
         ]);
 
-        expect(stat("Started")).toBe("Started2");
-        expect(stat("Not Started")).toBe("Not Started1");
+        expect(stat("Showing")).toBe("Showing2");
+    });
+
+    it("does not repeat the rail's per-Category counts", async () => {
+        await showFolder([review("A", { status: "todo", type: "game" })]);
+
+        const column = within(screen.getByLabelText("Backlog state"));
+        expect(column.queryByText("game")).toBeNull();
+        expect(column.queryByText("cinema")).toBeNull();
     });
 
     // The reference's self-diagnostic, and a real one: it reads NO ERROR
@@ -680,16 +712,20 @@ describe("the Backlog's state column", () => {
         await waitFor(() => expect(column.getByText(/^error$/i)).toBeDefined());
     });
 
-    it("splits the unfinished work by Category", async () => {
+    // The split by Category moved to the rail, which is where it is now also
+    // a control rather than only a figure.
+    it("splits the queue by Category on the rail", async () => {
         await showFolder([
-            review("A", { type: "game" }),
-            review("B", { type: "cinema" }),
+            review("A", { type: "game", status: "todo" }),
+            review("B", { type: "cinema", status: "todo" }),
         ]);
 
-        expect(stat("game")).toBe("game1");
-        expect(stat("cinema")).toBe("cinema1");
-        // A Category with nothing unfinished still shows, saying zero.
-        expect(stat("book")).toBe("book0");
+        const rail = within(screen.getByRole("tablist", { name: "Category" }));
+
+        expect(rail.getByRole("tab", { name: /games/i }).textContent).toContain("1");
+        expect(rail.getByRole("tab", { name: /cinema/i }).textContent).toContain("1");
+        // A Category with nothing in it keeps its slot, dimmed, saying zero.
+        expect(rail.getByRole("tab", { name: /books/i }).textContent).toContain("0");
     });
 });
 
@@ -713,6 +749,8 @@ describe("grooming, continued", () => {
     // heavier fields aren't reachable here they aren't reachable anywhere.
     it("opens the full editor on a queued Review", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
+
+        pick("Nioh 3");
 
         fireEvent.click(screen.getByLabelText("Edit Nioh 3"));
 
