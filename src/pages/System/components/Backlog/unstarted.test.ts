@@ -16,6 +16,39 @@ const review = (over: Partial<Record<string, unknown>> = {}) => ({
 
 const controls = (over: Partial<UnstartedControls> = {}): UnstartedControls => ({ ...NO_CONTROLS, ...over });
 
+// The Backlog bug (item 11): the category rail read GAMES 1 while the Not
+// Started list showed no game, with the rail on ALL. The rail count and the
+// rendered list must agree — and with ALL selected they derive from the same
+// applyControls call, so this pins that they cannot drift. Uses a real Mongo
+// _id shape, the one the live todo game had.
+describe('rail count and list agree on ALL', () => {
+    const CATS = ['game', 'cinema', 'book'];
+    const railCountFor = (items: never[], type: string) => {
+        const facet = facetsFor(items, NO_CONTROLS).categories.find(c => c.value === type);
+        return facet?.count ?? 0;
+    };
+
+    it('a lone todo game is both counted and listed', () => {
+        const items = [review({ _id: '694addd252765511fcd353a8', title: 'Claire Obscure Expedition 33', type: 'game', status: 'todo', genres: ['third-person', 'rpg'] })];
+
+        expect(railCountFor(items, 'game')).toBe(1);
+        expect(applyControls(items, controls()).filter(r => r.type === 'game')).toHaveLength(1);
+    });
+
+    it('every rail count equals what the list holds of that Category', () => {
+        const items = [
+            review({ _id: '694addd252765511fcd353a8', title: 'Claire Obscure', type: 'game', status: 'todo' }),
+            review({ _id: 'b', title: 'Dune', type: 'cinema', status: 'todo' }),
+            review({ _id: 'c', title: 'Nioh', type: 'game', status: 'todo' }),
+        ];
+        const listed = applyControls(items, controls());
+
+        for (const type of CATS) {
+            expect(railCountFor(items, type)).toBe(listed.filter(r => r.type === type).length);
+        }
+    });
+});
+
 describe('narrowing Not Started', () => {
     it('shows everything when nothing is set', () => {
         const items = [review({ title: 'Nioh' }), review({ title: 'Elden Ring' })];
