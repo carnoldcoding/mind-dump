@@ -86,7 +86,7 @@
        the fixed Readout footer) stays pinned, and scrolling lives only inside
        the content region (#app-scroll). Before this, the document scrolled and
        slid under the fixed bands, so on a phone a touch dragged the whole page.
-       See docs/adr/0008-fixed-viewport-shell.md. */
+       See docs/adr/0009-fixed-viewport-shell.md. */
     html, body, #root, #nier-grid {
         height: 100dvh;
         overflow: hidden;

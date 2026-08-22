@@ -22,7 +22,7 @@ type ModalProps = {
      * lightbox), false for form editors where a stray tap outside would throw
      * away an editing session — those dismiss only by their close control or
      * Escape. Either way the backdrop still dims and the page behind stays
-     * locked. See docs/chrome.md and docs/adr/0008-fixed-viewport-shell.md.
+     * locked. See docs/chrome.md and docs/adr/0009-fixed-viewport-shell.md.
      */
     dismissOnOutsidePress?: boolean;
     children: ReactNode;

@@ -4,7 +4,7 @@ import { useEffect } from 'react';
  * Freeze the app's one scroll container while an overlay is open.
  *
  * The fixed-viewport shell puts all scrolling in #app-scroll
- * (docs/adr/0008-fixed-viewport-shell.md). An open overlay makes the content
+ * (docs/adr/0009-fixed-viewport-shell.md). An open overlay makes the content
  * behind it inert, so its scroll is frozen — the visible half of "the page
  * behind an overlay does not move." This is the lock half of the one overlay
  * contract; the dimming backdrop is the other half, owned by each overlay.
