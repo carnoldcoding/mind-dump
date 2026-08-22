@@ -1,7 +1,7 @@
-import { Outlet, ScrollRestoration } from 'react-router';
+import { Outlet, useLocation } from 'react-router';
 import Navigation from './Navigation';
 import NavigationMobile from './NavigationMobile';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import BackgroundAnimations from './BackgroundAnimations';
 import CornerLines from './BootSequence/CornerLines';
 import TriangleGrid from './BootSequence/TriangleGrid';
@@ -28,6 +28,18 @@ const LayoutContent = () => {
   // stage the header decode waits for, so the body doesn't render ahead of
   // the background/nav construction finishing.
   const { active: contentReady } = useStageState('header');
+
+  // The one scroll container (see index/custom.css #app-scroll). The document
+  // no longer scrolls, so react-router's window-based ScrollRestoration has
+  // nothing to act on — resetting this container to the top on navigation is
+  // what "each page opens at its top" means now.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { pathname } = useLocation();
+  useEffect(() => {
+    // Method guarded too, not just the ref: jsdom gives an element no
+    // scrollTo, so the test shell would throw without it.
+    scrollRef.current?.scrollTo?.({ top: 0 });
+  }, [pathname]);
 
   // Mounted by the shell, like SearchModal, so the chords work on every page.
   useMotionDevChords();
@@ -66,7 +78,7 @@ const LayoutContent = () => {
           {/* dvh, not vh: on iOS Safari 100vh is the viewport with the
               toolbars retracted, so vh here left the document taller than
               what's actually visible even with nothing to scroll to. */}
-          <div className="min-h-dvh">
+          <div id="app-scroll" ref={scrollRef}>
 
             { breakpoint != 'desktop' ?
             <NavigationMobile
@@ -76,8 +88,11 @@ const LayoutContent = () => {
             :
             <Navigation /> }
 
-              <main className={`max-w-7xl mx-auto px-2 pt-8 nier-page-bottom ${!contentReady ? 'invisible' : ''}`}>
-                  <ScrollRestoration />
+              {/* pt tightened on mobile: the fixed bar is already cleared by
+                  the nav's own spacer, so the extra top padding only wanted to
+                  be the small breath desktop needs, not a quarter of a phone
+                  screen. */}
+              <main className={`max-w-7xl mx-auto px-2 pt-2 md:pt-8 nier-page-bottom ${!contentReady ? 'invisible' : ''}`}>
                   <Outlet />
               </main>
           </div>

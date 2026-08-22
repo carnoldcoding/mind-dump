@@ -81,6 +81,17 @@
   }
 
 @layer base {
+    /* Fixed-viewport shell. The app is a desktop-environment simulation: the
+       page itself never scrolls at any size. The shell (the fixed nav band and
+       the fixed Readout footer) stays pinned, and scrolling lives only inside
+       the content region (#app-scroll). Before this, the document scrolled and
+       slid under the fixed bands, so on a phone a touch dragged the whole page.
+       See docs/adr/0008-fixed-viewport-shell.md. */
+    html, body, #root, #nier-grid {
+        height: 100dvh;
+        overflow: hidden;
+    }
+
     body{
         font-family: "Baloo Bhaijaan 2", sans-serif;
         background-color: var(--color-nier-50);
@@ -89,6 +100,23 @@
 
     #nier-grid {
         position: relative;
+    }
+
+    /* The one scroll container. Fills the shell; the fixed nav and footer
+       overlay its top and bottom, and the page's own spacer and
+       .nier-page-bottom keep content clear of them. An overlay freezes this by
+       setting overflow hidden — see the .scroll-locked rule below. */
+    #app-scroll {
+        height: 100dvh;
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    /* Overlay scroll lock. When a modal, the filter menu, or the nav drawer is
+       open, the content behind it is inert, so its scroll is frozen. Unlayered
+       would be overkill here — nothing else sets overflow on #app-scroll. */
+    #app-scroll.scroll-locked {
+        overflow: hidden;
     }
     
     #nier-grid::before{
