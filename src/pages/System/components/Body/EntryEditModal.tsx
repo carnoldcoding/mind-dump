@@ -66,12 +66,12 @@ const EntryEditModal = ({ entry, movementName, open, onClose, onSaved, onDelete 
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5">
                         <div className="flex items-center gap-3">
-                            <span className="text-nier-text-dark text-xl uppercase tracking-wide">Edit Entry</span>
-                            <span className="text-nier-text-dark/50 text-sm uppercase tracking-widest">
+                            <span className="text-nier-text-dark text-title uppercase tracking-wide">Edit Entry</span>
+                            <span className="text-nier-text-dark/50 text-body uppercase tracking-widest">
                                 // {movementName}
                             </span>
                         </div>
-                        <button onClick={onClose} aria-label="Close" className="text-3xl leading-none cursor-pointer hover:text-nier-dark transition-colors">×</button>
+                        <button onClick={onClose} aria-label="Close" className="text-title leading-none cursor-pointer hover:text-nier-dark transition-colors">×</button>
                     </div>
 
                     <div className="p-5 flex flex-col gap-4">
@@ -83,7 +83,7 @@ const EntryEditModal = ({ entry, movementName, open, onClose, onSaved, onDelete 
                             <NumTextField label="Weight" value={weight} onChange={setWeight} />
                         </div>
 
-                        {error && <p className="text-red-800 text-sm">{error}</p>}
+                        {error && <p className="text-red-800 text-body">{error}</p>}
 
                         <div className="flex justify-between gap-2 pt-1">
                             <Button type="secondary" label="Delete" handleClick={() => entry.id && onDelete(entry.id)} />

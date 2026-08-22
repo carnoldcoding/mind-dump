@@ -48,7 +48,7 @@ export const ReviewCard = ({ review, caption }: Props) => {
                         // the card, so revealing it cannot reflow a grid.
                         <div className="nier-cover-detail">
                             {detail.map(value => (
-                                <p key={value} className="text-[10px] uppercase tracking-wide truncate text-nier-text-light">
+                                <p key={value} className="text-eyebrow uppercase tracking-wide truncate text-nier-text-light">
                                     {value}
                                 </p>
                             ))}
@@ -57,11 +57,11 @@ export const ReviewCard = ({ review, caption }: Props) => {
                 </div>
 
                 <div className="border-t border-nier-150 px-2 py-1.5 bg-nier-150/40 group-hover:bg-nier-dark group-focus-visible:bg-nier-dark transition-colors duration-200">
-                    <h3 className="text-sm uppercase tracking-wide truncate text-nier-text-dark group-hover:text-nier-text-light group-focus-visible:text-nier-text-light transition-colors duration-200">
+                    <h3 className="text-body uppercase tracking-wide truncate text-nier-text-dark group-hover:text-nier-text-light group-focus-visible:text-nier-text-light transition-colors duration-200">
                         {review.title}
                     </h3>
                     {caption && (
-                        <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/50 group-hover:text-nier-text-light/70 group-focus-visible:text-nier-text-light/70 transition-colors duration-200">
+                        <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/50 group-hover:text-nier-text-light/70 group-focus-visible:text-nier-text-light/70 transition-colors duration-200">
                             {caption}
                         </p>
                     )}

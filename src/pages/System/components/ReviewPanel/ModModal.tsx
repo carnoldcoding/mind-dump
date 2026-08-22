@@ -46,10 +46,10 @@ const ModModal = ({ open, mod, onSave, onClose }: Props) => {
                 <article className="bg-nier-100-lighter relative">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5">
-                        <span className="text-nier-text-dark text-xl uppercase tracking-wide">
+                        <span className="text-nier-text-dark text-title uppercase tracking-wide">
                             {mod ? "Edit Mod" : "Add Mod"}
                         </span>
-                        <div onClick={onClose} className="text-3xl leading-none cursor-pointer hover:text-nier-dark transition-colors">×</div>
+                        <div onClick={onClose} className="text-title leading-none cursor-pointer hover:text-nier-dark transition-colors">×</div>
                     </div>
 
                     <div className="p-5 flex flex-col gap-4">
@@ -58,7 +58,7 @@ const ModModal = ({ open, mod, onSave, onClose }: Props) => {
                         <TextField label="URL"      value={url}    onChange={setUrl} />
                         <BigTextField label="Notes" value={notes}  onChange={setNotes} />
 
-                        {error && <p className="text-red-800 text-sm">{error}</p>}
+                        {error && <p className="text-red-800 text-body">{error}</p>}
 
                         <div className="flex justify-end gap-2 pt-1">
                             <Button type="secondary" label="Cancel" handleClick={onClose} />

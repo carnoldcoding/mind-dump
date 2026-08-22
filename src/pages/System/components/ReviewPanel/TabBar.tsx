@@ -82,7 +82,7 @@ export const TabBar = ({ tabs, active, onSelect, onHover }: TabBarProps) => {
                         onFocus={() => onHover(tab.id)}
                         onBlur={() => onHover(undefined)}
                         className={[
-                            'px-3 py-1 text-xs uppercase tracking-widest transition-colors duration-150',
+                            'px-3 py-1 text-label uppercase tracking-widest transition-colors duration-150',
                             isActive
                                 ? 'bg-nier-dark text-nier-text-light'
                                 : 'text-nier-text-dark',

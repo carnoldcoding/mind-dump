@@ -28,7 +28,7 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
                     onClick={onClose}
                     aria-label={isOpen ? 'Close menu' : 'Open menu'}
                     aria-expanded={isOpen}
-                    className="text-nier-text-dark h-11 w-11 text-4xl leading-none flex items-center justify-center flex-shrink-0"
+                    className="text-nier-text-dark h-11 w-11 text-display leading-none flex items-center justify-center flex-shrink-0"
                 >
                     {isOpen ? '×' : '☰'}
                 </button>
@@ -60,7 +60,7 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
                             className="w-full h-full object-contain transition-all duration-300 ease-in-out"
                         />
                     </div>
-                    <h3 className="uppercase text-2xl text-nier-text-light leading-none transition-all duration-300 ease-in-out">
+                    <h3 className="uppercase text-title text-nier-text-light leading-none transition-all duration-300 ease-in-out">
                         {item.label}
                     </h3>
                     </Link>
@@ -78,7 +78,7 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
                             className="w-full h-full object-contain transition-all duration-300 ease-in-out"
                         />
                     </div>
-                    <h3 className="uppercase text-2xl text-nier-text-dark leading-none transition-all duration-300 ease-in-out">
+                    <h3 className="uppercase text-title text-nier-text-dark leading-none transition-all duration-300 ease-in-out">
                         {item.label}
                     </h3>
                     </Link>

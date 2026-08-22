@@ -53,7 +53,7 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: a
     }
     return (
         <li  
-        data-slug={review.slug} className="grid grid-cols-6 [&>p]:text-lg [&>div>p:text-center] h-15 px-4 border-b border-b-nier-dark/50 items-center">
+        data-slug={review.slug} className="grid grid-cols-6 [&>p]:text-heading [&>div>p:text-center] h-15 px-4 border-b border-b-nier-dark/50 items-center">
             <p className="col-span-2">{review.title}</p>
             <div className="flex items-center justify-center">
                  <div className="grid grid-cols-2 rounded-md px-2 py-1 min-w-30 max-w-30 ">
@@ -87,7 +87,7 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: a
                     </div>
                     <div className="flex flex-col items-center justify-start h-full p-4 gap-4">
                         <ion-icon className="h-30 w-30" name="close-circle-outline"></ion-icon>
-                        <h3 className="text-2xl">Are you sure?</h3>
+                        <h3 className="text-title">Are you sure?</h3>
                         <p>To delete, type the keyword: <span className="italic">{review.slug}</span></p>
                         <div>
                             <input

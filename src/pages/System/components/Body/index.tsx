@@ -120,7 +120,7 @@ const BodyWindow = ({ onClose }: Props) => {
     }, [movements, fetchDocs]);
 
     const tabBtn = (active: boolean) =>
-        `text-xs uppercase tracking-wide px-4 py-2 border-b-2 transition-colors cursor-pointer ${
+        `text-label uppercase tracking-wide px-4 py-2 border-b-2 transition-colors cursor-pointer ${
             active ? "border-nier-dark text-nier-text-dark" : "border-transparent text-nier-text-dark/40 hover:text-nier-text-dark"
         }`;
 
@@ -135,8 +135,8 @@ const BodyWindow = ({ onClose }: Props) => {
 
                     {/* Window title bar */}
                     <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Body</h3>
-                        <button onClick={onClose} aria-label="Close" className="text-sm px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none">
+                        <h3 className="text-nier-text-dark text-title uppercase tracking-wider">Body</h3>
+                        <button onClick={onClose} aria-label="Close" className="text-body px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none">
                             ✕
                         </button>
                     </div>
@@ -177,22 +177,22 @@ const BodyWindow = ({ onClose }: Props) => {
                                         ) : (
                                             <section aria-label="History" className="h-64 bg-nier-100-lighter border border-nier-150 relative flex flex-col">
                                                 <div className="h-7 bg-nier-150 flex items-center px-3 shrink-0">
-                                                    <span className="text-nier-text-dark text-sm uppercase tracking-wide">Entries</span>
+                                                    <span className="text-nier-text-dark text-body uppercase tracking-wide">Entries</span>
                                                 </div>
                                                 <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
                                                 <div className="overflow-y-auto flex-1">
                                                     {selectedEntries.length === 0 ? (
-                                                        <p className="text-xs text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">No entries yet.</p>
+                                                        <p className="text-label text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">No entries yet.</p>
                                                     ) : selectedEntries.map(e => (
                                                         <button
                                                             key={e.id ?? e.datetime}
                                                             onClick={() => e.id && setEditingEntry(e)}
                                                             className="w-full flex items-center justify-between gap-3 px-3 py-3 border-b border-nier-150/30 last:border-0 hover:bg-nier-150/30 text-left cursor-pointer transition-colors"
                                                         >
-                                                            <span className="text-[10px] text-nier-text-dark/50 uppercase tracking-wide shrink-0">
+                                                            <span className="text-eyebrow text-nier-text-dark/50 uppercase tracking-wide shrink-0">
                                                                 {new Date(e.datetime).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
                                                             </span>
-                                                            <span className="text-xs text-nier-text-dark">{describeEntry(e)}</span>
+                                                            <span className="text-label text-nier-text-dark">{describeEntry(e)}</span>
                                                         </button>
                                                     ))}
                                                 </div>
@@ -201,7 +201,7 @@ const BodyWindow = ({ onClose }: Props) => {
                                     </>
                                 ) : (
                                     <div className="h-64 bg-nier-100-lighter border border-nier-150 flex items-center justify-center">
-                                        <span className="text-nier-text-dark/40 text-xs uppercase tracking-widest">
+                                        <span className="text-nier-text-dark/40 text-label uppercase tracking-widest">
                                             {movements.length === 0 ? "Add a movement to begin" : "Select a movement"}
                                         </span>
                                     </div>

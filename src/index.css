@@ -13,11 +13,57 @@
     --color-nier-dark: #48483D;
     --color-nier-text-dark: #3a3a31;
     --color-nier-text-light: #C4BEAC;
+
+    /* Type scale — the standardized sizing convention, the missing half of the
+       palette. Six semantic steps, and nothing outside them: every text site
+       maps to one of these rather than picking a raw size. See docs/chrome.md.
+
+       Floor is 12px (eyebrow). Nothing renders smaller — the old spread ran
+       down to 8px, which is why so much of the app strained to read.
+
+       These generate `text-display` … `text-eyebrow`. The tokens own their own
+       responsiveness (the display override below), so call sites do not write
+       `md:` size variants. Body and below are one size on every device. */
+    --text-eyebrow: 0.75rem;              /* 12px — uppercase tracked micro-labels */
+    --text-eyebrow--line-height: 1rem;
+    --text-label: 0.875rem;               /* 14px — form labels, secondary meta  */
+    --text-label--line-height: 1.25rem;
+    --text-body: 1rem;                    /* 16px — prose, field values, inputs   */
+    --text-body--line-height: 1.5rem;
+    --text-heading: 1.125rem;             /* 18px — card titles, subsections      */
+    --text-heading--line-height: 1.5rem;
+    --text-title: 1.5rem;                 /* 24px — window and modal headers      */
+    --text-title--line-height: 1.75rem;
+    --text-display: 3rem;                 /* 48px desktop — page titles           */
+    --text-display--line-height: 1;
 }
 
 @layer base {
-  
+
   p, h1, h2, h3, h4, ion-icon {
     color: var(--color-nier-text-dark);
+  }
+
+  /* The one token that scales by device. A 48px page title overflows a phone,
+     so display drops to 36px below the md breakpoint — owned here so no call
+     site repeats it. Every other step is identical across breakpoints. */
+  @media (width < 48rem) {
+    .text-display {
+      font-size: 2.25rem;                 /* 36px mobile */
+    }
+  }
+}
+
+/* Mobile input zoom floor. iOS Safari zooms the viewport into any focused
+   field whose font-size is under 16px, which threw off the layout and forced a
+   pinch back out. Deliberately UNLAYERED: Tailwind's utilities live in a
+   cascade layer, and an unlayered rule outclasses a layer, so this wins over
+   whatever `text-*` a field carries (e.g. the Backlog's 14px controls) on a
+   phone — without touching desktop, where there is no zoom to prevent. */
+@media (width < 48rem) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 1rem;                      /* 16px — clears the iOS zoom trigger */
   }
 }

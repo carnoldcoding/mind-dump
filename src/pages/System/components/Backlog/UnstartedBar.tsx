@@ -17,7 +17,7 @@ const SORTS: { key: SortKey; label: string; direction: string }[] = [
     { key: 'release', label: 'release', direction: 'newest first' },
 ];
 
-const field = 'bg-nier-100-lighter border border-nier-150 text-xs px-2 h-7 outline-none focus:border-nier-dark';
+const field = 'bg-nier-100-lighter border border-nier-150 text-label px-2 h-7 outline-none focus:border-nier-dark';
 
 /** A dropdown of facet options, each showing what choosing it would leave. */
 const FacetSelect = ({ label, value, options, onChange }: {
@@ -27,7 +27,7 @@ const FacetSelect = ({ label, value, options, onChange }: {
     onChange: (value: string | null) => void;
 }) => (
     <label className="flex items-center gap-1.5">
-        <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">{label}</span>
+        <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">{label}</span>
         <select
             value={value ?? ''}
             onChange={event => onChange(event.target.value || null)}
@@ -72,7 +72,7 @@ export const UnstartedBar = ({
                 />
 
                 <label className="flex items-center gap-1.5">
-                    <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">Sort</span>
+                    <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">Sort</span>
                     <select
                         value={controls.sort}
                         onChange={event => onChange({ sort: event.target.value as SortKey })}
@@ -89,7 +89,7 @@ export const UnstartedBar = ({
                     onClick={() => onChange({ ascending: !controls.ascending })}
                     aria-label={`Sort by ${sort.label}, ${controls.ascending ? sort.direction : 'reversed'}`}
                     title={controls.ascending ? sort.direction : 'reversed'}
-                    className="text-xs px-2 h-7 border border-nier-150 cursor-pointer hover:bg-nier-150/40 transition-colors duration-150"
+                    className="text-label px-2 h-7 border border-nier-150 cursor-pointer hover:bg-nier-150/40 transition-colors duration-150"
                 >
                     {controls.ascending ? '↑' : '↓'}
                 </button>
@@ -101,7 +101,7 @@ export const UnstartedBar = ({
                     type="button"
                     onClick={onRandom}
                     title="Pick one at random from what is showing"
-                    className="text-[10px] uppercase tracking-widest px-2 h-7 border border-nier-dark cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors duration-150"
+                    className="text-eyebrow uppercase tracking-widest px-2 h-7 border border-nier-dark cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors duration-150"
                 >
                     ? Pick
                 </button>

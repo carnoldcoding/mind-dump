@@ -69,8 +69,8 @@ const Readout = ({ label, value, className = '' }: {
   className?: string;
 }) => (
   <p className={`flex items-baseline gap-1.5 whitespace-nowrap ${className}`}>
-    <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">{label}</span>
-    <span className="text-xs tracking-wider text-nier-text-dark">{value}</span>
+    <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">{label}</span>
+    <span className="text-label tracking-wider text-nier-text-dark">{value}</span>
   </p>
 );
 
