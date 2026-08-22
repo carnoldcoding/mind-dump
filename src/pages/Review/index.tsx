@@ -15,6 +15,7 @@ import { decode, domino, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { useScrollLock } from "../../utils/scrollLock";
+import { genresInUse } from "../../utils/visibleGenres";
 
 // The rating scale, asserted in one place. Every rating stored is between 3
 // and 4.5 with a decimal, so the scale is five points and the useful grain is
@@ -515,6 +516,14 @@ const Review = () => {
         return counts;
     }, [genreOptions, filteredPosts]);
 
+    // Only genres some finished Review on this shelf actually has. Derived from
+    // the whole shelf, not the filtered view, so the row set is stable as
+    // filters toggle. Empty genres used to render dimmed; they are gone now.
+    const visibleGenres = useMemo(
+        () => genresInUse(shelved, genreOptions),
+        [shelved, genreOptions],
+    );
+
     // The five-year spans the shelf actually covers, not a fixed range — a
     // Category whose oldest thing is from 1994 has no business offering the
     // 1930s.
@@ -641,7 +650,7 @@ const Review = () => {
             <div className="flex flex-col gap-4 min-h-0 h-full overflow-y-auto">
                 <Group title="Genre">
                     <ul className="flex flex-col gap-0.5 mt-1 pl-3 max-h-52 min-h-0 overflow-y-auto">
-                        {genreOptions.map(genre => (
+                        {visibleGenres.map(genre => (
                             <GenreRow
                                 key={genre}
                                 genre={genre}
