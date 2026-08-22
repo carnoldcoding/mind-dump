@@ -42,7 +42,7 @@ const ModModal = ({ open, mod, onSave, onClose }: Props) => {
     };
 
     return (
-        <Modal open={open} onClose={onClose} label="Mod" backdropClassName="z-[120] flex items-center justify-center p-4">
+        <Modal open={open} onClose={onClose} dismissOnOutsidePress={false} label="Mod" backdropClassName="z-[120] flex items-center justify-center p-4">
                 <article className="bg-nier-100-lighter relative">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5">

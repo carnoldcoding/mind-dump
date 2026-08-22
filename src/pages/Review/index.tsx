@@ -14,6 +14,7 @@ import { useRevealTimeline } from "../../hooks/useRevealTimeline";
 import { decode, domino, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
+import { useScrollLock } from "../../utils/scrollLock";
 
 // The rating scale, asserted in one place. Every rating stored is between 3
 // and 4.5 with a decimal, so the scale is five points and the useful grain is
@@ -337,6 +338,9 @@ const Review = () => {
     // The filter column is permanent from `lg` up, where there is room for it
     // beside the grid. Below that it is an overlay, and this is what opens it.
     const [showFilters, setShowFilters] = useState<boolean>(false);
+    // The mobile filter menu already dims and closes on outside-press; the one
+    // thing it lacked was freezing the shelf behind it (item 7).
+    useScrollLock(showFilters);
     // What the caption bar is talking about. Whatever the pointer or the
     // keyboard is on — the cards are anchors already, so Tab walks them and
     // Enter opens them without this page handling a key.

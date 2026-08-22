@@ -118,11 +118,9 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     modsRef.current          = mods;
     editingReviewRef.current = editingReview;
 
-    // ── Body scroll lock ─────────────────────────────────────────────
-    useEffect(() => {
-        document.body.style.overflow = isOpen ? 'hidden' : '';
-        return () => { document.body.style.overflow = ''; };
-    }, [isOpen]);
+    // Scroll lock is the shared overlay contract's job now (Modal calls
+    // useScrollLock), so the ad-hoc body-overflow toggle that used to live
+    // here is gone — it locked the body, which no longer scrolls anyway.
 
     // ── Load / reset when modal opens or editing target changes ─────
     useEffect(() => {
@@ -446,7 +444,8 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     return (
         <Modal
             open={isOpen}
-            onClose={() => setIsOpen(false)}
+            onClose={handleClose}
+            dismissOnOutsidePress={false}
             label="Review"
             backdropClassName="z-[110] overflow-y-auto flex flex-col items-center justify-start sm:justify-center p-2 sm:p-4"
             className="w-full max-w-4xl"

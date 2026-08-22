@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router";
 import { navItems } from "./NavItems";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
+import { useScrollLock } from "../../utils/scrollLock";
 
 interface NavigationMobileProps{
     isOpen: boolean;
@@ -11,6 +12,13 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     const location = useLocation();
     const { trusted } = useTrustedDevice();
     const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
+
+    // The drawer is a light overlay: it dims and locks the page behind it, and
+    // a press off it closes. The backdrop is what rescues the close — the open
+    // drawer overlaps the × in the bar, so without a press-outside there was
+    // no way out but picking a destination.
+    useScrollLock(isOpen);
+
     return (
         <>
         {/* The bar itself, and the only fixed element up here: it holds the
@@ -36,7 +44,18 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
         </header>
         {/* Reserves what the fixed bar covers — keep in step with the bar. */}
         <div className="h-20"></div>
-        
+
+        {/* The dimming backdrop. Below the drawer (z-100) and the bar (z-101),
+            above everything else. Kept mounted and faded so it can play out
+            with the drawer's slide rather than cutting; inert when closed. A
+            press anywhere on it closes. */}
+        <div
+            aria-hidden="true"
+            onClick={onClose}
+            className={`fixed inset-0 z-[99] bg-nier-dark/40 transition-opacity duration-300 ${
+                isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}
+        />
 
         <nav className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-dvh p
             transition-all ease-in-out duration-300 overflow-hidden

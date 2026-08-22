@@ -58,7 +58,7 @@ const NewMovementModal = ({ open, order, onClose, onSaved }: Props) => {
     };
 
     return (
-        <Modal open={open} onClose={onClose} label="New Movement" className="w-full max-w-md">
+        <Modal open={open} onClose={onClose} dismissOnOutsidePress={false} label="New Movement" className="w-full max-w-md">
                 <article className="bg-nier-100-lighter relative">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5">

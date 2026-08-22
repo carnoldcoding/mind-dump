@@ -61,7 +61,7 @@ const EntryEditModal = ({ entry, movementName, open, onClose, onSaved, onDelete 
     };
 
     return (
-        <Modal open={open} onClose={onClose} label="Edit Entry" className="w-full max-w-sm">
+        <Modal open={open} onClose={onClose} dismissOnOutsidePress={false} label="Edit Entry" className="w-full max-w-sm">
                 <article className="bg-nier-100-lighter relative">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5">

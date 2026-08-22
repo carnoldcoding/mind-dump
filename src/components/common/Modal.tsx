@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { usePresenceTimeline } from '../../hooks/usePresenceTimeline';
+import { useScrollLock } from '../../utils/scrollLock';
 import { fade, wipe } from '../../utils/motion';
 
 type ModalProps = {
@@ -15,6 +16,15 @@ type ModalProps = {
     className?: string;
     /** The offset shadow every solid surface in this app casts. Off for a lightbox. */
     shadow?: boolean;
+    /**
+     * Whether a press on the dimmed backdrop closes the modal. The overlay
+     * contract's per-weight flavor: true for lightweight surfaces (Search, a
+     * lightbox), false for form editors where a stray tap outside would throw
+     * away an editing session — those dismiss only by their close control or
+     * Escape. Either way the backdrop still dims and the page behind stays
+     * locked. See docs/chrome.md and docs/adr/0008-fixed-viewport-shell.md.
+     */
+    dismissOnOutsidePress?: boolean;
     children: ReactNode;
 };
 
@@ -44,9 +54,14 @@ export const Modal = ({
     backdropClassName = 'z-50 flex items-center justify-center p-4',
     className = 'w-full max-w-md',
     shadow = true,
+    dismissOnOutsidePress = true,
     children,
 }: ModalProps) => {
     const scope = useRef<HTMLDivElement>(null);
+
+    // The lock half of the overlay contract: the page behind is frozen while
+    // this is open. The dim is the backdrop below.
+    useScrollLock(open);
 
     const present = usePresenceTimeline(open, (tl) => {
         fade(tl, '[data-modal-backdrop]');
@@ -74,9 +89,11 @@ export const Modal = ({
             data-modal-backdrop
             className={`fixed inset-0 bg-nier-dark/40 ${backdropClassName}`}
             // A press on the backdrop is a press outside the dialog, and the
-            // surface stops its own presses from reaching here.
+            // surface stops its own presses from reaching here. Form editors
+            // opt out (dismissOnOutsidePress=false): the backdrop still dims
+            // and locks, but only the close control or Escape dismisses.
             onMouseDown={(event) => {
-                if (event.target === event.currentTarget) onClose();
+                if (dismissOnOutsidePress && event.target === event.currentTarget) onClose();
             }}
         >
             <div

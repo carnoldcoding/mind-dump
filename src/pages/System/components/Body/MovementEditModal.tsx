@@ -72,7 +72,7 @@ const MovementEditModal = ({ movement, open, onClose, onSaved, onDelete }: Props
     };
 
     return (
-        <Modal open={open} onClose={onClose} label="Edit Movement" className="w-full max-w-md">
+        <Modal open={open} onClose={onClose} dismissOnOutsidePress={false} label="Edit Movement" className="w-full max-w-md">
                 <article className="bg-nier-100-lighter relative max-h-[85vh] overflow-y-auto">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5 sticky top-0">
