@@ -19,10 +19,24 @@ const Layout = () => {
   );
 };
 
+const getBreakpoint = (width: number): BreakpointType => {
+  if (width < 768) return 'mobile';
+  if (width < 1024) return 'tablet';
+  return 'desktop';
+};
+
 // Split out from Layout so it can read the boot stage — a component can't
 // consume a context it renders the Provider for.
 const LayoutContent = () => {
-  const [breakpoint, setBreakpoint] = useState<BreakpointType>('desktop');
+  // Read the width synchronously for the first render, not a 'desktop'
+  // constant corrected by an effect afterwards. The boot timeline binds its
+  // targets at build time, and GSAP resolves selectors then — so if the wrong
+  // nav is mounted on the first frame, the real one is bound too late to ever
+  // animate. This also removes the flash of desktop nav a phone used to paint
+  // before the effect switched it. See docs/adr/0007-gsap-timelines-own-motion.
+  const [breakpoint, setBreakpoint] = useState<BreakpointType>(() =>
+    getBreakpoint(typeof window === 'undefined' ? 1024 : window.innerWidth),
+  );
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   // Page content (the actual games/reviews/etc. panel) waits for the same
   // stage the header decode waits for, so the body doesn't render ahead of
@@ -44,26 +58,12 @@ const LayoutContent = () => {
   // Mounted by the shell, like SearchModal, so the chords work on every page.
   useMotionDevChords();
 
-  const getBreakpoint = (width: number) : BreakpointType => {
-    if (width < 768) return 'mobile';
-    if (width < 1024) return 'tablet';
-    return 'desktop';
-  }
+  useEffect(() => {
+    const handleResize = () => setBreakpoint(getBreakpoint(window.innerWidth));
 
-  useEffect(()=>{
-    const handleResize = () => {
-      const width = window.innerWidth;
-      const newBreakpoint = getBreakpoint(width);
-      setBreakpoint(newBreakpoint);
-    }
-
-    handleResize();
     window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  })
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
