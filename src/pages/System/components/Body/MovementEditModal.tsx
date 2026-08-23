@@ -1,10 +1,12 @@
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import { TextField } from "../../../../components/common/TextField";
 import { BigTextField } from "../../../../components/common/BigTextField";
 import { NumTextField } from "../../../../components/common/NumTextField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
 import { Modal } from "../../../../components/common/Modal";
+import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
+import { decode, domino } from "../../../../utils/motion";
 import { buildGoal, fieldValue } from "./entry";
 import type { Movement, MovementTag } from "./entry";
 
@@ -32,6 +34,14 @@ const MovementEditModal = ({ movement, open, onClose, onSaved, onDelete }: Props
     const [deleteStage, setDeleteStage] = useState<"idle" | "confirm">("idle");
     const [deleteInput, setDeleteInput] = useState("");
     const [deleteError, setDeleteError] = useState("");
+
+    // Heavy editor cascade over Modal's surface wipe: title Decodes, fields
+    // Domino, keyed on `open` so it replays each time the editor opens.
+    const articleScope = useRef<HTMLElement>(null);
+    useRevealTimeline(open, (tl) => {
+        decode(tl, '[data-modal-title]', 'Edit Movement');
+        domino(tl, '[data-modal-body] > *', '<0.15');
+    }, articleScope, [open]);
 
     useEffect(() => {
         if (!open) return;
@@ -73,14 +83,14 @@ const MovementEditModal = ({ movement, open, onClose, onSaved, onDelete }: Props
 
     return (
         <Modal open={open} onClose={onClose} dismissOnOutsidePress={false} label="Edit Movement" className="w-full max-w-md">
-                <article className="bg-nier-100-lighter relative max-h-[85vh] overflow-y-auto">
+                <article ref={articleScope} className="bg-nier-100-lighter relative max-h-[85vh] overflow-y-auto">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5 sticky top-0">
-                        <span className="text-nier-text-dark text-title uppercase tracking-wide">Edit Movement</span>
+                        <span data-modal-title className="text-nier-text-dark text-title uppercase tracking-wide">Edit Movement</span>
                         <button onClick={onClose} aria-label="Close" className="text-title leading-none cursor-pointer hover:text-nier-dark transition-colors">×</button>
                     </div>
 
-                    <div className="p-5 flex flex-col gap-4">
+                    <div data-modal-body className="p-5 flex flex-col gap-4">
                         <TextField label="Name" value={displayName} onChange={setDisplayName} altBg />
 
                         {/* Tag toggle */}
