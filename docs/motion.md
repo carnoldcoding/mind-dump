@@ -147,6 +147,31 @@ therefore get their own timeline on their own readiness, keyed on `loading`.
 The frame does not: rebuilding replays, and a frame that re-wipes because its
 contents arrived is the flash this whole design exists to remove.
 
+## The arrival grammar
+
+Every animated surface follows one order, and its beats overlap in waves rather
+than march one fully-finished beat at a time (the `"<0.2"` position convention
+above):
+
+```
+Frame Wipe ─► Title Decode ─► Hairlines Grow ─► Content Domino
+```
+
+A surface omits a beat it has no elements for, but never reorders them. On a
+Category shelf the genre rows and the Review cards are two concurrent Domino
+waves in the last beat, not one after the other. Plugging a new surface's
+content into this order — by giving its elements the `data-*` markers the beats
+address — is what makes it animate correctly by default.
+
+**Arrival is a first-class moment: a surface re-runs its entrance every time you
+arrive at it**, not only on first load. A page that is a distinct route
+re-animates because navigating to it remounts it. A component shared across
+routes — the Category shelf — keys its *content* timelines on the thing that
+changed (the Category) so they replay, while keeping its *frame* keyed on
+nothing, so the frame is stable chrome that wipes once and persists across
+toggles rather than re-wiping. A heading whose text changes without a remount
+keys its Decode on that text, or it will not track the change. See ADR-0010.
+
 ## Panels
 
 Use [`Panel`](../src/components/common/Panel.tsx). It draws the frame and the
@@ -195,12 +220,14 @@ Response is gated differently, because it is not a timeline: the seam puts a
 `motion-off` class on the document element, and one rule suppresses transition
 durations beneath it.
 
-**Open:** whether the seam should silence the **boot sequence**. It was
-deliberately ungated before, on the grounds that it was outside the
-vocabulary's remit — that reason is gone now that it is a timeline like any
-other, and a ~2.3s animated boot is exactly what someone asking for reduced
-motion is asking not to sit through. Left as it was until decided, rather than
-changed in passing.
+**The boot sequence is silenced too.** `prefers-reduced-motion` skips boot to
+its final frame like any other timeline — `BootSequenceContext` seeks it to
+`progress(1)`, which fires every stage callback in order and lands the app on
+`done` with no play. It was once left ungated on the grounds that boot sat
+outside the vocabulary's remit; that reason went when boot became a timeline
+like any other, and a ~2.3s animated intro is exactly what a reduced-motion
+preference asks not to sit through. The dev chords still turn motion on to watch
+it. (This was the one open question this file used to record; it is resolved.)
 
 `VITE_DISABLE_ANIMATIONS` is build-time, so changing it means restarting Vite.
 It is unset in the production build, which is why these animations have always
