@@ -14,7 +14,7 @@ import { useRevealTimeline } from "../../hooks/useRevealTimeline";
 import { decode, domino, growth, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
-import { useScrollLock } from "../../utils/scrollLock";
+import { Modal } from "../../components/common/Modal";
 import { genresInUse } from "../../utils/visibleGenres";
 
 // The rating scale, asserted in one place. Every rating stored is between 3
@@ -339,9 +339,6 @@ const Review = () => {
     // The filter column is permanent from `lg` up, where there is room for it
     // beside the grid. Below that it is an overlay, and this is what opens it.
     const [showFilters, setShowFilters] = useState<boolean>(false);
-    // The mobile filter menu already dims and closes on outside-press; the one
-    // thing it lacked was freezing the shelf behind it (item 7).
-    useScrollLock(showFilters);
     // What the caption bar is talking about. Whatever the pointer or the
     // keyboard is on — the cards are anchors already, so Tab walks them and
     // Enter opens them without this page handling a key.
@@ -929,28 +926,30 @@ const Review = () => {
                     smaller set of controls that can drift from it. It is
                     `fixed`, so it does not need to sit inside the panel's
                     wrapper to land in the right place. */}
-                {showFilters && (
-                    <div
-                        className="lg:hidden fixed inset-0 z-40 bg-nier-dark/40 flex items-start justify-center p-4 pt-20"
-                        onClick={() => setShowFilters(false)}
-                    >
-                        <div className="relative w-full max-w-xs" onClick={e => e.stopPropagation()}>
-                            <div aria-hidden="true" className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
-                            <div className="relative bg-nier-100 flex flex-col max-h-[70vh]">
-                                <div className="h-8 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
-                                    <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/70">Filter</span>
-                                    <button
-                                        onClick={() => setShowFilters(false)}
-                                        className="text-title leading-none cursor-pointer hover:opacity-60 transition-opacity"
-                                    >×</button>
-                                </div>
-                                <div className="p-3 overflow-y-auto">
-                                    {filterColumn}
-                                </div>
-                            </div>
+                {/* The mobile filter menu is a light overlay: Modal wipes it in,
+                    dims and locks the shelf behind it, closes on outside-press or
+                    Escape, and plays it back out — the entrance the bare
+                    `{showFilters && …}` could never animate away. */}
+                <Modal
+                    open={showFilters}
+                    onClose={() => setShowFilters(false)}
+                    label="Filter"
+                    backdropClassName="lg:hidden z-40 flex items-start justify-center p-4 pt-20"
+                    className="w-full max-w-xs"
+                >
+                    <div className="relative bg-nier-100 flex flex-col max-h-[70vh]">
+                        <div className="h-8 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
+                            <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/70">Filter</span>
+                            <button
+                                onClick={() => setShowFilters(false)}
+                                className="text-title leading-none cursor-pointer hover:opacity-60 transition-opacity"
+                            >×</button>
+                        </div>
+                        <div className="p-3 overflow-y-auto">
+                            {filterColumn}
                         </div>
                     </div>
-                )}
+                </Modal>
           </Fragment>
         );
       };
