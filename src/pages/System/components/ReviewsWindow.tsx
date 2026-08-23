@@ -5,7 +5,7 @@ import { BarChart } from "./barChart";
 import { ReviewPanel } from "./ReviewPanel";
 import { ReviewModal } from "./ReviewPanel/ReviewModal";
 import { useRevealTimeline } from "../../../hooks/useRevealTimeline";
-import { fade, wipe } from "../../../utils/motion";
+import { decode, fade, wipe } from "../../../utils/motion";
 import { usePanelHeight } from "../../../hooks/usePanelHeight";
 import { Panel } from "../../../components/common/Panel";
 
@@ -19,12 +19,14 @@ const ReviewsWindow = ({ onClose }: Props) => {
     const [modalOpen, setModalOpen]   = useState(false);
     // No signal to wait on: this window only ever mounts well after boot is
     // done — the user has to open System, then click a folder icon — and
-    // Desktop's conditional render gives it a fresh mount each time. It has no
-    // decoded title and no card grid, so its whole entrance is the frame
-    // arriving with its chrome a beat behind.
+    // Desktop's conditional render gives it a fresh mount each time. The
+    // canonical order: the frame Wipes, its title Decodes, and the rest of the
+    // chrome Fades a beat behind. The review grid Dominoes on its own timeline
+    // inside ReviewPanel.
     const scope = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, (tl) => {
         wipe(tl, '[data-panel-surface]');
+        decode(tl, '[data-window-title]', 'Reviews', '<0.15');
         fade(tl, '[data-window-chrome]', '<0.2');
     }, scope);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
@@ -38,7 +40,7 @@ const ReviewsWindow = ({ onClose }: Props) => {
             frameRef={panelRef}
         >
                 <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                    <h3 className="text-nier-text-dark text-title uppercase tracking-wider">Reviews</h3>
+                    <h3 data-window-title className="text-nier-text-dark text-title uppercase tracking-wider">Reviews</h3>
                     <button
                         onClick={onClose}
                         className="text-body px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none"

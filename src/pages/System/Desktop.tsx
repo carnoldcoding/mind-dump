@@ -4,7 +4,7 @@ import BodyWindow from "./components/Body";
 import BacklogWindow from "./components/Backlog";
 import { useRevealSignal } from "../../hooks/useRevealSignal";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { fade, wipe } from "../../utils/motion";
+import { decode, fade, wipe } from "../../utils/motion";
 import { Panel } from "../../components/common/Panel";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 
@@ -32,10 +32,11 @@ const Desktop = () => {
     const revealed = useRevealSignal();
     const scope = useRef<HTMLDivElement>(null);
 
-    // The screen has no decoded title and no card grid, so its whole entrance
-    // is the frame arriving with its chrome a beat behind.
+    // The screen assembles in the canonical order: the frame Wipes, its label
+    // Decodes, and the rest of the chrome Fades a beat behind.
     useRevealTimeline(revealed, (tl) => {
         wipe(tl, '[data-panel-surface]');
+        decode(tl, '[data-window-title]', 'SYSTEM.OS', '<0.15');
         fade(tl, '[data-desktop-chrome]', '<0.2');
     }, scope);
     const [time, setTime] = useState("");
@@ -72,7 +73,7 @@ const Desktop = () => {
                 {/* Title bar */}
                 <div data-desktop-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                     <div className="flex items-center gap-3">
-                        <span className="text-nier-text-dark text-body uppercase tracking-widest font-semibold">
+                        <span data-window-title className="text-nier-text-dark text-body uppercase tracking-widest font-semibold">
                             SYSTEM.OS
                         </span>
                         <span className="text-nier-text-dark/40 text-label uppercase tracking-widest hidden sm:block">

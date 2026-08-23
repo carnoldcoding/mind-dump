@@ -10,7 +10,7 @@ import EntryEditModal from "./EntryEditModal";
 import { partitionBodyDocs, describeEntry, docId } from "./entry";
 import type { BodyDoc, Entry } from "./entry";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
-import { fade, wipe } from "../../../../utils/motion";
+import { decode, fade, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
 import { useRetained } from "../../../../hooks/useRetained";
 import { Panel } from "../../../../components/common/Panel";
@@ -22,12 +22,13 @@ type Props = { onClose: () => void };
 const BodyWindow = ({ onClose }: Props) => {
     // No signal to wait on: this window only ever mounts well after boot is
     // done — the user has to open System, then click a folder icon — and
-    // Desktop's conditional render gives it a fresh mount each time. It has no
-    // decoded title and no card grid, so its whole entrance is the frame
-    // arriving with its chrome a beat behind.
+    // Desktop's conditional render gives it a fresh mount each time. The
+    // canonical order: the frame Wipes, its title Decodes, and the rest of the
+    // chrome Fades a beat behind.
     const scope = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, (tl) => {
         wipe(tl, '[data-panel-surface]');
+        decode(tl, '[data-window-title]', 'Body', '<0.15');
         fade(tl, '[data-window-chrome]', '<0.2');
     }, scope);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
@@ -135,7 +136,7 @@ const BodyWindow = ({ onClose }: Props) => {
 
                     {/* Window title bar */}
                     <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 className="text-nier-text-dark text-title uppercase tracking-wider">Body</h3>
+                        <h3 data-window-title className="text-nier-text-dark text-title uppercase tracking-wider">Body</h3>
                         <button onClick={onClose} aria-label="Close" className="text-body px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none">
                             ✕
                         </button>

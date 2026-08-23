@@ -39,7 +39,7 @@ import { datesForTransition } from "../../../../utils/lifecycle";
 import { daysWaiting } from "../../../../utils/capturedAt";
 import { writtenSections, SECTION_GLYPH } from "../../../../utils/critique";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
-import { domino, fade, wipe } from "../../../../utils/motion";
+import { decode, domino, fade, growth, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
 import { Panel } from "../../../../components/common/Panel";
 import { ReviewCover } from "../../../../components/review/ReviewCover";
@@ -342,6 +342,8 @@ const BacklogWindow = ({ onClose }: Props) => {
     const scope = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, (tl) => {
         wipe(tl, '[data-panel-surface]');
+        decode(tl, '[data-window-title]', 'Backlog', '<0.15');
+        growth(tl, '[data-hairline]', '<0.1');
         fade(tl, '[data-window-chrome]', '<0.2');
     }, scope);
 
@@ -495,7 +497,7 @@ const BacklogWindow = ({ onClose }: Props) => {
             frameRef={panelRef}
         >
                 <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                    <h3 className="text-nier-text-dark text-title uppercase tracking-wider">Backlog</h3>
+                    <h3 data-window-title className="text-nier-text-dark text-title uppercase tracking-wider">Backlog</h3>
                     <button
                         onClick={onClose}
                         aria-label="Close backlog"
@@ -603,7 +605,8 @@ const BacklogWindow = ({ onClose }: Props) => {
                 {/* The caption bar. Says what is under the pointer, and carries
                     the fault as well, because the state column is desktop-only
                     and a phone would otherwise be told nothing. */}
-                <div data-window-chrome className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
+                <div data-window-chrome className="relative flex-shrink-0 flex items-center gap-3 px-4 py-2">
+                    <span data-hairline aria-hidden="true" className="absolute top-0 left-0 w-full h-px bg-nier-150 origin-left" />
                     <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                     <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
                         {captionFor(selected, error, listed)}

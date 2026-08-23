@@ -9,7 +9,7 @@ import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { fade, growth, wipe } from "../../utils/motion";
+import { decode, fade, growth, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { Modal } from "../../components/common/Modal";
@@ -166,6 +166,8 @@ const ReviewDetail = () => {
     // nothing once the panel appeared.
     useRevealTimeline(contentActive, (tl) => {
         wipe(tl, '[data-panel-surface]');
+        decode(tl, '[data-detail-title]', data?.title ?? '', '<0.15');
+        growth(tl, '[data-hairline]', '<0.1');
         fade(tl, '[data-detail-chrome]', '<0.2');
     }, scope, [loading, slug]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
@@ -279,7 +281,7 @@ const ReviewDetail = () => {
                     <div data-detail-chrome className="h-10 bg-nier-150 flex items-stretch flex-shrink-0">
                         <div className="flex items-center gap-2 px-4 flex-1 min-w-0">
                             <ion-icon name={TYPE_ICON[data.type]} style={{ flexShrink: 0 }}></ion-icon>
-                            <h3 className="text-nier-text-dark text-heading truncate uppercase tracking-wide">
+                            <h3 data-detail-title className="text-nier-text-dark text-heading truncate uppercase tracking-wide">
                                 {data.title}
                             </h3>
                         </div>
@@ -480,7 +482,8 @@ const ReviewDetail = () => {
                         the right. It replaces an italic line that repeated the
                         release date and the creator, both of which now sit
                         under the cover they belong to. */}
-                    <div data-detail-chrome className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
+                    <div data-detail-chrome className="relative flex-shrink-0 flex items-center gap-3 px-4 py-2">
+                        <span data-hairline aria-hidden="true" className="absolute top-0 left-0 w-full h-px bg-nier-150 origin-left" />
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                         <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(data.title, activeTab, sectionCount)}
