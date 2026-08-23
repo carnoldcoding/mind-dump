@@ -25,7 +25,7 @@ import { TabBar } from "./TabBar"
 import { FieldRow } from "./FieldRow"
 import { DEFAULT_TAB, hintFor, resolveTab, tabsFor, type TabId } from "./tabs"
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline"
-import { domino } from "../../../../utils/motion"
+import { decode, domino } from "../../../../utils/motion"
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -422,6 +422,19 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         [activeTab, isOpen],
     );
 
+    // The heavy editor gets the full internal cascade: Modal wipes the surface,
+    // this Decodes the header title, and the tab rows above Domino in. The tab
+    // suffix beside the title is a separate span, left alone — Decode rewrites an
+    // element's whole text, so only the title text carries the marker.
+    const headerScope = useRef<HTMLDivElement>(null);
+    const modalTitle = editingReview ? `Edit — ${editingReview.title}` : 'New Review';
+    useRevealTimeline(
+        isOpen,
+        (timeline) => decode(timeline, '[data-modal-title]', modalTitle),
+        headerScope,
+        [isOpen, modalTitle],
+    );
+
     // A fallback has to be committed, not just displayed. Leaving the original
     // choice in place would make it temporary: switching back to a game would
     // return the reader to Mods unasked, mid-edit on Data — the same move the
@@ -457,9 +470,9 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
                 {/* Header. The section is a suffix in the reference's register:
                     the subject, then which part of it is open. */}
-                <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 gap-3 min-w-0">
+                <div ref={headerScope} className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 gap-3 min-w-0">
                     <h3 className="text-nier-text-dark text-title uppercase tracking-wide truncate min-w-0">
-                        {editingReview ? `Edit — ${editingReview.title}` : 'New Review'}
+                        <span data-modal-title>{modalTitle}</span>
                         <span className="text-body tracking-[0.2em] text-nier-text-dark/50 ml-3">
                             · {tabs.find(t => t.id === activeTab)?.label}
                         </span>
