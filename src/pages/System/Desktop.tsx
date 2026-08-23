@@ -63,7 +63,7 @@ const Desktop = () => {
     return (
         <Panel
             wrapperRef={scope}
-            wrapperClassName="mt-5"
+            wrapperClassName="mt-0 lg:mt-5"
             className="bg-nier-50 border border-nier-150 h-[42rem]"
             style={maxHeight ? { maxHeight } : undefined}
             frameRef={panelRef}

@@ -269,7 +269,7 @@ const ReviewDetail = () => {
             <Panel
                 key={slug}
                 wrapperRef={scope}
-                wrapperClassName="mt-5"
+                wrapperClassName="mt-0 lg:mt-5"
                 className="bg-nier-100 md:h-[34rem]"
                 style={maxHeight ? { maxHeight } : undefined}
                 frameRef={panelRef}

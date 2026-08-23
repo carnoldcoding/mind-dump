@@ -759,7 +759,7 @@ const Review = () => {
           <Fragment key={category}>
           <Panel
                 wrapperRef={scope}
-                wrapperClassName="mt-5"
+                wrapperClassName="mt-0 lg:mt-5"
                 className="bg-nier-100 h-[42rem]"
                 style={maxHeight ? { maxHeight } : undefined}
                 frameRef={panelRef}

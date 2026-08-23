@@ -25,7 +25,7 @@ const PageHeader = ({ name }: { name: string }) => {
     }, scope);
 
     return (
-        <div ref={scope} className="relative">
+        <div ref={scope} className="relative mb-2 lg:mb-0">
             <h1 data-page-title className="text-display text-nier-dark relative z-20 uppercase">{name}</h1>
             <span
                 data-page-title-shadow
