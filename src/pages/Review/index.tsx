@@ -374,17 +374,17 @@ const Review = () => {
         wipe(tl, '[data-panel-surface]');
     }, scope);
 
-    // The frame's contents, in the canonical arrival order and overlapping in
-    // waves: the panel title Decodes toward the new Category name, the
-    // structural hairlines Grow from their left edge, and the genre rows Domino
-    // in. Keyed on `category`, so the whole beat replays on every toggle while
-    // the frame above stays put. The cards are a separate wave below, on their
-    // own readiness.
+    // The frame's chrome, in canonical order and overlapping in waves: the panel
+    // title Decodes toward the new Category name, then the structural hairlines
+    // Grow from their left edge. Both exist from the first frame — no fetch — so
+    // this is keyed on `category` alone and replays on every toggle while the
+    // frame above stays put.
     useRevealTimeline(contentActive, (tl) => {
         decode(tl, '[data-panel-title]', panelTitle);
         growth(tl, '[data-hairline]', '<0.1');
-        domino(tl, '[data-genre-row]', '<0.05');
     }, scope, [category]);
+    // The genre-row Domino is wired below, once `visibleGenres` is in scope —
+    // it keys on that set, not on `category`.
 
     // The shelf's cards Domino in on their own timeline: on the fetch (`loading`)
     // the first time there are cards to address, and on every Category toggle
@@ -534,6 +534,18 @@ const Review = () => {
         () => genresInUse(shelved, genreOptions),
         [shelved, genreOptions],
     );
+
+    // The genre rows are their own Domino wave: like the cards, they do not
+    // exist when the frame mounts — they are the fetched shelf run through
+    // genresInUse, and `genreOptions` is filled by an effect that runs after
+    // layout. Keyed on the actual visible set (not `category`), so the timeline
+    // is built once the rows are really on screen and replays whenever the set
+    // changes. A `category`-keyed build fired a frame too early and caught a
+    // stale subset — which is what left some rows animating and the rest popping
+    // in.
+    useRevealTimeline(contentActive, (tl) => {
+        domino(tl, '[data-genre-row]');
+    }, scope, [visibleGenres.join('|')]);
 
     // The five-year spans the shelf actually covers, not a fixed range — a
     // Category whose oldest thing is from 1994 has no business offering the
