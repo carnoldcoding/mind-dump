@@ -30,7 +30,7 @@ export const SelectField = ({ label, options, value, onChange }: SelectFieldProp
       {/* Floating label */}
       <label className={`absolute pointer-events-none transition-all text-gray-500 ${
         value
-          ? 'top-[-10px] left-2 text-sm bg-nier-100-lighter px-1'
+          ? 'top-[-10px] left-2 text-body bg-nier-100-lighter px-1'
           : 'top-3 left-4'
       }`}>
         {label}

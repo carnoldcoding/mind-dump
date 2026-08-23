@@ -106,11 +106,11 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
             {/* Movement and goal */}
             <div className="min-h-7 bg-nier-150 flex flex-wrap items-center justify-between gap-2 px-3 py-1">
                 <div className="flex items-baseline gap-3 min-w-0">
-                    <span className="text-nier-text-dark text-sm uppercase tracking-wide truncate">
+                    <span className="text-nier-text-dark text-body uppercase tracking-wide truncate">
                         {movement.displayName}
                     </span>
-                    <span className="text-[9px] uppercase tracking-widest text-nier-text-dark/60 shrink-0">Goal</span>
-                    <span className="text-xs text-nier-text-dark/80 shrink-0">
+                    <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/60 shrink-0">Goal</span>
+                    <span className="text-label text-nier-text-dark/80 shrink-0">
                         {goalText ?? "No goal set"}
                     </span>
                 </div>
@@ -118,7 +118,7 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
                 <button
                     onClick={() => (goalOpen ? setGoalOpen(false) : openGoal())}
                     aria-expanded={goalOpen}
-                    className="text-[10px] uppercase tracking-widest px-3 py-1.5 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors"
+                    className="text-eyebrow uppercase tracking-widest px-3 py-1.5 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors"
                 >
                     {goalOpen ? "Cancel" : goalText ? "Edit Goal" : "Set Goal"}
                 </button>
@@ -135,15 +135,15 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
                         <button
                             onClick={handleSaveGoal}
                             disabled={goalSaving}
-                            className="shrink-0 uppercase tracking-wide text-sm px-5 h-12 border border-nier-dark text-nier-text-dark cursor-pointer hover:bg-nier-150/50 disabled:opacity-50"
+                            className="shrink-0 uppercase tracking-wide text-body px-5 h-12 border border-nier-dark text-nier-text-dark cursor-pointer hover:bg-nier-150/50 disabled:opacity-50"
                         >
                             {goalSaving ? "…" : "Save"}
                         </button>
                     </div>
-                    <p className="text-[10px] uppercase tracking-widest text-nier-text-dark/40">
+                    <p className="text-eyebrow uppercase tracking-widest text-nier-text-dark/40">
                         Clear all three to remove the goal
                     </p>
-                    {goalError && <p className="text-red-800 text-xs">{goalError}</p>}
+                    {goalError && <p className="text-red-800 text-label">{goalError}</p>}
                 </div>
             )}
 
@@ -155,13 +155,13 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
                 <button
                     onClick={handleLog}
                     disabled={saving}
-                    className="shrink-0 uppercase tracking-wide text-sm px-5 h-12 border border-nier-dark bg-nier-text-dark text-nier-100-lighter cursor-pointer hover:bg-nier-text-dark/90 disabled:opacity-50"
+                    className="shrink-0 uppercase tracking-wide text-body px-5 h-12 border border-nier-dark bg-nier-text-dark text-nier-100-lighter cursor-pointer hover:bg-nier-text-dark/90 disabled:opacity-50"
                 >
                     {saving ? "…" : "Log"}
                 </button>
             </div>
 
-            {error && <p className="text-red-800 text-xs px-3 pb-2">{error}</p>}
+            {error && <p className="text-red-800 text-label px-3 pb-2">{error}</p>}
 
             {/* Notes — read while filling the fields in, not a tab away */}
             {movement.notes && (
@@ -170,7 +170,7 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
                     aria-expanded={notesOpen}
                     className="w-full text-left px-3 py-2 border-t border-nier-150/40 cursor-pointer hover:bg-nier-150/20 transition-colors"
                 >
-                    <span className={`text-xs text-nier-text-dark/70 whitespace-pre-wrap ${notesOpen ? "" : "line-clamp-1"}`}>
+                    <span className={`text-label text-nier-text-dark/70 whitespace-pre-wrap ${notesOpen ? "" : "line-clamp-1"}`}>
                         {movement.notes}
                     </span>
                 </button>

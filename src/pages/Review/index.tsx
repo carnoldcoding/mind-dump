@@ -14,6 +14,8 @@ import { useRevealTimeline } from "../../hooks/useRevealTimeline";
 import { decode, domino, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
+import { useScrollLock } from "../../utils/scrollLock";
+import { genresInUse } from "../../utils/visibleGenres";
 
 // The rating scale, asserted in one place. Every rating stored is between 3
 // and 4.5 with a decimal, so the scale is five points and the useful grain is
@@ -52,7 +54,7 @@ const shelfLine = (review: Pick<ReviewRecord, "rating" | "date_completed">): str
 
 /** One `label ......... value` line of the status readout. Same object as Now's. */
 const Readout = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div className="flex items-baseline justify-between gap-3 text-xs">
+    <div className="flex items-baseline justify-between gap-3 text-label">
         <span className="uppercase tracking-wide text-nier-text-dark/70">{label}</span>
         <span className="uppercase text-nier-text-dark">{value}</span>
     </div>
@@ -90,7 +92,7 @@ const ShelfStatus = ({ shelved, showing, error }: {
 
     return (
         <div className="flex flex-col">
-            <h2 className="bg-nier-dark text-nier-text-light text-xs uppercase tracking-widest px-2 py-1">
+            <h2 className="bg-nier-dark text-nier-text-light text-label uppercase tracking-widest px-2 py-1">
                 Shelf
             </h2>
             <div className="flex flex-col gap-1 px-2 py-3">
@@ -109,7 +111,7 @@ const ShelfStatus = ({ shelved, showing, error }: {
             </div>
             {/* The self-diagnostic line, and a real one: it says NO ERROR
                 because it is capable of saying something else. */}
-            <p className={`text-[10px] uppercase tracking-[0.3em] text-center py-4 ${
+            <p className={`text-eyebrow uppercase tracking-[0.3em] text-center py-4 ${
                 error ? 'text-nier-text-dark' : 'text-nier-text-dark/50'
             }`}>
                 {error ? 'Error' : 'No Error'}
@@ -154,7 +156,7 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
         <li className="relative">
             <span
                 aria-hidden="true"
-                className={`absolute -left-3 top-1/2 -translate-y-1/2 text-[10px] text-nier-text-dark transition-opacity duration-150 ${
+                className={`absolute -left-3 top-1/2 -translate-y-1/2 text-eyebrow text-nier-text-dark transition-opacity duration-150 ${
                     selected ? 'opacity-100' : 'opacity-0'
                 }`}
             >
@@ -174,17 +176,17 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
             >
                 {/* The reference's ■ bullet: filled on a live row, hollow on a
                     dead one. */}
-                <span aria-hidden="true" className={`text-[8px] leading-none ${
+                <span aria-hidden="true" className={`text-eyebrow leading-none ${
                     selected ? 'text-nier-text-light' : dead ? 'text-nier-text-dark/25' : 'text-nier-text-dark/70'
                 }`}>
                     {dead ? '□' : '■'}
                 </span>
-                <span className={`text-xs uppercase tracking-wide truncate ${
+                <span className={`text-label uppercase tracking-wide truncate ${
                     selected ? 'text-nier-text-light' : dead ? 'text-nier-text-dark/30' : 'text-nier-text-dark'
                 }`}>
                     {genre}
                 </span>
-                <span className={`ml-auto pl-2 text-[10px] tabular-nums ${
+                <span className={`ml-auto pl-2 text-eyebrow tabular-nums ${
                     selected ? 'text-nier-text-light/70' : dead ? 'text-nier-text-dark/25' : 'text-nier-text-dark/50'
                 }`}>
                     {count}
@@ -198,7 +200,7 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
  *  bar, one level in — the same object the reference reuses at every depth. */
 const Group = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <section aria-label={title} className="flex flex-col min-h-0">
-        <h2 className="bg-nier-dark text-nier-text-light text-[10px] uppercase tracking-widest px-2 py-1 flex-shrink-0">
+        <h2 className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1 flex-shrink-0">
             {title}
         </h2>
         {children}
@@ -266,7 +268,7 @@ const Track = ({ cells, selection, onChange, onClear, ticks, readout }: {
     return (
         <div className="flex flex-col gap-1 pt-2">
             <div className="flex items-baseline justify-between gap-2">
-                <span className={`text-[10px] uppercase tracking-wide tabular-nums ${
+                <span className={`text-eyebrow uppercase tracking-wide tabular-nums ${
                     selection ? 'text-nier-text-dark' : 'text-nier-text-dark/40'
                 }`}>
                     {readout}
@@ -275,7 +277,7 @@ const Track = ({ cells, selection, onChange, onClear, ticks, readout }: {
                     <button
                         onClick={() => { setAnchor(null); onClear(); }}
                         aria-label="Clear this range"
-                        className="text-sm leading-none cursor-pointer text-nier-text-dark/50 hover:text-nier-text-dark transition-colors duration-150"
+                        className="text-body leading-none cursor-pointer text-nier-text-dark/50 hover:text-nier-text-dark transition-colors duration-150"
                     >×</button>
                 )}
             </div>
@@ -307,7 +309,7 @@ const Track = ({ cells, selection, onChange, onClear, ticks, readout }: {
                 })}
             </div>
 
-            <div className="flex justify-between text-[9px] uppercase tracking-wide text-nier-text-dark/35">
+            <div className="flex justify-between text-eyebrow uppercase tracking-wide text-nier-text-dark/35">
                 <span>{ticks[0]}</span>
                 <span>{ticks[1]}</span>
             </div>
@@ -337,6 +339,9 @@ const Review = () => {
     // The filter column is permanent from `lg` up, where there is room for it
     // beside the grid. Below that it is an overlay, and this is what opens it.
     const [showFilters, setShowFilters] = useState<boolean>(false);
+    // The mobile filter menu already dims and closes on outside-press; the one
+    // thing it lacked was freezing the shelf behind it (item 7).
+    useScrollLock(showFilters);
     // What the caption bar is talking about. Whatever the pointer or the
     // keyboard is on — the cards are anchors already, so Tab walks them and
     // Enter opens them without this page handling a key.
@@ -511,6 +516,14 @@ const Review = () => {
         return counts;
     }, [genreOptions, filteredPosts]);
 
+    // Only genres some finished Review on this shelf actually has. Derived from
+    // the whole shelf, not the filtered view, so the row set is stable as
+    // filters toggle. Empty genres used to render dimmed; they are gone now.
+    const visibleGenres = useMemo(
+        () => genresInUse(shelved, genreOptions),
+        [shelved, genreOptions],
+    );
+
     // The five-year spans the shelf actually covers, not a fixed range — a
     // Category whose oldest thing is from 1994 has no business offering the
     // 1930s.
@@ -637,7 +650,7 @@ const Review = () => {
             <div className="flex flex-col gap-4 min-h-0 h-full overflow-y-auto">
                 <Group title="Genre">
                     <ul className="flex flex-col gap-0.5 mt-1 pl-3 max-h-52 min-h-0 overflow-y-auto">
-                        {genreOptions.map(genre => (
+                        {visibleGenres.map(genre => (
                             <GenreRow
                                 key={genre}
                                 genre={genre}
@@ -728,7 +741,7 @@ const Review = () => {
                 {activeFilters > 0 && (
                     <button
                         onClick={clearFilters}
-                        className="flex-shrink-0 text-[10px] uppercase tracking-widest px-2 py-1.5 bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer transition-colors duration-150"
+                        className="flex-shrink-0 text-eyebrow uppercase tracking-widest px-2 py-1.5 bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer transition-colors duration-150"
                     >
                         Clear {activeFilters} filter{activeFilters > 1 ? 's' : ''}
                     </button>
@@ -746,13 +759,13 @@ const Review = () => {
           <Fragment key={category}>
           <Panel
                 wrapperRef={scope}
-                wrapperClassName="mt-5"
+                wrapperClassName="mt-0 lg:mt-5"
                 className="bg-nier-100 h-[42rem]"
                 style={maxHeight ? { maxHeight } : undefined}
                 frameRef={panelRef}
             >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 data-panel-title className="text-nier-text-dark text-xl uppercase">{panelTitle}</h3>
+                        <h3 data-panel-title className="text-nier-text-dark text-title uppercase">{panelTitle}</h3>
                     </div>
 
                     {/* min-h-0 so the columns scroll inside the frame instead
@@ -782,7 +795,7 @@ const Review = () => {
                                 plenty of labelled values, and that is what a
                                 query is. */}
                             <div className="flex items-center gap-3 border-b border-nier-150 pb-2 mb-3 flex-shrink-0">
-                                <label htmlFor="shelf-search" className="text-[10px] uppercase tracking-widest text-nier-text-dark/40 flex-shrink-0">
+                                <label htmlFor="shelf-search" className="text-eyebrow uppercase tracking-widest text-nier-text-dark/40 flex-shrink-0">
                                     Search
                                 </label>
                                 <input
@@ -790,20 +803,20 @@ const Review = () => {
                                     value={query}
                                     onChange={e => setQuery(e.target.value)}
                                     placeholder="—"
-                                    className="flex-1 min-w-0 bg-transparent text-sm uppercase tracking-wide focus:outline-none placeholder:text-nier-text-dark/25"
+                                    className="flex-1 min-w-0 bg-transparent text-body uppercase tracking-wide focus:outline-none placeholder:text-nier-text-dark/25"
                                 />
                                 {query && (
                                     <button
                                         onClick={() => setQuery('')}
                                         aria-label="Clear search"
-                                        className="text-lg leading-none cursor-pointer text-nier-text-dark/50 hover:text-nier-text-dark transition-colors duration-150"
+                                        className="text-heading leading-none cursor-pointer text-nier-text-dark/50 hover:text-nier-text-dark transition-colors duration-150"
                                     >×</button>
                                 )}
                                 {/* Below lg the filter column is an overlay,
                                     and this is the only way to it. */}
                                 <button
                                     onClick={() => setShowFilters(true)}
-                                    className={`lg:hidden flex items-center gap-1.5 px-2 py-1 text-[10px] uppercase tracking-widest cursor-pointer transition-colors duration-150 flex-shrink-0 ${
+                                    className={`lg:hidden flex items-center gap-1.5 px-2 py-1 text-eyebrow uppercase tracking-widest cursor-pointer transition-colors duration-150 flex-shrink-0 ${
                                         activeFilters > 0
                                             ? 'bg-nier-dark text-nier-text-light'
                                             : 'bg-nier-150/60 hover:bg-nier-150'
@@ -847,7 +860,7 @@ const Review = () => {
                                         </div>
                                     ))
                                     : (
-                                        <p className="col-span-full text-sm text-nier-text-dark/50 py-4">
+                                        <p className="col-span-full text-body text-nier-text-dark/50 py-4">
                                             {/* With nothing fetched, "no matches"
                                                 is a claim about the filters that
                                                 isn't true — nothing was searched. */}
@@ -868,10 +881,10 @@ const Review = () => {
                         strip, accent block and all. */}
                     <div className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
-                        <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
+                        <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(selected, !!error, shown.length === 0)}
                         </p>
-                        <p className="ml-auto flex-shrink-0 text-xs uppercase tracking-wide text-nier-text-dark/50">
+                        <p className="ml-auto flex-shrink-0 text-label uppercase tracking-wide text-nier-text-dark/50">
                             <span className="hidden sm:inline">↕ Select&nbsp;&nbsp;&nbsp;</span>◉ Open
                         </p>
                     </div>
@@ -892,10 +905,10 @@ const Review = () => {
                             <div aria-hidden="true" className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
                             <div className="relative bg-nier-100 flex flex-col max-h-[70vh]">
                                 <div className="h-8 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
-                                    <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/70">Filter</span>
+                                    <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/70">Filter</span>
                                     <button
                                         onClick={() => setShowFilters(false)}
-                                        className="text-xl leading-none cursor-pointer hover:opacity-60 transition-opacity"
+                                        className="text-title leading-none cursor-pointer hover:opacity-60 transition-opacity"
                                     >×</button>
                                 </div>
                                 <div className="p-3 overflow-y-auto">

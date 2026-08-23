@@ -14,8 +14,18 @@ const Navigation = () => {
     const visibleNavItems = navItems.filter(item => item.path !== "/system" || trusted);
 
     return (
-        <>
-            <nav data-boot-border data-top-rule className="flex items-start justify-center pt-8 gap-10 fixed w-screen nier-dot-pattern bg-nier-50 z-50">
+        // `fixed` + z-order on the outer <nav>, which wears NO .nier-dot-pattern
+        // so they aren't overridden; the bar's look (pattern strip, background,
+        // its flex layout) lives on the inner wrapper that wears the class,
+        // mirroring BottomBar. Putting .nier-dot-pattern on a `fixed` element
+        // demoted it to normal flow — its position:relative outranks the `fixed`
+        // utility on a tie, and custom.css loads later. data-boot-border /
+        // data-top-rule ride the wrapper so the tabs stay its direct children
+        // for the boot stagger, the clip wipe reveals the bar, and CornerLines
+        // reads the rule's bottom. Layout reserves the measured height on <main>,
+        // so the old h-5 spacer is gone.
+        <nav className="fixed top-0 left-0 w-screen z-50">
+            <div data-boot-border data-top-rule className="flex items-start justify-center pt-8 gap-10 nier-dot-pattern bg-nier-50">
                 {visibleNavItems.map((item) => (
                     <NavTab
                         key={item.path}
@@ -29,9 +39,8 @@ const Navigation = () => {
                         }
                     />
                 ))}
-            </nav>
-            <div className="h-5"></div>
-        </>
+            </div>
+        </nav>
     );
 };
 

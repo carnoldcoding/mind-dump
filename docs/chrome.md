@@ -26,6 +26,51 @@ Seven variables in [`index.css`](../src/index.css), and nothing outside them.
 | `--color-nier-dark` | inverted backgrounds, and the frame's own line |
 | `--color-nier-text-dark` / `--color-nier-text-light` | text on light, text on inverted |
 
+## Type
+
+Six semantic steps in [`index.css`](../src/index.css), and nothing outside them:
+every text site maps to one of these rather than picking a raw size. They
+generate the `text-*` utilities named below. The floor is 12px — nothing renders
+smaller. Before this the app carried ~14 ad-hoc sizes, ~70 of them under 12px,
+down to 8px, which is why so much of it strained to read.
+
+| Token | Size | Used for |
+|---|---|---|
+| `text-display` | 48px desktop / 36px mobile | page titles |
+| `text-title` | 24px | window and modal headers |
+| `text-heading` | 18px | card titles, subsections |
+| `text-body` | 16px | prose, field values, inputs |
+| `text-label` | 14px | form labels, secondary meta |
+| `text-eyebrow` | 12px | the uppercase letter-spaced micro-labels |
+
+Two rules that keep it a system rather than a list:
+
+- **The tokens own their responsiveness.** Only `text-display` changes by
+  device, and it does so inside the token — a call site never writes a `md:`
+  size variant. Body and below are one size on every device.
+- **16px inputs.** `text-body` is 16px, and an unlayered mobile rule floors
+  every form control at 16px, which is the size iOS Safari needs to not zoom the
+  viewport on focus. Do not give an input a smaller step.
+
+## Scroll and overlays
+
+The app is a fixed-viewport shell: the page never scrolls, and all scrolling
+lives in one container, `#app-scroll`, between the fixed nav and footer. See
+[ADR-0009](./adr/0009-fixed-viewport-shell.md) — it is worth reading before
+building a surface that scrolls, because the surface must scroll *inside* a
+bounded container, not by growing the page.
+
+Every overlay obeys one contract: a dimming `bg-nier-dark/40` backdrop, plus a
+freeze of `#app-scroll` (`useScrollLock`) while open, so the page behind it
+neither moves nor shows through. Reach for the shared [`Modal`](../src/components/common/Modal.tsx)
+and it comes for free. A bespoke overlay (the mobile filter menu, the nav
+drawer) must call `useScrollLock` itself and lay its own backdrop.
+
+Dismissal is a per-overlay flavor: light overlays (Search, filters, the drawer)
+close on a press outside them; form editors pass `dismissOnOutsidePress={false}`
+so they dim and lock but dismiss only by their close control or Escape — a stray
+tap outside a form must not discard an edit.
+
 ## The parts
 
 ### Frame and shadow

@@ -63,7 +63,7 @@ const Desktop = () => {
     return (
         <Panel
             wrapperRef={scope}
-            wrapperClassName="mt-5"
+            wrapperClassName="mt-0 lg:mt-5"
             className="bg-nier-50 border border-nier-150 h-[42rem]"
             style={maxHeight ? { maxHeight } : undefined}
             frameRef={panelRef}
@@ -72,10 +72,10 @@ const Desktop = () => {
                 {/* Title bar */}
                 <div data-desktop-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                     <div className="flex items-center gap-3">
-                        <span className="text-nier-text-dark text-sm uppercase tracking-widest font-semibold">
+                        <span className="text-nier-text-dark text-body uppercase tracking-widest font-semibold">
                             SYSTEM.OS
                         </span>
-                        <span className="text-nier-text-dark/40 text-xs uppercase tracking-widest hidden sm:block">
+                        <span className="text-nier-text-dark/40 text-label uppercase tracking-widest hidden sm:block">
                             // TERMINAL v.2B
                         </span>
                     </div>
@@ -94,7 +94,7 @@ const Desktop = () => {
                                 <div className={`p-3 transition-colors ${openApp === app ? "bg-nier-dark/15" : "hover:bg-nier-150/20"}`}>
                                     <FolderIcon selected={openApp === app} />
                                 </div>
-                                <span className={`text-xs uppercase tracking-widest font-semibold px-1.5 py-0.5 transition-colors ${
+                                <span className={`text-label uppercase tracking-widest font-semibold px-1.5 py-0.5 transition-colors ${
                                     openApp === app
                                         ? "bg-nier-text-dark text-nier-100-lighter"
                                         : "text-nier-text-dark group-hover:bg-nier-150/40"
@@ -125,14 +125,14 @@ const Desktop = () => {
 
                 {/* Taskbar */}
                 <div data-desktop-chrome className="h-8 bg-nier-150 border-t border-nier-dark/20 flex items-center justify-between px-4 flex-shrink-0">
-                    <span className="text-xs text-nier-text-dark uppercase tracking-widest opacity-50">
+                    <span className="text-label text-nier-text-dark uppercase tracking-widest opacity-50">
                         MIND DUMP OS
                     </span>
                     <div className="flex items-center gap-4">
-                        <span className="text-xs text-nier-text-dark tracking-wider opacity-60 hidden sm:block">
+                        <span className="text-label text-nier-text-dark tracking-wider opacity-60 hidden sm:block">
                             {date}
                         </span>
-                        <span className="text-xs text-nier-text-dark font-semibold tracking-wider opacity-70">
+                        <span className="text-label text-nier-text-dark font-semibold tracking-wider opacity-70">
                             {time}
                         </span>
                     </div>

@@ -9,7 +9,7 @@ export const UnderConstruction = ({ message = "Missing Package" }) => {
   
         {/* Main message */}
         <h3 
-          className="text-xl md:text-2xl font-mono mb-3"
+          className="text-title font-mono mb-3"
           style={{ color: '#6b6450' }}
         >
           {message}
@@ -17,7 +17,7 @@ export const UnderConstruction = ({ message = "Missing Package" }) => {
   
         {/* Status text */}
         <p 
-          className="text-sm md:text-base font-mono opacity-75"
+          className="text-body font-mono opacity-75"
           style={{ color: '#535242' }}
         >
           // initialization pending //

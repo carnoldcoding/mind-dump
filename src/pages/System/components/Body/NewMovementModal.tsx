@@ -58,25 +58,25 @@ const NewMovementModal = ({ open, order, onClose, onSaved }: Props) => {
     };
 
     return (
-        <Modal open={open} onClose={onClose} label="New Movement" className="w-full max-w-md">
+        <Modal open={open} onClose={onClose} dismissOnOutsidePress={false} label="New Movement" className="w-full max-w-md">
                 <article className="bg-nier-100-lighter relative">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5">
-                        <span className="text-nier-text-dark text-xl uppercase tracking-wide">New Movement</span>
-                        <button onClick={onClose} aria-label="Close" className="text-3xl leading-none cursor-pointer hover:text-nier-dark transition-colors">×</button>
+                        <span className="text-nier-text-dark text-title uppercase tracking-wide">New Movement</span>
+                        <button onClick={onClose} aria-label="Close" className="text-title leading-none cursor-pointer hover:text-nier-dark transition-colors">×</button>
                     </div>
 
                     <div className="p-5 flex flex-col gap-4">
                         <TextField label="Movement Name" value={name} onChange={setName} />
 
                         <div className="flex flex-col gap-1.5">
-                            <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">Type</span>
+                            <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">Type</span>
                             <div className="flex gap-2">
                                 {(["upper", "lower"] as const).map(t => (
                                     <button
                                         key={t}
                                         onClick={() => setTag(tag === t ? null : t)}
-                                        className={`text-xs uppercase tracking-wide px-4 min-h-11 border border-nier-dark cursor-pointer transition-colors ${
+                                        className={`text-label uppercase tracking-wide px-4 min-h-11 border border-nier-dark cursor-pointer transition-colors ${
                                             tag === t
                                                 ? "bg-nier-text-dark text-nier-100-lighter"
                                                 : "text-nier-text-dark hover:bg-nier-150/50"
@@ -88,7 +88,7 @@ const NewMovementModal = ({ open, order, onClose, onSaved }: Props) => {
                             </div>
                         </div>
 
-                        {error && <p className="text-red-800 text-sm">{error}</p>}
+                        {error && <p className="text-red-800 text-body">{error}</p>}
 
                         <div className="flex justify-end gap-2 pt-1">
                             <Button type="secondary" label="Cancel"                      handleClick={onClose} />

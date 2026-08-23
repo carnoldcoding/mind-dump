@@ -38,10 +38,10 @@ const ReviewsWindow = ({ onClose }: Props) => {
             frameRef={panelRef}
         >
                 <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                    <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Reviews</h3>
+                    <h3 className="text-nier-text-dark text-title uppercase tracking-wider">Reviews</h3>
                     <button
                         onClick={onClose}
-                        className="text-sm px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none"
+                        className="text-body px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none"
                     >
                         ✕
                     </button>

@@ -45,7 +45,7 @@ export const UnstartedRow = ({ review, picked, onHover, onPick, onStart }: Unsta
             >
                 {/* Reserved whether or not it is showing, so a row does not
                     shift sideways as the pick moves down the list. */}
-                <span aria-hidden="true" className={`w-3 flex-shrink-0 text-[10px] ${picked ? 'opacity-100' : 'opacity-0'}`}>
+                <span aria-hidden="true" className={`w-3 flex-shrink-0 text-eyebrow ${picked ? 'opacity-100' : 'opacity-0'}`}>
                     ➤
                 </span>
 
@@ -53,12 +53,12 @@ export const UnstartedRow = ({ review, picked, onHover, onPick, onStart }: Unsta
                     <ReviewCover imagePath={review.image_path} fill />
                 </span>
 
-                <span className="flex-1 min-w-0 text-xs uppercase tracking-wide truncate">
+                <span className="flex-1 min-w-0 text-label uppercase tracking-wide truncate">
                     {review.title}
                 </span>
 
                 {waiting !== undefined && (
-                    <span className={`text-[10px] uppercase tracking-wide whitespace-nowrap tabular-nums ${
+                    <span className={`text-eyebrow uppercase tracking-wide whitespace-nowrap tabular-nums ${
                         picked ? 'text-nier-text-light/60' : 'text-nier-text-dark/40'
                     }`}>
                         {waiting}d
@@ -72,7 +72,7 @@ export const UnstartedRow = ({ review, picked, onHover, onPick, onStart }: Unsta
                     type="button"
                     onClick={event => { event.stopPropagation(); onStart(review); }}
                     aria-label={`Start ${review.title}`}
-                    className={`text-[10px] uppercase tracking-widest px-1.5 py-0.5 flex-shrink-0 transition-opacity duration-150 cursor-pointer ${
+                    className={`text-eyebrow uppercase tracking-widest px-1.5 py-0.5 flex-shrink-0 transition-opacity duration-150 cursor-pointer ${
                         picked
                             ? 'opacity-100 bg-nier-text-light/15 hover:bg-nier-text-light/30'
                             : 'opacity-0 group-hover:opacity-100 bg-nier-dark text-nier-text-light hover:bg-nier-text-dark'

@@ -141,17 +141,17 @@ export const SearchModal = () => {
 
                 <div className="relative bg-nier-100 border border-nier-150">
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-4">
-                        <h3 className="text-nier-text-dark text-lg uppercase tracking-wider">Search</h3>
+                        <h3 className="text-nier-text-dark text-heading uppercase tracking-wider">Search</h3>
                         <button
                             onClick={close}
                             aria-label="Close search"
-                            className="text-2xl leading-none cursor-pointer hover:text-nier-text-light"
+                            className="text-title leading-none cursor-pointer hover:text-nier-text-light"
                         >×</button>
                     </div>
 
                     <div className="p-4 flex flex-col gap-4" role="search">
                         <div className="flex items-center gap-2 border-b border-nier-dark/40">
-                            <span aria-hidden="true" className="text-lg leading-none text-nier-text-dark">&gt;</span>
+                            <span aria-hidden="true" className="text-heading leading-none text-nier-text-dark">&gt;</span>
                             <input
                                 ref={attachInput}
                                 type="text"
@@ -178,7 +178,7 @@ export const SearchModal = () => {
                                     <div key={group.type}>
                                         <div className="flex items-center gap-2 mb-1">
                                             <img src={group.icon} className="bg-nier-dark p-0.5 w-4 h-4" alt="" />
-                                            <h2 className="text-sm uppercase tracking-wide">{group.label}</h2>
+                                            <h2 className="text-body uppercase tracking-wide">{group.label}</h2>
                                         </div>
 
                                         <ul className="flex flex-col" role="group" aria-label={group.label}>
@@ -208,7 +208,7 @@ export const SearchModal = () => {
                                                             <p className={`flex-1 truncate ${isHighlighted ? 'text-nier-text-light' : ''}`}>
                                                                 {review.title}
                                                             </p>
-                                                            <span className={`text-xs uppercase tracking-wide flex-shrink-0 ${
+                                                            <span className={`text-label uppercase tracking-wide flex-shrink-0 ${
                                                                 isHighlighted ? 'text-nier-text-light/70' : 'text-nier-text-dark/50'
                                                             }`}>
                                                                 {STATUS_LABEL[review.status ?? ''] ?? review.status}

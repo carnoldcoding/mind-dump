@@ -82,7 +82,7 @@ const WorkoutGrid = ({ entries }: Props) => {
     return (
         <div className="bg-nier-100-lighter relative" ref={containerRef}>
             <div className="h-7 w-full bg-nier-150 flex items-center px-3">
-                <span className="text-nier-text-dark text-sm">Workout Frequency</span>
+                <span className="text-nier-text-dark text-body">Workout Frequency</span>
             </div>
             <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
 
@@ -92,7 +92,7 @@ const WorkoutGrid = ({ entries }: Props) => {
                     {weeks.map((_, wi) => {
                         const label = monthLabels.find(m => m.col === wi);
                         return (
-                            <div key={wi} className="w-3 shrink-0 text-[9px] text-nier-text-dark/50 uppercase">
+                            <div key={wi} className="w-3 shrink-0 text-eyebrow text-nier-text-dark/50 uppercase">
                                 {label?.label ?? ""}
                             </div>
                         );
@@ -103,7 +103,7 @@ const WorkoutGrid = ({ entries }: Props) => {
                     {/* Day-of-week labels */}
                     <div className="flex flex-col gap-[3px] mr-1 shrink-0">
                         {DAYS.map((d, i) => (
-                            <div key={i} className="w-6 h-3 leading-3 text-[9px] text-nier-text-dark/50 uppercase">
+                            <div key={i} className="w-6 h-3 leading-3 text-eyebrow text-nier-text-dark/50 uppercase">
                                 {i % 2 === 1 ? d : ""}
                             </div>
                         ))}
@@ -130,7 +130,7 @@ const WorkoutGrid = ({ entries }: Props) => {
             {/* Tooltip */}
             {tooltip && (
                 <div
-                    className="absolute z-20 bg-nier-text-dark text-nier-100-lighter text-[10px] uppercase tracking-wide px-2 py-1 pointer-events-none whitespace-nowrap"
+                    className="absolute z-20 bg-nier-text-dark text-nier-100-lighter text-eyebrow uppercase tracking-wide px-2 py-1 pointer-events-none whitespace-nowrap"
                     style={{ left: tooltip.x, top: tooltip.y }}
                 >
                     {tooltip.text}

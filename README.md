@@ -24,4 +24,4 @@ npm run dev
 - [`CLAUDE.md`](./CLAUDE.md) — orientation for working in this codebase
 - [`CONTEXT.md`](./CONTEXT.md) — domain vocabulary
 - [`docs/architecture.md`](./docs/architecture.md) — stack, routing, auth, backend boundary
-- [`docs/branching.md`](./docs/branching.md) — git workflow
+- git workflow — global `~/.claude/CLAUDE.md` "Branching strategy" section

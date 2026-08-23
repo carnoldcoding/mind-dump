@@ -223,7 +223,7 @@ export const Capture = ({ reviews }: Props) => {
             <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
             <div className="w-full bg-nier-100-lighter relative">
                 <div className="h-7 w-full bg-nier-150 flex items-center px-2">
-                    <h3 className="text-nier-text-dark text-sm">Capture</h3>
+                    <h3 className="text-nier-text-dark text-body">Capture</h3>
                 </div>
 
                 {/* Stacks on narrow screens so it stays usable one-handed on
@@ -262,24 +262,24 @@ export const Capture = ({ reviews }: Props) => {
                 </div>
 
                 {typedDuplicate && (
-                    <p className="px-3 pb-2 text-sm text-nier-text-dark/70">
+                    <p className="px-3 pb-2 text-body text-nier-text-dark/70">
                         Already captured: {typedDuplicate.title} ({typedDuplicate.status})
                     </p>
                 )}
-                {error && <p className="px-3 pb-2 text-sm text-red-700">{error}</p>}
+                {error && <p className="px-3 pb-2 text-body text-red-700">{error}</p>}
 
                 {lookup.status === 'searching' && (
-                    <p className="px-3 pb-3 text-sm text-nier-text-dark/50">Searching…</p>
+                    <p className="px-3 pb-3 text-body text-nier-text-dark/50">Searching…</p>
                 )}
 
                 {lookup.status === 'failed' && (
-                    <p className="px-3 pb-3 text-sm text-nier-text-dark/70">
+                    <p className="px-3 pb-3 text-body text-nier-text-dark/70">
                         Lookup unavailable — Capture still records the title.
                     </p>
                 )}
 
                 {lookup.status === 'ready' && candidates.length === 0 && (
-                    <p className="px-3 pb-3 text-sm text-nier-text-dark/50">
+                    <p className="px-3 pb-3 text-body text-nier-text-dark/50">
                         No matches — Capture records the title as typed.
                     </p>
                 )}
@@ -318,13 +318,13 @@ export const Capture = ({ reviews }: Props) => {
                                                 />
                                             )}
                                         </div>
-                                        <span className={`flex-1 truncate text-sm uppercase tracking-wide ${
+                                        <span className={`flex-1 truncate text-body uppercase tracking-wide ${
                                             isHighlighted ? 'text-nier-text-light' : ''
                                         }`}>
                                             {candidate.title}
                                         </span>
                                         {seen && (
-                                            <span className={`text-xs uppercase tracking-wide flex-shrink-0 ${
+                                            <span className={`text-label uppercase tracking-wide flex-shrink-0 ${
                                                 isHighlighted ? 'text-nier-text-light/70' : 'text-nier-text-dark/50'
                                             }`}>
                                                 Captured
@@ -332,7 +332,7 @@ export const Capture = ({ reviews }: Props) => {
                                         )}
                                         {/* The year is what tells a remake
                                             from its original at a glance. */}
-                                        <span className={`text-xs flex-shrink-0 ${
+                                        <span className={`text-label flex-shrink-0 ${
                                             isHighlighted ? 'text-nier-text-light/70' : 'text-nier-text-dark/50'
                                         }`}>
                                             {candidate.release_date?.slice(0, 4) ?? '—'}

@@ -49,7 +49,7 @@ export const CategoryRail = ({ categories, active, onSelect }: CategoryRailProps
                     onClick={() => !empty && onSelect(value)}
                     className={[
                         'flex items-baseline justify-between gap-2 px-2 py-1 whitespace-nowrap',
-                        'text-[10px] uppercase tracking-widest transition-colors duration-150',
+                        'text-eyebrow uppercase tracking-widest transition-colors duration-150',
                         isActive ? 'bg-nier-dark text-nier-text-light' : 'bg-nier-150/25 text-nier-text-dark',
                         empty ? 'opacity-35 cursor-default' : isActive ? 'cursor-default' : 'cursor-pointer hover:bg-nier-150',
                     ].join(' ')}

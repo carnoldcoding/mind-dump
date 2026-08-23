@@ -89,7 +89,7 @@ const Written = ({ review }: { review: Review }) => {
         <span
             aria-label="Sections written"
             title={written.length ? written.join(', ') : 'No sections written'}
-            className="text-nier-text-dark/70 tracking-widest text-xs"
+            className="text-nier-text-dark/70 tracking-widest text-label"
         >
             {written.length
                 ? written.map(section => SECTION_GLYPH[section] ?? '▪').join('')
@@ -122,11 +122,11 @@ const Card = ({ review, selected, onSetStatus, onRemove, onEdit, onSelect }: Car
                 </div>
 
                 <div className="flex flex-col min-w-0 flex-1 gap-1">
-                    <h4 className="text-sm uppercase tracking-wide text-nier-text-dark truncate">
+                    <h4 className="text-body uppercase tracking-wide text-nier-text-dark truncate">
                         {review.title}
                     </h4>
 
-                    <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-nier-text-dark/50">
+                    <p className="flex items-center gap-1.5 text-eyebrow uppercase tracking-wide text-nier-text-dark/50">
                         <ion-icon
                             name={TYPE_ICON[review.type] ?? 'document-sharp'}
                             style={{ flexShrink: 0, fontSize: '11px' }}
@@ -137,7 +137,7 @@ const Card = ({ review, selected, onSetStatus, onRemove, onEdit, onSelect }: Car
                     </p>
 
                     {review.genres && review.genres.length > 0 && (
-                        <p className="text-[10px] uppercase tracking-wide text-nier-text-dark/40 truncate">
+                        <p className="text-eyebrow uppercase tracking-wide text-nier-text-dark/40 truncate">
                             {review.genres.slice(0, 2).join(' · ')}
                         </p>
                     )}
@@ -148,7 +148,7 @@ const Card = ({ review, selected, onSetStatus, onRemove, onEdit, onSelect }: Car
                             date: an unreadable id means we don't know, which
                             is not the same as captured today. */}
                         {waiting !== undefined && (
-                            <span className="text-[10px] uppercase tracking-wide text-nier-text-dark/40 whitespace-nowrap">
+                            <span className="text-eyebrow uppercase tracking-wide text-nier-text-dark/40 whitespace-nowrap">
                                 waiting {waiting}d
                             </span>
                         )}
@@ -160,13 +160,13 @@ const Card = ({ review, selected, onSetStatus, onRemove, onEdit, onSelect }: Car
                 {review.status === 'todo' && (
                     <button
                         onClick={() => onSetStatus(review, 'active')}
-                        className="flex-1 text-[10px] uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
+                        className="flex-1 text-eyebrow uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
                     >Start</button>
                 )}
                 {review.status === 'active' && (
                     <button
                         onClick={() => onSetStatus(review, 'done')}
-                        className="flex-1 text-[10px] uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
+                        className="flex-1 text-eyebrow uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
                     >Finish</button>
                 )}
                 {/* Story 16: capture staying minimal must not mean detail is
@@ -175,7 +175,7 @@ const Card = ({ review, selected, onSetStatus, onRemove, onEdit, onSelect }: Car
                 <button
                     onClick={() => onEdit(review)}
                     aria-label={`Edit ${review.title}`}
-                    className="flex-1 text-[10px] uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
+                    className="flex-1 text-eyebrow uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
                 >Edit</button>
 
                 {/* Two presses, because this is the one control here that
@@ -194,19 +194,19 @@ const Card = ({ review, selected, onSetStatus, onRemove, onEdit, onSelect }: Car
                         <button
                             onClick={() => setConfirming(false)}
                             aria-label={`Keep ${review.title}`}
-                            className="flex-1 text-[10px] uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-150 cursor-pointer transition-colors duration-150"
+                            className="flex-1 text-eyebrow uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-150 cursor-pointer transition-colors duration-150"
                         >Keep</button>
                         <button
                             onClick={() => { setConfirming(false); onRemove(review); }}
                             aria-label={`Confirm removing ${review.title}`}
-                            className="flex-1 text-[10px] uppercase tracking-widest py-1.5 bg-nier-dark text-nier-text-light cursor-pointer"
+                            className="flex-1 text-eyebrow uppercase tracking-widest py-1.5 bg-nier-dark text-nier-text-light cursor-pointer"
                         >Delete?</button>
                     </>
                 ) : (
                     <button
                         onClick={() => setConfirming(true)}
                         aria-label={`Remove ${review.title}`}
-                        className="w-9 text-xs leading-none py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
+                        className="w-9 text-label leading-none py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
                     >✕</button>
                 )}
             </div>
@@ -222,11 +222,11 @@ type SectionProps = CardActions & {
 
 const Section = ({ label, items, selected, ...actions }: SectionProps) => (
     <section>
-        <h3 className="bg-nier-dark text-nier-text-light text-[10px] uppercase tracking-widest px-2 py-1">
+        <h3 className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1">
             {label}
         </h3>
         {items.length === 0
-            ? <p className="text-sm text-nier-text-dark/40 px-2 py-3">Nothing here.</p>
+            ? <p className="text-body text-nier-text-dark/40 px-2 py-3">Nothing here.</p>
             : (
                 <ul
                     aria-label={label}
@@ -248,7 +248,7 @@ const Section = ({ label, items, selected, ...actions }: SectionProps) => (
 
 /** One `label ......... value` line of the state readout. */
 const Readout = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div className="flex items-baseline justify-between gap-3 text-xs">
+    <div className="flex items-baseline justify-between gap-3 text-label">
         <span className="uppercase tracking-wide text-nier-text-dark/70">{label}</span>
         <span className="uppercase text-nier-text-dark">{value}</span>
     </div>
@@ -273,7 +273,7 @@ const State = ({ readouts, error }: {
 }) => {
     return (
         <div aria-label="Backlog state" className="flex flex-col">
-            <h3 className="bg-nier-dark text-nier-text-light text-[10px] uppercase tracking-widest px-2 py-1">
+            <h3 className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1">
                 State
             </h3>
             {/* No per-Category counts: the rail carries those, and CONTEXT.md
@@ -301,7 +301,7 @@ const State = ({ readouts, error }: {
                 it is capable of reading something else. The message itself
                 stays above the cards, where it is next to what failed; this
                 is the standing indicator that something did. */}
-            <p className={`text-[10px] uppercase tracking-[0.3em] text-center py-4 ${
+            <p className={`text-eyebrow uppercase tracking-[0.3em] text-center py-4 ${
                 error ? 'text-nier-text-dark' : 'text-nier-text-dark/50'
             }`}>
                 {error ? 'Error' : 'No Error'}
@@ -495,11 +495,11 @@ const BacklogWindow = ({ onClose }: Props) => {
             frameRef={panelRef}
         >
                 <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                    <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Backlog</h3>
+                    <h3 className="text-nier-text-dark text-title uppercase tracking-wider">Backlog</h3>
                     <button
                         onClick={onClose}
                         aria-label="Close backlog"
-                        className="text-sm px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none"
+                        className="text-body px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none"
                     >✕</button>
                 </div>
 
@@ -512,12 +512,12 @@ const BacklogWindow = ({ onClose }: Props) => {
                         a real seam, so it says so rather than pretending
                         otherwise (story 19). */}
                     {justFinished && (
-                        <p className="text-sm text-nier-text-dark/70 px-1">
+                        <p className="text-body text-nier-text-dark/70 px-1">
                             Finished {justFinished}. Write it up in the Reviews folder.
                         </p>
                     )}
 
-                    {error && <p className="text-sm text-red-700 px-1">{error}</p>}
+                    {error && <p className="text-body text-red-700 px-1">{error}</p>}
 
                     <div className="relative flex gap-4 min-h-0">
                         <div className="flex-1 min-w-0 flex flex-col gap-4">
@@ -526,7 +526,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                             <Section label="Started" items={started} selected={selected} {...actions} />
 
                             <section className="flex flex-col gap-2 min-h-0">
-                                <h3 className="bg-nier-dark text-nier-text-light text-[10px] uppercase tracking-widest px-2 py-1 flex items-baseline justify-between">
+                                <h3 className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1 flex items-baseline justify-between">
                                     <span>Not Started</span>
                                     <span className="text-nier-text-light/60">{readouts.showing}</span>
                                 </h3>
@@ -549,7 +549,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                                     />
 
                                     {unstarted.length === 0 ? (
-                                        <p className="text-sm text-nier-text-dark/40 px-2 py-3 flex-1">
+                                        <p className="text-body text-nier-text-dark/40 px-2 py-3 flex-1">
                                             {todo.length === 0 ? 'Nothing here.' : 'Nothing matches those controls.'}
                                         </p>
                                     ) : (
@@ -605,7 +605,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                     and a phone would otherwise be told nothing. */}
                 <div data-window-chrome className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                     <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
-                    <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
+                    <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
                         {captionFor(selected, error, listed)}
                     </p>
                 </div>

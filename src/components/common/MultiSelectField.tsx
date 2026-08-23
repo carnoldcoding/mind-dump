@@ -46,8 +46,8 @@ export const MutliSelectField = ({ label, options, value = [], onChange }: Multi
             onMouseDown={(e) => { e.stopPropagation(); handleRemove(c); }}
             className="bg-nier-dark px-2 py-0.5 flex items-center gap-1 flex-shrink-0"
           >
-            <p className="text-sm text-nier-100-lighter capitalize leading-none">{c}</p>
-            <span className="text-nier-text-light text-xs leading-none">×</span>
+            <p className="text-body text-nier-100-lighter capitalize leading-none">{c}</p>
+            <span className="text-nier-text-light text-label leading-none">×</span>
           </div>
         ))}
       </div>
@@ -55,7 +55,7 @@ export const MutliSelectField = ({ label, options, value = [], onChange }: Multi
       {/* Floating label */}
       <label className={`absolute pointer-events-none transition-all text-gray-500 ${
         chosen.length > 0
-          ? 'top-[-10px] left-2 text-sm bg-nier-100-lighter px-1'
+          ? 'top-[-10px] left-2 text-body bg-nier-100-lighter px-1'
           : 'top-3 left-4'
       }`}>
         {label}
