@@ -11,7 +11,7 @@ import { gameGenres, movieGenres, bookGenres } from "../../utils/helpers";
 import { useLocation } from "react-router";
 import { useStageState } from "../../context/BootSequenceContext";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { decode, domino, wipe } from "../../utils/motion";
+import { decode, domino, growth, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { useScrollLock } from "../../utils/scrollLock";
@@ -153,7 +153,7 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
 }) => {
     const dead = count === 0 && !selected;
     return (
-        <li className="relative">
+        <li data-genre-row className="relative">
             <span
                 aria-hidden="true"
                 className={`absolute -left-3 top-1/2 -translate-y-1/2 text-eyebrow text-nier-text-dark transition-opacity duration-150 ${
@@ -374,11 +374,16 @@ const Review = () => {
         wipe(tl, '[data-panel-surface]');
     }, scope);
 
-    // The panel title re-Decodes toward the new Category name on every toggle.
-    // Keyed on `category` so the scramble replays over the same, persistent
-    // title element as its text changes GAMES -> CINEMA.
+    // The frame's contents, in the canonical arrival order and overlapping in
+    // waves: the panel title Decodes toward the new Category name, the
+    // structural hairlines Grow from their left edge, and the genre rows Domino
+    // in. Keyed on `category`, so the whole beat replays on every toggle while
+    // the frame above stays put. The cards are a separate wave below, on their
+    // own readiness.
     useRevealTimeline(contentActive, (tl) => {
         decode(tl, '[data-panel-title]', panelTitle);
+        growth(tl, '[data-hairline]', '<0.1');
+        domino(tl, '[data-genre-row]', '<0.05');
     }, scope, [category]);
 
     // The shelf's cards Domino in on their own timeline: on the fetch (`loading`)
@@ -803,7 +808,11 @@ const Review = () => {
                                 reference has no search box to copy, but it has
                                 plenty of labelled values, and that is what a
                                 query is. */}
-                            <div className="flex items-center gap-3 border-b border-nier-150 pb-2 mb-3 flex-shrink-0">
+                            <div className="relative flex items-center gap-3 pb-2 mb-3 flex-shrink-0">
+                                {/* The underline is a line element, not a border,
+                                    so it can Grow in from the left as the shelf
+                                    arrives. */}
+                                <span data-hairline aria-hidden="true" className="absolute bottom-0 left-0 w-full h-px bg-nier-150 origin-left" />
                                 <label htmlFor="shelf-search" className="text-eyebrow uppercase tracking-widest text-nier-text-dark/40 flex-shrink-0">
                                     Search
                                 </label>
@@ -888,7 +897,10 @@ const Review = () => {
                     {/* The caption bar. What is under the pointer on the left,
                         how to act on it on the right — the reference's bottom
                         strip, accent block and all. */}
-                    <div className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
+                    <div className="relative flex-shrink-0 flex items-center gap-3 px-4 py-2">
+                        {/* Growable line rather than a top border — the divider
+                            above the footer Grows in with the rest. */}
+                        <span data-hairline aria-hidden="true" className="absolute top-0 left-0 w-full h-px bg-nier-150 origin-left" />
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                         <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(selected, !!error, shown.length === 0)}
