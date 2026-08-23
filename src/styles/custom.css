@@ -90,6 +90,10 @@
     html, body, #root, #nier-grid {
         height: 100dvh;
         overflow: hidden;
+        /* Kill iOS Safari's rubber-band: even with overflow hidden, a drag
+           still elastically lifts the whole shell and snaps back. `none` stops
+           the bounce at the boundary so the pinned shell never moves. */
+        overscroll-behavior: none;
     }
 
     body{
@@ -110,6 +114,9 @@
         height: 100dvh;
         overflow-y: auto;
         overflow-x: hidden;
+        /* The container that actually scrolls: stop its own overscroll from
+           chaining to the page and bouncing at the top/bottom of the content. */
+        overscroll-behavior: none;
     }
 
     /* Overlay scroll lock. When a modal, the filter menu, or the nav drawer is
