@@ -107,6 +107,52 @@ these across 31 files; before they were named, none of them respected
 `prefers-reduced-motion`, because only the vocabulary consulted
 `animations.ts`. That was a correctness bug rather than a coverage gap.
 
+## Timing sheet
+
+Every number that sets how fast the app moves, in one place — consult this before
+a site-wide timing change rather than hunting the values down. Seconds unless
+noted.
+
+### Primitives — [`src/utils/motion.ts`](../src/utils/motion.ts)
+
+| Constant | Value | Sets |
+|---|---|---|
+| `WIPE_DURATION` | 0.32 | a solid surface's clip wipe |
+| `GROWTH_DURATION` | 0.30 | a hairline / rule growing across |
+| `DOMINO_DURATION` | 0.35 | one card or row's slide-and-fade |
+| `DOMINO_STAGGER` | 0.03 | the gap between successive items in a Domino wave (cards, genre rows, list rows) |
+| `FADE_DURATION` | 0.24 | a prose or backdrop fade |
+| `DECODE_PER_CHAR` | 0.055 | per-character scramble rate; a title's length sets the whole sequence's length, so this is the main pacing lever |
+
+### Boot — [`src/utils/bootMotion.ts`](../src/utils/bootMotion.ts)
+
+| Constant | Value | Sets |
+|---|---|---|
+| `LINES_HOLD` | 0.5 | the lines stage's hold before it hands over |
+| `TRIANGLES_HOLD` | 0.7 | the triangle-mesh stage hold |
+| `BORDERS_HOLD` | 0.5 | the border-draw stage hold |
+| `NAV_HOLD` | 0.6 | the nav-items stage hold |
+| `HEADER_HOLD` | 0.8 | the header stage hold — where the reveal signal is raised |
+| `TRIANGLE_STEP` | 0.018 | stagger between triangles across the mesh |
+| `TRIANGLE_PAIR_OFFSET` | 0.006 | offset between the two triangles in a cell |
+
+A stage *hold* and a gesture *duration* are deliberately different numbers — a
+hold is how long a stage waits before handing over, a duration is how long the
+gesture takes — so they do not track each other. See the boot notes above.
+
+### Overlap — per call site, by design
+
+Beats overlap by a GSAP position argument on the primitive call: `"<0.2"` starts
+200ms after the previous tween *began*. These are per-surface choices — a shelf
+overlaps its beats differently from a modal — so they live at the call site, not
+in a global. Grep `'<0` across `src/pages` and `src/components` to find them.
+
+**To rescale the whole app's pace**, change the primitive durations (and, for the
+intro, the boot holds). The overlaps are relative offsets and mostly scale with
+the durations; the per-site ones are tuned by eye afterwards. If a single knob is
+ever wanted, wrap the durations in one `SCALE` multiplier here — deliberately not
+done yet, since the values are still being tuned per primitive.
+
 ## The reveal sequence
 
 Every surface builds its timeline `paused: true` when it mounts, and plays it
