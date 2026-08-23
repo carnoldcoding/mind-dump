@@ -21,29 +21,33 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
 
     return (
         <>
-        {/* The bar itself, and the only fixed element up here: it holds the
-            prompt and the menu control as its own children, so they sit in it
-            rather than over it, and the results panel hangs off its real
-            bottom edge instead of off a coincidentally-matching height.
+        {/* The bar. `fixed` and the z-order live on this outer <header>, which
+            carries NO .nier-dot-pattern — so they are not overridden. The bar's
+            look (background, the dotted-strip border, its height) lives on the
+            inner wrapper that wears .nier-dot-pattern, mirroring BottomBar. That
+            class sets position:relative + z-index:0 for its pseudo-elements, and
+            putting it on a `fixed` element used to demote the header to normal
+            flow (custom.css loads after Tailwind, same @layer utilities, so its
+            rule wins the tie). Layout reserves this bar's measured height on
+            <main>, so no spacer is needed.
 
-            h-20 lives here rather than on .nier-dot-pattern because the bottom
-            bar wears that class too and wants no body at all. Of these 5rem
-            the bottom 1.75px + 1.25rem is line and pattern, leaving the row
-            above room to sit clear of them. */}
-        <header data-boot-border data-top-rule className="nier-dot-pattern fixed top-0 left-0 w-screen h-20 bg-nier-50 z-101">
-            <div className="flex items-center justify-end h-[calc(5rem-1.25rem-1.75px)] px-4">
-                <button
-                    onClick={onClose}
-                    aria-label={isOpen ? 'Close menu' : 'Open menu'}
-                    aria-expanded={isOpen}
-                    className="text-nier-text-dark h-11 w-11 text-display leading-none flex items-center justify-center flex-shrink-0"
-                >
-                    {isOpen ? '×' : '☰'}
-                </button>
+            data-boot-border / data-top-rule ride the inner wrapper: the clip
+            wipe reveals the visible bar, the nav-item stagger addresses the row
+            below as its direct child, and CornerLines reads the rule's bottom. */}
+        <header className="fixed top-0 left-0 w-screen z-101">
+            <div data-boot-border data-top-rule className="nier-dot-pattern bg-nier-50 h-[4.25rem]">
+                <div className="flex items-center justify-end h-[calc(4.25rem-1.25rem-1.75px)] px-4">
+                    <button
+                        onClick={onClose}
+                        aria-label={isOpen ? 'Close menu' : 'Open menu'}
+                        aria-expanded={isOpen}
+                        className="text-nier-text-dark h-11 w-11 text-display leading-none flex items-center justify-center flex-shrink-0"
+                    >
+                        {isOpen ? '×' : '☰'}
+                    </button>
+                </div>
             </div>
         </header>
-        {/* Reserves what the fixed bar covers — keep in step with the bar. */}
-        <div className="h-20"></div>
 
         {/* The dimming backdrop. Below the drawer (z-100) and the bar (z-101),
             above everything else. Kept mounted and faded so it can play out
