@@ -360,28 +360,34 @@ const Review = () => {
     const panelTitle = `${category ?? ''} VIEW PANEL`.toUpperCase();
     const scope = useRef<HTMLDivElement>(null);
 
-    // Review does not unmount between categories — React Router keeps the same
-    // component instance and re-renders with new params — so the Fragment is
-    // keyed on `category`, which remounts the panel and builds this afresh.
-    // That is what the old resetKey argument was for.
+    // Review does not unmount between Categories — React Router keeps the same
+    // component instance and re-renders with new params. So arrival on a toggle
+    // is expressed by keying the reveal timelines on `category`, not by
+    // remounting the DOM: the reveal system replays a timeline exactly when its
+    // rebuildOn changes, which is what "a fresh entrance, not the same one at a
+    // different moment" means.
     //
-    // The frame wipes, its title decodes over the tail of that, and the shelf
-    // dominoes in underneath. The stagger is the Domino primitive's own; the
-    // version this replaces had to nominate the first card as a reporter and
-    // hand-write a per-card delay to get the same overlap.
+    // The frame is stable chrome. It wipes once when the shelf first mounts
+    // (arriving from another page) and is NOT keyed on the Category, so toggling
+    // Games/Cinema/Books leaves it in place rather than re-wiping it each time.
     useRevealTimeline(contentActive, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        decode(tl, '[data-panel-title]', panelTitle, '<0.15');
     }, scope);
 
-    // The shelf gets its own timeline because it arrives on a different
-    // signal: the frame's is built at mount, before the fetch has answered
-    // and while there are no cards to address. Rebuilding one shared timeline
-    // when the data lands would replay the frame's wipe underneath them.
+    // The panel title re-Decodes toward the new Category name on every toggle.
+    // Keyed on `category` so the scramble replays over the same, persistent
+    // title element as its text changes GAMES -> CINEMA.
+    useRevealTimeline(contentActive, (tl) => {
+        decode(tl, '[data-panel-title]', panelTitle);
+    }, scope, [category]);
+
+    // The shelf's cards Domino in on their own timeline: on the fetch (`loading`)
+    // the first time there are cards to address, and on every Category toggle
+    // after, so switching shelves replays the stagger over the new cards.
     const shelfScope = useRef<HTMLDivElement>(null);
     useRevealTimeline(contentActive && !loading, (tl) => {
         domino(tl, '[data-shelf-card]');
-    }, shelfScope, [loading]);
+    }, shelfScope, [loading, category]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleFieldChange = (field: string, value: any) => {
@@ -756,7 +762,10 @@ const Review = () => {
         // 22px low instead of 2px. With the margin on the wrapper neither box
         // can collapse away from the other.
         return (
-          <Fragment key={category}>
+          // No key on the Category: the frame persists across toggles as stable
+          // chrome, and the reveal timelines (keyed on `category`) replay the
+          // contents in place. Remounting here would re-wipe the frame.
+          <Fragment>
           <Panel
                 wrapperRef={scope}
                 wrapperClassName="mt-0 lg:mt-5"
