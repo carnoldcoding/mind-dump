@@ -42,6 +42,8 @@ export const GROWTH_DURATION = 0.3;
 export const DOMINO_DURATION = 0.35;
 export const DOMINO_STAGGER = 0.03;
 export const FADE_DURATION = 0.24;
+export const RIPPLE_DURATION = 0.28;
+export const RIPPLE_STAGGER = 0.035;
 
 /**
  * How long each character of a Decode takes. The lever for a reveal's overall
@@ -131,6 +133,31 @@ export const domino = (
     position,
   );
 
+/**
+ * RIPPLE — a group filling in item by item in place: genre rows, the cells of a
+ * segmented track. Staggered opacity and nothing else — no slide, which is the
+ * whole line between this and Domino. A cell of a rating track is a fixed
+ * segment; it should brighten where it stands, not fall into place.
+ *
+ * It is Domino with the translate removed, or Fade with a stagger added — the
+ * other five name neither. Like Domino, the stagger is the point, so it is not
+ * optional. `fromTo` for the same reason every primitive is: a rebuild must find
+ * an explicit resting opacity to animate towards, not read the 0 the last build
+ * left behind.
+ */
+export const ripple = (
+  timeline: gsap.core.Timeline,
+  target: Target,
+  position?: Position,
+  stagger = RIPPLE_STAGGER,
+) =>
+  timeline.fromTo(
+    target,
+    { opacity: 0 },
+    { opacity: 1, duration: RIPPLE_DURATION, ease: 'power1.out', stagger, clearProps: 'opacity' },
+    position,
+  );
+
 /** FADE — prose and fields. Anything that wraps, plus backdrops. */
 export const fade = (timeline: gsap.core.Timeline, target: Target, position?: Position) =>
   timeline.fromTo(
@@ -166,6 +193,50 @@ export const decode = (
     },
     position,
   );
+
+/**
+ * DECODE, as a group over a surface's section headers.
+ *
+ * The nested arrival grammar (ADR-0011) lands every section header — GENRE,
+ * RATING, RELEASED — as one beat before any section body fills. Each header
+ * decodes toward its *own* text, so this reads the labels off the DOM rather
+ * than taking a list: a header is a Decode target because it carries
+ * `data-section-header`, and a new section joins the group for free by carrying
+ * the marker. Every header starts at the same `position`, which is what makes
+ * the beat a group rather than a stagger.
+ *
+ * Scoped to `scope` so the mobile filter column — the same markup rendered a
+ * second time inside a portalled Modal, outside this subtree — is not addressed
+ * twice.
+ */
+export const decodeHeaders = (
+  timeline: gsap.core.Timeline,
+  scope: HTMLElement,
+  position?: Position,
+) => decodeGroup(timeline, scope.querySelectorAll<HTMLElement>('[data-section-header]'), position);
+
+/**
+ * The group beat over an explicit set of headers, each decoded toward its own
+ * text and all sharing one start time.
+ *
+ * Separate from `decodeHeaders` because a surface can carry headers that replay
+ * on different keys — a Category shelf's RELEASED section appears and disappears
+ * with the data, so its header decodes on the volatile timeline, while GENRE and
+ * RATING decode on the arrival-only one. Both call this with the same `position`
+ * so the two sets still land as one beat on arrival. `<` on every header but the
+ * first starts them together.
+ */
+export const decodeGroup = (
+  timeline: gsap.core.Timeline,
+  headers: Iterable<Element>,
+  position?: Position,
+) => {
+  let first = true;
+  for (const header of headers) {
+    decode(timeline, header, header.textContent ?? '', first ? position : '<');
+    first = false;
+  }
+};
 
 /**
  * A panel's frame and the shadow it casts, wiped as one tween over two targets.
