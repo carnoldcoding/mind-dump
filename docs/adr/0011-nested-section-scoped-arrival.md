@@ -76,10 +76,16 @@ relative `<` offset a single timeline would use.
   beats it has no elements for. A two-field editor is a one-section instance of
   the same grammar, which is what makes the site-wide rollout tagging rather than
   re-authoring.
-- The RELEASED/FINISHED headers Decode on the *volatile* timeline, not the
-  arrival-only one, because those sections are present-conditional and would
-  otherwise be built before they exist. They still Decode at position 0, so on
-  arrival they land in the same group beat as the stable headers.
+- The RELEASED/FINISHED sections are present-conditional — a shelf with nothing
+  dated has no Released section — so their headers cannot build at mount with the
+  always-present ones. But the header text ("RELEASED") does not change between
+  two Categories that both have the section, so keying them on the Category would
+  re-scramble unchanged chrome on every toggle, the thing the stable/volatile
+  split exists to prevent. They instead ride a third key: **whether the section
+  exists** (`releaseSpans.length > 0`). The header then Decodes exactly once, when
+  its section first appears, and stays put across toggles — at position 0, so it
+  still lands in the arrival group beat. Only the section's *cells* (whose spans
+  do differ by Category) ride the volatile `[loading, category]` timeline.
 - Absolute positions are load-bearing here in a way relative offsets are not:
   changing a section's `index` moves its wave; the per-call-site offsets are
   tuned by eye afterwards, as the existing ones are.

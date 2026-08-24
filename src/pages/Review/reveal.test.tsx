@@ -177,6 +177,12 @@ describe("the section-scoped arrival", () => {
         expect(rippleCallsMatching('[data-section="genre"]')).toBeGreaterThan(0);
     });
 
+    it("ripples the rating track cells in place on arrival", async () => {
+        await showGames();
+        // The rating scale is a segmented Track: its cells brighten in place.
+        expect(rippleCallsMatching('[data-section="rating"]')).toBeGreaterThan(0);
+    });
+
     it("replays the genre Ripple when the Category changes", async () => {
         await showGames();
         const before = rippleCallsMatching('[data-section="genre"]');
@@ -185,6 +191,18 @@ describe("the section-scoped arrival", () => {
 
         // Genre rows differ by Category, so their wave rebuilds over the new set.
         expect(rippleCallsMatching('[data-section="genre"]')).toBeGreaterThan(before);
+    });
+
+    it("replays the released track Ripple when the Category changes", async () => {
+        await showGames();
+        const before = rippleCallsMatching('[data-section="released"]');
+
+        await goToBooks();
+
+        // The released spans differ by Category (a shelf's oldest game is not its
+        // oldest book), so those cells rebuild over the new set — one of the
+        // "do rebuild" targets the stable chrome is contrasted against.
+        expect(rippleCallsMatching('[data-section="released"]')).toBeGreaterThan(before);
     });
 
     it("does not replay the Rating-cell Ripple when the Category changes", async () => {
@@ -197,5 +215,19 @@ describe("the section-scoped arrival", () => {
         // chrome on the arrival-only timeline: they must not re-ripple on a
         // toggle, the same guarantee the frame's wipe has.
         expect(rippleCallsMatching('[data-section="rating"]')).toBe(before);
+    });
+
+    it("does not re-Decode any section header when the Category changes", async () => {
+        await showGames();
+        const before = vi.mocked(decodeGroup).mock.calls.length;
+
+        await goToBooks();
+
+        // Header text ("GENRE", "RELEASED") does not change across Categories, so
+        // no header re-scrambles on a toggle — the always-present ones are keyed
+        // on nothing, and the present-conditional Released/Finished headers are
+        // keyed on whether their section exists, not on the Category. Only the
+        // panel *title* (a plain decode, not a group) re-decodes.
+        expect(vi.mocked(decodeGroup).mock.calls.length).toBe(before);
     });
 });

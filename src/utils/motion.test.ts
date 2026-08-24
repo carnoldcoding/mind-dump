@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import gsap from 'gsap';
-import { decodeHeaders, ripple } from './motion';
+import { decodeGroup, ripple } from './motion';
+
+const headersIn = (scope: HTMLElement) =>
+  scope.querySelectorAll<HTMLElement>('[data-section-header]');
 
 /**
  * The primitives are seeked, not ticked: a paused timeline set to a fixed
@@ -56,7 +59,7 @@ describe('Ripple', () => {
   });
 });
 
-describe('decodeHeaders', () => {
+describe('decodeGroup', () => {
   const makeScope = (labels: string[]): HTMLElement => {
     const scope = document.createElement('div');
     for (const label of labels) {
@@ -72,7 +75,7 @@ describe('decodeHeaders', () => {
   it('adds one Decode per section header', () => {
     const scope = makeScope(['Genre', 'Rating', 'Released']);
     const tl = gsap.timeline({ paused: true });
-    decodeHeaders(tl, scope);
+    decodeGroup(tl, headersIn(scope));
 
     expect(tl.getChildren(false, true, false).length).toBe(3);
   });
@@ -80,7 +83,7 @@ describe('decodeHeaders', () => {
   it('starts every header at the same moment — one group beat', () => {
     const scope = makeScope(['Genre', 'Rating', 'Released']);
     const tl = gsap.timeline({ paused: true });
-    decodeHeaders(tl, scope);
+    decodeGroup(tl, headersIn(scope));
 
     const starts = tl.getChildren(false, true, false).map((t) => t.startTime());
     expect(new Set(starts).size).toBe(1);
@@ -89,7 +92,7 @@ describe('decodeHeaders', () => {
   it('decodes each header toward its own text', () => {
     const scope = makeScope(['Genre', 'Rating']);
     const tl = gsap.timeline({ paused: true });
-    decodeHeaders(tl, scope);
+    decodeGroup(tl, headersIn(scope));
 
     tl.progress(1);
     const texts = Array.from(scope.querySelectorAll('[data-section-header]')).map(
@@ -101,7 +104,7 @@ describe('decodeHeaders', () => {
   it('leaves a scope with no headers as an empty build', () => {
     const scope = makeScope([]);
     const tl = gsap.timeline({ paused: true });
-    expect(() => decodeHeaders(tl, scope)).not.toThrow();
+    expect(() => decodeGroup(tl, headersIn(scope))).not.toThrow();
     expect(tl.getChildren(false, true, false).length).toBe(0);
   });
 });

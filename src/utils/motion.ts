@@ -1,11 +1,11 @@
 /**
  * The motion primitives, as functions that add themselves to a timeline.
  *
- * These are the same five the boot sequence has always spoken — Wipe, Domino,
- * Growth, Decode, Fade — and `docs/motion.md` says which owns what. They were
- * CSS classes until the panel layer moved onto timelines; naming them here
- * rather than letting each surface hand-write tweens is what keeps a panel's
- * wipe and a modal's wipe the same gesture.
+ * These began as the five the boot sequence has always spoken — Wipe, Domino,
+ * Growth, Decode, Fade — since joined by Ripple (ADR-0011); `docs/motion.md`
+ * says which owns what. They were CSS classes until the panel layer moved onto
+ * timelines; naming them here rather than letting each surface hand-write tweens
+ * is what keeps a panel's wipe and a modal's wipe the same gesture.
  *
  * Every one takes a `position`, GSAP's placement argument, so a caller says
  * where a beat sits relative to the ones before it. `"<0.2"` — start 200ms
@@ -209,22 +209,17 @@ export const decode = (
  * second time inside a portalled Modal, outside this subtree — is not addressed
  * twice.
  */
-export const decodeHeaders = (
-  timeline: gsap.core.Timeline,
-  scope: HTMLElement,
-  position?: Position,
-) => decodeGroup(timeline, scope.querySelectorAll<HTMLElement>('[data-section-header]'), position);
-
 /**
- * The group beat over an explicit set of headers, each decoded toward its own
+ * The group beat: a set of section headers decoded together, each toward its own
  * text and all sharing one start time.
  *
- * Separate from `decodeHeaders` because a surface can carry headers that replay
- * on different keys — a Category shelf's RELEASED section appears and disappears
- * with the data, so its header decodes on the volatile timeline, while GENRE and
- * RATING decode on the arrival-only one. Both call this with the same `position`
- * so the two sets still land as one beat on arrival. `<` on every header but the
- * first starts them together.
+ * It takes an explicit set rather than a scope because a surface can carry
+ * headers that replay on different keys — a Category shelf's RELEASED section
+ * appears and disappears with the data, so its header decodes on a
+ * presence-keyed timeline, while GENRE and RATING decode on the arrival-only
+ * one. Both call this with the same `position` so the two sets still land as one
+ * beat on arrival. Pass `scope.querySelectorAll('[data-section-header]')` for the
+ * whole-surface case. `<` on every header but the first starts them together.
  */
 export const decodeGroup = (
   timeline: gsap.core.Timeline,

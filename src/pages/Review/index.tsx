@@ -419,21 +419,12 @@ const Review = () => {
         decode(tl, '[data-panel-title]', panelTitle, 0);
     }, scope, [category]);
 
-    // RELEASED + FINISHED — present only when the shelf has the data for them, so
-    // their header and cells arrive with the fetch and change per Category. Keyed
-    // on [loading, category] so they build once the sections exist and replay on
-    // a toggle. Headers Decode at position 0 to join the arrival group.
+    // RELEASED + FINISHED CELLS — the tracks' spans differ by Category (a shelf's
+    // oldest game is not its oldest book), so the cells Ripple over the new set on
+    // every toggle. Keyed on [loading, category] so they build once the sections
+    // exist and replay on a toggle. Their headers are handled separately below —
+    // the header text does not change, so it is not rebuilt here.
     useRevealTimeline(contentActive && !loading, (tl) => {
-        if (scope.current) {
-            decodeGroup(
-                tl,
-                scope.current.querySelectorAll(
-                    '[data-section="released"] [data-section-header],' +
-                    '[data-section="finished"] [data-section-header]',
-                ),
-                0,
-            );
-        }
         ripple(tl, '[data-section="released"] [data-ripple-item]', bodyAt(RELEASED));
         ripple(tl, '[data-section="finished"] [data-ripple-item]', bodyAt(FINISHED));
     }, scope, [loading, category]);
@@ -626,6 +617,30 @@ const Review = () => {
         const first = Math.min(...years);
         return Array.from({ length: Math.max(...years) - first + 1 }, (_, i) => first + i);
     }, [shelved]);
+
+    // RELEASED + FINISHED HEADERS — stable chrome, but present-conditional: a
+    // shelf with nothing dated has no Released section at all. So unlike the
+    // always-present headers in the scaffold, these cannot build at mount; they
+    // are keyed on whether their section exists, not on the Category. A header
+    // whose text never changes then Decodes exactly once — when its section first
+    // appears — and stays put across toggles between two Categories that both
+    // have it, rather than re-scrambling on every toggle as it would on the
+    // cells' [category] timeline. They Decode at position 0 to land in the same
+    // arrival group beat as the scaffold headers.
+    const hasReleased = releaseSpans.length > 0;
+    const hasFinished = finishYears.length > 1;
+    useRevealTimeline(contentActive, (tl) => {
+        if (scope.current) {
+            decodeGroup(
+                tl,
+                scope.current.querySelectorAll(
+                    '[data-section="released"] [data-section-header],' +
+                    '[data-section="finished"] [data-section-header]',
+                ),
+                0,
+            );
+        }
+    }, scope, [hasReleased, hasFinished]);
 
     // A span reads back off the filters rather than being held twice. The
     // filters are what actually narrows the shelf, so anything that sets them
