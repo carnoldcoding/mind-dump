@@ -129,6 +129,7 @@ noted.
 | `DOMINO_STAGGER` | 0.03 | the gap between successive cards in a Domino wave |
 | `RIPPLE_DURATION` | 0.28 | one item's in-place fade (genre row, track cell) |
 | `RIPPLE_STAGGER` | 0.035 | the gap between successive items in a Ripple wave |
+| `REVEAL_STEP` | 0.025 | the gap between one leaf's beat and the next in a full-surface Cascade — the whole cascade's pace |
 | `FADE_DURATION` | 0.24 | a prose or backdrop fade |
 | `DECODE_PER_CHAR` | 0.055 | per-character scramble rate; a title's length sets the whole sequence's length, so this is the main pacing lever |
 
@@ -203,34 +204,39 @@ contents arrived is the flash this whole design exists to remove.
 
 ## The arrival grammar
 
-Every animated surface follows one order, and its beats overlap in waves rather
-than march one fully-finished beat at a time (the `"<0.2"` position convention
-above). The content beat nests one level (ADR-0011): the section headers land as
-a group, then each section's body fills in its own idiom.
+A surface reveals in one continuous sequence, and the rule is total: **nothing
+arrives un-animated** (ADR-0012). The frame Wipes, then its whole content
+Cascades — the reveal walks the frame in DOM order and gives every leaf its own
+beat at a running position.
 
 ```
-Frame Wipe ─► Title Decode ─► Section Headers Decode (group) ─► per section:
-                                                                   Header
-                                                                   Items Ripple
-                                                                   Hairline Grow
+Frame Wipe ─► Cascade (walk the frame; every leaf, in DOM order):
+                 title / section header  ─► Decode
+                 hairline                ─► Grow
+                 card                    ─► Domino
+                 anything else           ─► Ripple in place
 ```
 
-A surface omits a beat it has no elements for, but never reorders them. The
-section bodies overlap in waves, each a beat behind the one above it, so on a
-Category shelf the genre rows, the rating cells and the cards fill concurrently
-rather than one finished section at a time. Plugging a new surface's content into
-this order — by giving its elements the `data-*` markers the beats address
-(`data-section` around each section, `data-section-header` on its bar,
-`data-ripple-item` on its items, `data-hairline` on its rule) — is what makes it
-animate correctly by default.
+The primitive a leaf gets is read off its markers (`data-section-header` and
+`data-panel-title` Decode, `data-hairline` Grows, `data-shelf-card` Dominoes,
+the rest Ripple); the *coverage* is not — the walk reaches every leaf, so an
+element with no tween, the only thing that can pop, cannot exist. This is why the
+guarantee holds without tagging each element: `.from()` hides a leaf on build, so
+a leaf that has a tween starts hidden and is revealed on its beat, and every leaf
+has a tween.
 
-**The section bodies are split across several timelines**, by what replays on a
-Category toggle (ADR-0011): the headers and rating cells are stable chrome keyed
-on nothing, the genre rows and released track and cards are volatile and keyed on
-what changed. Because every timeline starts at t=0 on the reveal signal, a body
-wave positioned at an **absolute** second (`HEADERS_LEAD + index * SECTION_STEP`)
-lines up with the others across timeline boundaries — the one place a reveal uses
-an absolute position rather than a relative `<` offset.
+`REVEAL_STEP` is the gap between one leaf's beat and the next — the single pacing
+knob for the whole cascade. `cascade`'s `startPosition` places it after the frame
+Wipe begins. The frame's clip reveals the panel's backgrounds and bars
+geometrically as it Wipes; the leaves inside stay hidden until their beat, so the
+bars arrive with the frame rather than popping.
+
+This replaced a marker-driven grammar that revealed only the elements it was told
+to (ADR-0011) and so left everything untagged to pop. Its primitives and their
+markers survive; its per-section split timelines do not — the shelf is now the
+frame's stable Wipe plus one content Cascade keyed on `[loading, category,
+visibleGenres]`, which re-runs the whole sequence on a Category toggle and leaves
+a filter toggle alone.
 
 **Arrival is a first-class moment: a surface re-runs its entrance every time you
 arrive at it**, not only on first load. A page that is a distinct route

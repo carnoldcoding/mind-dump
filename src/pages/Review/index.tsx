@@ -11,7 +11,7 @@ import { gameGenres, movieGenres, bookGenres } from "../../utils/helpers";
 import { useLocation } from "react-router";
 import { useStageState } from "../../context/BootSequenceContext";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { decode, decodeGroup, domino, growth, ripple, wipe } from "../../utils/motion";
+import { cascade, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { Modal } from "../../components/common/Modal";
@@ -360,81 +360,22 @@ const Review = () => {
 
     // Review does not unmount between Categories — React Router keeps the same
     // component instance and re-renders with new params. So arrival on a toggle
-    // is expressed by keying the reveal timelines on `category`, not by
+    // is expressed by keying the reveal timeline on what changed, not by
     // remounting the DOM: the reveal system replays a timeline exactly when its
     // rebuildOn changes, which is what "a fresh entrance, not the same one at a
     // different moment" means.
-    //
-    // The arrival grammar, one level finer than a single content beat (ADR-0011):
-    // the frame Wipes, the section headers Decode together as a group, then each
-    // section's body fills in its own idiom — genre rows and track cells Ripple
-    // in place, the search underline Grows, the cards fall in a Domino. The
-    // bodies overlap in waves, each section a beat behind the one above it.
-    //
-    // Positions below are absolute seconds, not `<` offsets, on purpose: the
-    // waves are split across several timelines by what replays on a Category
-    // toggle, and every one of them starts at t=0 when the reveal signal fires —
-    // so an absolute position is the shared clock the separate timelines line up
-    // against. HEADERS_LEAD holds the bodies back until the header group has
-    // begun; SECTION_STEP is the gap between one section's wave and the next.
-    const HEADERS_LEAD = 0.35;
-    const SECTION_STEP = 0.08;
-    const bodyAt = (index: number) => HEADERS_LEAD + index * SECTION_STEP;
-    // Column order, top to bottom — the order the wave travels down the surface.
-    const GENRE = 0, RATING = 1, RELEASED = 2, FINISHED = 3, SEARCH = 4, SHELF = 5;
 
     // FRAME — stable chrome. Wipes once on arrival from another page; NOT keyed
-    // on the Category, so a toggle leaves it in place rather than re-wiping.
+    // on the Category, so a toggle leaves it in place rather than re-wiping. Its
+    // clip reveals the panel's backgrounds and bars geometrically; the leaves
+    // inside stay hidden (Cascade builds them paused) until their own beat.
     useRevealTimeline(contentActive, (tl) => {
         wipe(tl, '[data-panel-surface]');
     }, scope);
 
-    // SCAFFOLD — everything identical across every Category, so it plays once on
-    // arrival and stays put on a toggle (keyed on nothing): the always-present
-    // headers Decode as the group beat, the Rating cells and Shelf readouts
-    // Ripple, and the structural hairlines (search underline, footer divider)
-    // Grow. RELEASED and FINISHED are omitted here — they appear and disappear
-    // with the data, so they ride the volatile timeline below.
-    useRevealTimeline(contentActive, (tl) => {
-        if (scope.current) {
-            decodeGroup(
-                tl,
-                scope.current.querySelectorAll(
-                    '[data-section="genre"] [data-section-header],' +
-                    '[data-section="rating"] [data-section-header],' +
-                    '[data-section="search"] [data-section-header],' +
-                    '[data-section="shelf"] [data-section-header]',
-                ),
-                0,
-            );
-        }
-        ripple(tl, '[data-section="rating"] [data-ripple-item]', bodyAt(RATING));
-        ripple(tl, '[data-section="shelf"] [data-ripple-item]', bodyAt(SHELF));
-        growth(tl, '[data-hairline]', bodyAt(SEARCH));
-    }, scope);
-
-    // TITLE — reads the Category ("GAMES VIEW PANEL"), so it re-Decodes toward
-    // the new name on every toggle. The long pole; starts at the top.
-    useRevealTimeline(contentActive, (tl) => {
-        decode(tl, '[data-panel-title]', panelTitle, 0);
-    }, scope, [category]);
-
-    // RELEASED + FINISHED CELLS — the tracks' spans differ by Category (a shelf's
-    // oldest game is not its oldest book), so the cells Ripple over the new set on
-    // every toggle. Keyed on [loading, category] so they build once the sections
-    // exist and replay on a toggle. Their headers are handled separately below —
-    // the header text does not change, so it is not rebuilt here.
-    useRevealTimeline(contentActive && !loading, (tl) => {
-        ripple(tl, '[data-section="released"] [data-ripple-item]', bodyAt(RELEASED));
-        ripple(tl, '[data-section="finished"] [data-ripple-item]', bodyAt(FINISHED));
-    }, scope, [loading, category]);
-
-    // CARDS — the shelf grid, on its own scope. Falls in a Domino on the fetch
-    // and on every Category toggle, over the new Category's cards.
+    // The content Cascade is wired below, once the derived sets it keys on are in
+    // scope. shelfScope is retained only as the grid's ref.
     const shelfScope = useRef<HTMLDivElement>(null);
-    useRevealTimeline(contentActive && !loading, (tl) => {
-        domino(tl, '[data-shelf-card]', bodyAt(GENRE));
-    }, shelfScope, [loading, category]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleFieldChange = (field: string, value: any) => {
@@ -577,19 +518,6 @@ const Review = () => {
         [shelved, genreOptions],
     );
 
-    // GENRE ROWS — a Ripple wave: they fade in one after another in place, they
-    // do not slide (that is the line between Ripple and the cards' Domino). Like
-    // the cards they do not exist when the frame mounts — they are the fetched
-    // shelf run through genresInUse, and `genreOptions` is filled by an effect
-    // that runs after layout. Keyed on the actual visible set (not `category`),
-    // so the timeline is built once the rows are really on screen and replays
-    // whenever the set changes. A `category`-keyed build fired a frame too early
-    // and caught a stale subset — which left some rows animating and the rest
-    // popping in.
-    useRevealTimeline(contentActive, (tl) => {
-        ripple(tl, '[data-section="genre"] [data-ripple-item]', bodyAt(GENRE));
-    }, scope, [visibleGenres.join('|')]);
-
     // The five-year spans the shelf actually covers, not a fixed range — a
     // Category whose oldest thing is from 1994 has no business offering the
     // 1930s.
@@ -618,29 +546,23 @@ const Review = () => {
         return Array.from({ length: Math.max(...years) - first + 1 }, (_, i) => first + i);
     }, [shelved]);
 
-    // RELEASED + FINISHED HEADERS — stable chrome, but present-conditional: a
-    // shelf with nothing dated has no Released section at all. So unlike the
-    // always-present headers in the scaffold, these cannot build at mount; they
-    // are keyed on whether their section exists, not on the Category. A header
-    // whose text never changes then Decodes exactly once — when its section first
-    // appears — and stays put across toggles between two Categories that both
-    // have it, rather than re-scrambling on every toggle as it would on the
-    // cells' [category] timeline. They Decode at position 0 to land in the same
-    // arrival group beat as the scaffold headers.
-    const hasReleased = releaseSpans.length > 0;
-    const hasFinished = finishYears.length > 1;
+    // CONTENT CASCADE — the whole panel content revealed as one sequence, so that
+    // nothing arrives un-animated (ADR-0012). It walks the frame in DOM order and
+    // gives every leaf its own beat: titles and section headers Decode, hairlines
+    // Grow, cards fall in a Domino, everything else Ripples in place. The guarantee
+    // that nothing pops is that the walk reaches every leaf and `.from()` hides on
+    // build — a leaf with no tween is the only thing that can pop.
+    //
+    // Built at `contentActive` (not gated on the fetch) so it hides the content at
+    // mount rather than letting it show un-animated, and keyed on [loading,
+    // category, the visible genre set] so it rebuilds once the fetched cards and
+    // rows exist and re-runs the whole sequence on a Category toggle. A mere
+    // filter toggle changes none of those keys, so filtering does not re-cascade.
+    // Starts a beat after the frame's Wipe begins.
     useRevealTimeline(contentActive, (tl) => {
-        if (scope.current) {
-            decodeGroup(
-                tl,
-                scope.current.querySelectorAll(
-                    '[data-section="released"] [data-section-header],' +
-                    '[data-section="finished"] [data-section-header]',
-                ),
-                0,
-            );
-        }
-    }, scope, [hasReleased, hasFinished]);
+        const frame = scope.current?.querySelector<HTMLElement>('[data-testid="panel-frame"]');
+        if (frame) cascade(tl, frame, 0.15);
+    }, scope, [loading, category, visibleGenres.join('|')]);
 
     // A span reads back off the filters rather than being held twice. The
     // filters are what actually narrows the shelf, so anything that sets them

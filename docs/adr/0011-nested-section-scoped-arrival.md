@@ -1,8 +1,15 @@
 ---
-status: accepted
+status: superseded by 0012
 ---
 
 # The arrival grammar nests: section headers, then per-section bodies
+
+> **Superseded in part by [ADR-0012](./0012-total-coverage-cascade.md).** The
+> `Ripple` primitive and the marker vocabulary introduced here survive. The
+> per-section split timelines and "replay only what changed" do not — they left
+> untagged elements popping, and were replaced by a single total-coverage
+> Cascade. Read this for why Ripple exists; read 0012 for how the shelf reveals
+> now.
 
 The arrival grammar (ADR-0007, `docs/motion.md`) was four beats — Frame Wipe,
 Title Decode, Hairlines Grow, Content Domino — with the whole of a surface's

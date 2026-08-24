@@ -8,37 +8,30 @@ import { BootSequenceProvider } from "../../context/BootSequenceContext";
 import { resetMotionOverride, setMotionOverride } from "../../utils/animations";
 import { resetReviewsStore } from "../../store/reviews";
 import { makeReview } from "../../test/reviews";
-import { domino, wipe, decode, ripple, decodeGroup } from "../../utils/motion";
+import { cascade, wipe } from "../../utils/motion";
 
 vi.mock("../../api/backend", () => ({
     backend: { getReviews: vi.fn() },
 }));
 
-// Spy on the primitives while keeping their real behaviour, so the shelf still
-// renders and animates. What each *gesture* does frame-by-frame is gsap's job
-// and the operator's eye; what this asserts is which gesture is (re)built when
-// the Category changes — the wiring the spec turns on. Observing the transient
-// hidden frame directly is unreliable here: gsap's play() re-wakes the ticker
-// and auto-completes a reveal between awaits, so a mid-flight opacity is gone
-// by the time a test can read it.
+// Spy on the two functions the shelf's reveal actually calls — the frame Wipe
+// and the content Cascade — while keeping their real behaviour, so the shelf
+// still renders and animates. What each gesture does frame-by-frame is gsap's
+// job and the operator's eye; what this asserts is the wiring: that the whole
+// content re-cascades on a Category change while the frame is left in place.
+//
+// Only the module's exported bindings can be spied, and Cascade calls the other
+// primitives by their module-local names — so those internal calls are not
+// observable here. That is fine: coverage of what Cascade reveals lives in
+// motion.test.ts; this file asserts the reveal is wired and re-keyed correctly.
 vi.mock("../../utils/motion", async (importActual) => {
     const actual = await importActual<typeof import("../../utils/motion")>();
     return {
         ...actual,
-        domino: vi.fn(actual.domino),
+        cascade: vi.fn(actual.cascade),
         wipe: vi.fn(actual.wipe),
-        decode: vi.fn(actual.decode),
-        ripple: vi.fn(actual.ripple),
-        decodeGroup: vi.fn(actual.decodeGroup),
     };
 });
-
-// Ripple is called once per section wave, with that section's selector as its
-// target — so a substring picks out one section's calls from the rest.
-const rippleCallsMatching = (needle: string) =>
-    vi.mocked(ripple).mock.calls.filter(
-        (call) => typeof call[1] === "string" && (call[1] as string).includes(needle),
-    ).length;
 
 const mocked = vi.mocked(backend);
 
@@ -93,8 +86,6 @@ beforeEach(() => {
     setMotionOverride("on");
     vi.clearAllMocks();
     resetReviewsStore();
-    // Distinct genres per Category so the visible genre set actually changes on
-    // a toggle — which is what the genre Ripple keys its replay on.
     mocked.getReviews.mockResolvedValue([
         makeReview("Nioh", { type: "game", genres: ["action"] }),
         makeReview("Dune", { type: "book", genres: ["biography"] }),
@@ -108,12 +99,11 @@ afterEach(() => {
 
 /**
  * With motion *on*. The shared Category shelf keeps one component instance
- * across Games/Cinema/Books, so a toggle used to swap the data with no motion —
- * a comment even claimed it re-animated, but the reveal hooks keyed their
- * rebuild on nothing that changed on a toggle. These hold the shelf to
- * re-animating its contents on a toggle while leaving its frame in place.
+ * across Games/Cinema/Books, so a toggle used to swap the data with no motion.
+ * Under the total-coverage Cascade (ADR-0012) the whole content re-animates on a
+ * toggle, while the frame stays put as stable chrome (ADR-0010).
  */
-describe("the shelf re-animating on a Category toggle", () => {
+describe("the shelf's content Cascade on a Category toggle", () => {
     it("shows the other Category's Review after the toggle", async () => {
         await showGames();
         expect(shelfCardCount()).toBeGreaterThan(0);
@@ -124,25 +114,23 @@ describe("the shelf re-animating on a Category toggle", () => {
         expect(screen.queryByText("Nioh")).toBeNull();
     });
 
-    it("replays the card Domino when the Category changes", async () => {
+    it("runs the content Cascade on arrival", async () => {
         await showGames();
-        const dominoesBefore = vi.mocked(domino).mock.calls.length;
 
-        await goToBooks();
-
-        // The domino is rebuilt against the new Category's cards — the replay
-        // the old code lacked, because its rebuildOn did not include the
-        // Category.
-        expect(vi.mocked(domino).mock.calls.length).toBeGreaterThan(dominoesBefore);
+        // The whole panel content is revealed in one Cascade over the frame.
+        expect(vi.mocked(cascade).mock.calls.length).toBeGreaterThan(0);
     });
 
-    it("re-Decodes the panel title when the Category changes", async () => {
+    it("re-cascades the content when the Category changes", async () => {
         await showGames();
-        const decodesBefore = vi.mocked(decode).mock.calls.length;
+        const before = vi.mocked(cascade).mock.calls.length;
 
         await goToBooks();
 
-        expect(vi.mocked(decode).mock.calls.length).toBeGreaterThan(decodesBefore);
+        // Keyed on [loading, category, visibleGenres], so a toggle rebuilds the
+        // Cascade and re-runs the whole sequence over the new Category's content —
+        // nothing is swapped in without an entrance.
+        expect(vi.mocked(cascade).mock.calls.length).toBeGreaterThan(before);
     });
 
     it("does not re-Wipe the frame when the Category changes", async () => {
@@ -152,82 +140,17 @@ describe("the shelf re-animating on a Category toggle", () => {
         await goToBooks();
 
         // The frame is stable chrome: keyed on nothing that changes on a toggle,
-        // so its wipe is not rebuilt and it stays in place.
+        // so its Wipe is not rebuilt and it stays in place while the content
+        // re-cascades inside it.
         expect(vi.mocked(wipe).mock.calls.length).toBe(wipesBefore);
     });
-});
 
-/**
- * The finer arrival grammar (ADR-0011): the section headers land as one Decode
- * group, the bodies fill in their own idioms, and a Category toggle replays only
- * the sections whose contents changed — leaving the category-invariant scaffold
- * (headers, Rating cells) in place, the same way the frame stays.
- */
-describe("the section-scoped arrival", () => {
-    it("decodes the section headers as a group on arrival", async () => {
+    it("cascades over the frame element, not the whole wrapper", async () => {
         await showGames();
-        // decodeGroup is the header group beat — called at least for the
-        // always-present headers (Genre, Rating, Search, Shelf).
-        expect(vi.mocked(decodeGroup).mock.calls.length).toBeGreaterThan(0);
-    });
 
-    it("ripples the genre rows in place rather than Dominoing them", async () => {
-        await showGames();
-        // Genre rows now fade in one after another (Ripple), not slide (Domino).
-        expect(rippleCallsMatching('[data-section="genre"]')).toBeGreaterThan(0);
-    });
-
-    it("ripples the rating track cells in place on arrival", async () => {
-        await showGames();
-        // The rating scale is a segmented Track: its cells brighten in place.
-        expect(rippleCallsMatching('[data-section="rating"]')).toBeGreaterThan(0);
-    });
-
-    it("replays the genre Ripple when the Category changes", async () => {
-        await showGames();
-        const before = rippleCallsMatching('[data-section="genre"]');
-
-        await goToBooks();
-
-        // Genre rows differ by Category, so their wave rebuilds over the new set.
-        expect(rippleCallsMatching('[data-section="genre"]')).toBeGreaterThan(before);
-    });
-
-    it("replays the released track Ripple when the Category changes", async () => {
-        await showGames();
-        const before = rippleCallsMatching('[data-section="released"]');
-
-        await goToBooks();
-
-        // The released spans differ by Category (a shelf's oldest game is not its
-        // oldest book), so those cells rebuild over the new set — one of the
-        // "do rebuild" targets the stable chrome is contrasted against.
-        expect(rippleCallsMatching('[data-section="released"]')).toBeGreaterThan(before);
-    });
-
-    it("does not replay the Rating-cell Ripple when the Category changes", async () => {
-        await showGames();
-        const before = rippleCallsMatching('[data-section="rating"]');
-
-        await goToBooks();
-
-        // The Rating scale is identical every Category, so its cells are stable
-        // chrome on the arrival-only timeline: they must not re-ripple on a
-        // toggle, the same guarantee the frame's wipe has.
-        expect(rippleCallsMatching('[data-section="rating"]')).toBe(before);
-    });
-
-    it("does not re-Decode any section header when the Category changes", async () => {
-        await showGames();
-        const before = vi.mocked(decodeGroup).mock.calls.length;
-
-        await goToBooks();
-
-        // Header text ("GENRE", "RELEASED") does not change across Categories, so
-        // no header re-scrambles on a toggle — the always-present ones are keyed
-        // on nothing, and the present-conditional Released/Finished headers are
-        // keyed on whether their section exists, not on the Category. Only the
-        // panel *title* (a plain decode, not a group) re-decodes.
-        expect(vi.mocked(decodeGroup).mock.calls.length).toBe(before);
+        // The Cascade roots at the frame article so the shadow and frame surfaces
+        // (whose Wipe is separate) are outside its walk.
+        const root = vi.mocked(cascade).mock.calls.at(-1)?.[1] as HTMLElement | undefined;
+        expect(root?.getAttribute("data-testid")).toBe("panel-frame");
     });
 });
