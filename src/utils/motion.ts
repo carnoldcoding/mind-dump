@@ -44,8 +44,15 @@ export const DOMINO_STAGGER = 0.03;
 export const FADE_DURATION = 0.24;
 export const RIPPLE_DURATION = 0.28;
 export const RIPPLE_STAGGER = 0.035;
-/** The gap between one leaf's beat and the next in a full-surface Cascade. */
+/** The gap between one leaf's beat and the next within a run of sibling leaves. */
 export const REVEAL_STEP = 0.025;
+/**
+ * The gap between one sibling sub-tree's start and the next in a Cascade. It is
+ * deliberately shorter than a component's own span, so the next component begins
+ * while the previous is still iterating — separate components overlap and run
+ * almost in parallel, rather than one finishing before the next starts.
+ */
+export const BRANCH_STEP = 0.08;
 
 /**
  * How long each character of a Decode takes. The lever for a reveal's overall
@@ -217,24 +224,47 @@ export const decode = (
  */
 const ATOMIC_TAGS = new Set(['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'SVG', 'IMG', 'CANVAS', 'A', 'LABEL']);
 
+const CHROME_SELECTOR =
+  '[data-panel-title], [data-page-title], [data-window-title], [data-modal-title], [data-detail-title], [data-section-header]';
+
+/**
+ * How large a sub-tree may be and still be revealed as one beat rather than
+ * walked into. It coalesces a small compound — a labelled field is a wrapper, a
+ * label and an input, three nodes that should arrive together — into one beat
+ * instead of three. Without it a form of a dozen fields is a hundred-odd beats,
+ * which is both too granular to read and slow enough to build that it times a
+ * test out.
+ */
+const COALESCE_MAX = 8;
+
 const hasDirectText = (el: Element): boolean =>
   Array.from(el.childNodes).some((node) => node.nodeType === 3 && (node.textContent ?? '').trim() !== '');
 
 /**
  * A leaf is revealed as one beat; a wrapper is descended into. A node is a leaf
  * when it carries its own text, is an interactive or media element, is a marked
- * card, or has no element children — anything else is layout to walk through.
+ * card, has no element children, or is a small compound with no chrome inside it
+ * that would want its own beat (a header to Decode). Anything larger, or holding
+ * chrome, is layout to walk through.
  */
 const isRevealUnit = (el: Element): boolean =>
   el.matches('[data-shelf-card]') ||
   ATOMIC_TAGS.has(el.tagName) ||
   hasDirectText(el) ||
-  el.children.length === 0;
+  el.children.length === 0 ||
+  (el.querySelectorAll('*').length <= COALESCE_MAX && el.querySelector(CHROME_SELECTOR) === null);
 
 const revealUnit = (timeline: gsap.core.Timeline, el: Element, position: number) => {
   if (el.matches('[data-hairline]')) return growth(timeline, el, position);
-  if (el.matches('[data-panel-title], [data-page-title], [data-section-header]'))
+  if (el.matches(CHROME_SELECTOR)) {
+    // Decode is a `.to()`: unlike the `.from()` primitives it does not apply a
+    // start state on build, so a header would sit visible showing its real text
+    // until its beat — it would pop. A Fade at the same beat hides it on build
+    // (`.from()` does render on creation) so the bar arrives as its text
+    // scrambles, rather than being there all along.
+    fade(timeline, el, position);
     return decode(timeline, el, el.textContent ?? '', position);
+  }
   if (el.matches('[data-shelf-card]')) return domino(timeline, el, position);
   return ripple(timeline, el, position);
 };
@@ -251,32 +281,36 @@ const revealUnit = (timeline: gsap.core.Timeline, el: Element, position: number)
  * reaches every leaf, and a leaf with no tween is the only thing that can pop —
  * `.from()` hides on build, so a leaf that has a tween starts hidden.
  *
- * Skips the frame surfaces (their Wipe is a separate, stable timeline) and any
- * element the stylesheet has hidden, so a `lg:hidden` control does not spend a
- * beat on a viewport that never shows it. Returns the position after the last
- * beat.
+ * Skips the frame surfaces (their Wipe is a separate, stable timeline). A
+ * stylesheet-hidden element (a `lg:hidden` control) is left in — animating an
+ * invisible element is harmless and only spends a beat, whereas testing each for
+ * `display: none` means a `getComputedStyle` per node, which is slow enough in
+ * jsdom to time a large surface's tests out.
+ *
+ * Two step sizes give the concurrency: within a run of sibling leaves the
+ * position advances by `REVEAL_STEP` (a tight in-place stagger), but descending
+ * into a sub-tree advances the parent's position by only `BRANCH_STEP` before
+ * the next sibling — less than the sub-tree's own span — so a component's later
+ * beats overlap the next component's earlier ones. Separate components run
+ * almost in parallel; the leaves inside each still iterate one after another.
  */
-export const cascade = (
-  timeline: gsap.core.Timeline,
-  root: HTMLElement,
-  startPosition = 0,
-  step = REVEAL_STEP,
-): number => {
-  let position = startPosition;
-  const visit = (el: Element) => {
+export const cascade = (timeline: gsap.core.Timeline, root: HTMLElement, startPosition = 0): void => {
+  const visit = (el: Element, base: number) => {
+    let position = base;
     for (const child of Array.from(el.children)) {
-      if (child.matches('[data-panel-surface]')) continue;
-      if (typeof window !== 'undefined' && window.getComputedStyle(child).display === 'none') continue;
+      // The frame surfaces have their own Wipe; a [data-reveal-own] sub-tree runs
+      // its own timeline (a shared list, say) and must not be double-animated.
+      if (child.matches('[data-panel-surface], [data-reveal-own]')) continue;
       if (isRevealUnit(child)) {
         revealUnit(timeline, child, position);
-        position += step;
+        position += REVEAL_STEP;
       } else {
-        visit(child);
+        visit(child, position);
+        position += BRANCH_STEP;
       }
     }
   };
-  visit(root);
-  return position;
+  visit(root, startPosition);
 };
 
 /**
