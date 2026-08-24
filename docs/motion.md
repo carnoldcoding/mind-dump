@@ -58,7 +58,8 @@ round. The names survived the move to GSAP unchanged.
 | Primitive  | Motion                                   | Owns                                     |
 |------------|------------------------------------------|------------------------------------------|
 | **Wipe**   | `clip-path: inset()`, hard edge, no fade | panels, frames, modals                   |
-| **Domino** | staggered entrance, per-item delay       | card grids, list rows, nav items         |
+| **Domino** | staggered slide-and-fade, per-item delay | card grids that fall into place          |
+| **Ripple** | staggered opacity, per-item delay, no transform | groups that brighten in place — genre rows, segmented-track cells |
 | **Growth** | `scaleX` from an anchored edge           | horizontal bars, rules, dividers         |
 | **Decode** | glyph scramble locking left-to-right     | short uppercase chrome                   |
 | **Fade**   | opacity only                             | prose, backdrops                         |
@@ -70,6 +71,11 @@ Three rules decide which to reach for:
 - **If it wraps, it fades.** Decode is unreadable on a paragraph. It is for page
   headers, panel titles, readout labels and nav labels — not critique sections
   or notes.
+- **A group that falls Dominoes; a group that fills in place Ripples.** Cards
+  slide down as they arrive (Domino). The cells of a rating track are fixed
+  segments and the genre rows sit in a list — they brighten where they stand
+  (Ripple), they do not move. The two share a stagger; the transform is the line
+  between them.
 
 ### Phase — entrance or exit
 
@@ -119,8 +125,10 @@ noted.
 |---|---|---|
 | `WIPE_DURATION` | 0.32 | a solid surface's clip wipe |
 | `GROWTH_DURATION` | 0.30 | a hairline / rule growing across |
-| `DOMINO_DURATION` | 0.35 | one card or row's slide-and-fade |
-| `DOMINO_STAGGER` | 0.03 | the gap between successive items in a Domino wave (cards, genre rows, list rows) |
+| `DOMINO_DURATION` | 0.35 | one card's slide-and-fade |
+| `DOMINO_STAGGER` | 0.03 | the gap between successive cards in a Domino wave |
+| `RIPPLE_DURATION` | 0.28 | one item's in-place fade (genre row, track cell) |
+| `RIPPLE_STAGGER` | 0.035 | the gap between successive items in a Ripple wave |
 | `FADE_DURATION` | 0.24 | a prose or backdrop fade |
 | `DECODE_PER_CHAR` | 0.055 | per-character scramble rate; a title's length sets the whole sequence's length, so this is the main pacing lever |
 
@@ -197,17 +205,32 @@ contents arrived is the flash this whole design exists to remove.
 
 Every animated surface follows one order, and its beats overlap in waves rather
 than march one fully-finished beat at a time (the `"<0.2"` position convention
-above):
+above). The content beat nests one level (ADR-0011): the section headers land as
+a group, then each section's body fills in its own idiom.
 
 ```
-Frame Wipe ─► Title Decode ─► Hairlines Grow ─► Content Domino
+Frame Wipe ─► Title Decode ─► Section Headers Decode (group) ─► per section:
+                                                                   Header
+                                                                   Items Ripple
+                                                                   Hairline Grow
 ```
 
-A surface omits a beat it has no elements for, but never reorders them. On a
-Category shelf the genre rows and the Review cards are two concurrent Domino
-waves in the last beat, not one after the other. Plugging a new surface's
-content into this order — by giving its elements the `data-*` markers the beats
-address — is what makes it animate correctly by default.
+A surface omits a beat it has no elements for, but never reorders them. The
+section bodies overlap in waves, each a beat behind the one above it, so on a
+Category shelf the genre rows, the rating cells and the cards fill concurrently
+rather than one finished section at a time. Plugging a new surface's content into
+this order — by giving its elements the `data-*` markers the beats address
+(`data-section` around each section, `data-section-header` on its bar,
+`data-ripple-item` on its items, `data-hairline` on its rule) — is what makes it
+animate correctly by default.
+
+**The section bodies are split across several timelines**, by what replays on a
+Category toggle (ADR-0011): the headers and rating cells are stable chrome keyed
+on nothing, the genre rows and released track and cards are volatile and keyed on
+what changed. Because every timeline starts at t=0 on the reveal signal, a body
+wave positioned at an **absolute** second (`HEADERS_LEAD + index * SECTION_STEP`)
+lines up with the others across timeline boundaries — the one place a reveal uses
+an absolute position rather than a relative `<` offset.
 
 **Arrival is a first-class moment: a surface re-runs its entrance every time you
 arrive at it**, not only on first load. A page that is a distinct route
