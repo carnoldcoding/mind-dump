@@ -129,7 +129,8 @@ noted.
 | `DOMINO_STAGGER` | 0.03 | the gap between successive cards in a Domino wave |
 | `RIPPLE_DURATION` | 0.28 | one item's in-place fade (genre row, track cell) |
 | `RIPPLE_STAGGER` | 0.035 | the gap between successive items in a Ripple wave |
-| `REVEAL_STEP` | 0.025 | the gap between one leaf's beat and the next in a full-surface Cascade — the whole cascade's pace |
+| `REVEAL_STEP` | 0.025 | the gap between one leaf's beat and the next within a run of sibling leaves in a Cascade |
+| `BRANCH_STEP` | 0.08 | the gap between one sub-tree's start and the next in a Cascade — shorter than a component's span, so separate components overlap |
 | `FADE_DURATION` | 0.24 | a prose or backdrop fade |
 | `DECODE_PER_CHAR` | 0.055 | per-character scramble rate; a title's length sets the whole sequence's length, so this is the main pacing lever |
 
@@ -217,26 +218,41 @@ Frame Wipe ─► Cascade (walk the frame; every leaf, in DOM order):
                  anything else           ─► Ripple in place
 ```
 
-The primitive a leaf gets is read off its markers (`data-section-header` and
-`data-panel-title` Decode, `data-hairline` Grows, `data-shelf-card` Dominoes,
-the rest Ripple); the *coverage* is not — the walk reaches every leaf, so an
-element with no tween, the only thing that can pop, cannot exist. This is why the
+The primitive a leaf gets is read off its markers (a title/header marker Decodes —
+and gets a Fade alongside it, because Decode is a `.to()` and would otherwise sit
+visible until its beat; `data-hairline` Grows, `data-shelf-card` Dominoes, the
+rest Ripple); the *coverage* is not — the walk reaches every leaf, so an element
+with no tween, the only thing that can pop, cannot exist. This is why the
 guarantee holds without tagging each element: `.from()` hides a leaf on build, so
 a leaf that has a tween starts hidden and is revealed on its beat, and every leaf
 has a tween.
 
-`REVEAL_STEP` is the gap between one leaf's beat and the next — the single pacing
-knob for the whole cascade. `cascade`'s `startPosition` places it after the frame
-Wipe begins. The frame's clip reveals the panel's backgrounds and bars
-geometrically as it Wipes; the leaves inside stay hidden until their beat, so the
-bars arrive with the frame rather than popping.
+**A leaf is not always the deepest node.** A small compound with no chrome inside
+it — a labelled field: a wrapper, a label, an input — is revealed as one beat
+rather than three (`COALESCE_MAX` bounds "small"). Without this a form is a
+hundred-odd beats, too granular to read and slow enough to build to time a test
+out. A sub-tree that holds a header, or that is large, is still walked into.
 
-This replaced a marker-driven grammar that revealed only the elements it was told
-to (ADR-0011) and so left everything untagged to pop. Its primitives and their
-markers survive; its per-section split timelines do not — the shelf is now the
-frame's stable Wipe plus one content Cascade keyed on `[loading, category,
-visibleGenres]`, which re-runs the whole sequence on a Category toggle and leaves
-a filter toggle alone.
+**A sub-tree can opt out with `data-reveal-own`** when it runs its own timeline —
+a shared list that Dominoes on its own readiness, a chart that draws itself. The
+Cascade steps over it rather than double-animating it.
+
+Two step sizes set the pace and the concurrency. `REVEAL_STEP` is the gap between
+sibling leaves within one component (a tight in-place stagger). `BRANCH_STEP` is
+the gap before the next sibling *sub-tree* starts — shorter than a component's own
+span, so separate components overlap and run almost in parallel rather than one
+finishing before the next begins. `cascade`'s `startPosition` places the whole
+thing after the frame Wipe begins. The frame's clip reveals the panel's
+backgrounds and bars geometrically as it Wipes; the leaves inside stay hidden
+until their beat, so the bars arrive with the frame rather than popping.
+
+**Every surface reveals this way** — the frame's stable Wipe plus one
+`cascade(frame)` over its content, keyed on what its content depends on (a
+Category shelf on `[loading, category, visibleGenres]`, a Body window on its docs
+and selection, an editor on `open`). This replaced a marker-driven grammar that
+revealed only the elements it was told to (ADR-0011) and so left everything
+untagged to pop. Its primitives and markers survive; its per-section split
+timelines do not.
 
 **Arrival is a first-class moment: a surface re-runs its entrance every time you
 arrive at it**, not only on first load. A page that is a distinct route

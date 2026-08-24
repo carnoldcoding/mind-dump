@@ -6,7 +6,7 @@ import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
 import { Modal } from "../../../../components/common/Modal";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
-import { decode, domino } from "../../../../utils/motion";
+import { cascade } from "../../../../utils/motion";
 import { buildGoal, fieldValue } from "./entry";
 import type { Movement, MovementTag } from "./entry";
 
@@ -37,10 +37,11 @@ const MovementEditModal = ({ movement, open, onClose, onSaved, onDelete }: Props
 
     // Heavy editor cascade over Modal's surface wipe: title Decodes, fields
     // Domino, keyed on `open` so it replays each time the editor opens.
+    // Modal Wipes the surface; the article's contents then Cascade so nothing
+    // arrives un-animated (ADR-0012). Keyed on `open` so it replays each open.
     const articleScope = useRef<HTMLElement>(null);
     useRevealTimeline(open, (tl) => {
-        decode(tl, '[data-modal-title]', 'Edit Movement');
-        domino(tl, '[data-modal-body] > *', '<0.15');
+        if (articleScope.current) cascade(tl, articleScope.current, 0.1);
     }, articleScope, [open]);
 
     useEffect(() => {

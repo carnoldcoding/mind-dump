@@ -71,4 +71,30 @@ that coverage is total and driven by the walk, not by a per-section timeline.
   either — they arrive with the frame.
 - This is the reference surface. Every other surface adopts the same
   `cascade(frame)` call over its own frame; the sweep is one call per surface, not
-  per-element tagging.
+  per-element tagging. It has since been applied across the app — the Now page,
+  ReviewDetail, the System Desktop, its Body / Backlog / Reviews windows, all five
+  editors, and the mobile nav. Boot stays out (its own choreography, `bootMotion.ts`).
+
+## Refinements from the site-wide sweep
+
+- **Concurrency between components.** A single running position made the whole
+  surface strictly sequential. Two step sizes replace it: `REVEAL_STEP` between
+  sibling leaves within a component, and a shorter `BRANCH_STEP` before the next
+  sibling *sub-tree*, so a component's later beats overlap the next component's
+  earlier ones. Separate components run almost in parallel; leaves inside each
+  still iterate one after another.
+- **Coalescing.** Walking to the deepest node made a labelled field (wrapper +
+  label + input) three beats and a real form a hundred-odd — too granular to read,
+  and slow enough to build to time a jsdom test out. A small compound (`≤
+  COALESCE_MAX` descendants) with no chrome inside it is now revealed as one beat;
+  a sub-tree that holds a header, or is large, is still walked into.
+- **`data-reveal-own`.** A sub-tree that runs its own timeline — a shared review
+  grid that Dominoes on its own readiness, a chart that draws itself — carries
+  this marker, and the Cascade steps over it rather than double-animating it.
+- **Headers stopped popping.** Decode is a `.to()` and, unlike the `.from()`
+  primitives, does not hide its target on build — a decoded header sat visible
+  showing its real text until its beat. The Cascade now Fades a header at the same
+  beat it Decodes it, so it is hidden on build and arrives as its text scrambles.
+- **Modals.** A Modal Wipes its own surface (`usePresenceTimeline`); the editor's
+  `cascade(article)` reveals the interior, so the two compose without either
+  knowing about the other.

@@ -4,7 +4,7 @@ import BodyWindow from "./components/Body";
 import BacklogWindow from "./components/Backlog";
 import { useRevealSignal } from "../../hooks/useRevealSignal";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { decode, fade, wipe } from "../../utils/motion";
+import { cascade, wipe } from "../../utils/motion";
 import { Panel } from "../../components/common/Panel";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 
@@ -32,17 +32,19 @@ const Desktop = () => {
     const revealed = useRevealSignal();
     const scope = useRef<HTMLDivElement>(null);
 
-    // The screen assembles in the canonical order: the frame Wipes, its label
-    // Decodes, and the rest of the chrome Fades a beat behind.
+    // The frame Wipes as stable chrome; everything inside then Cascades so that
+    // nothing arrives un-animated (ADR-0012). Desktop is static, so the Cascade
+    // is built once.
     useRevealTimeline(revealed, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        decode(tl, '[data-window-title]', 'SYSTEM.OS', '<0.15');
-        fade(tl, '[data-desktop-chrome]', '<0.2');
     }, scope);
     const [time, setTime] = useState("");
     const [date, setDate] = useState("");
     const [openApp, setOpenApp] = useState<string | null>(null);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+    useRevealTimeline(revealed, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope);
 
     useEffect(() => {
         const update = () => {

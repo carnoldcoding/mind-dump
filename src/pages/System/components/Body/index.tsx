@@ -10,7 +10,7 @@ import EntryEditModal from "./EntryEditModal";
 import { partitionBodyDocs, describeEntry, docId } from "./entry";
 import type { BodyDoc, Entry } from "./entry";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
-import { decode, fade, wipe } from "../../../../utils/motion";
+import { cascade, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
 import { useRetained } from "../../../../hooks/useRetained";
 import { Panel } from "../../../../components/common/Panel";
@@ -25,11 +25,13 @@ const BodyWindow = ({ onClose }: Props) => {
     // Desktop's conditional render gives it a fresh mount each time. The
     // canonical order: the frame Wipes, its title Decodes, and the rest of the
     // chrome Fades a beat behind.
+    // The frame Wipes as stable chrome; the whole window then Cascades so nothing
+    // arrives un-animated (ADR-0012). The Cascade is keyed on the content it shows
+    // — the fetched docs, the selected movement, the active tab — so it re-runs
+    // when the data lands and when the view changes, rather than popping.
     const scope = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        decode(tl, '[data-window-title]', 'Body', '<0.15');
-        fade(tl, '[data-window-chrome]', '<0.2');
     }, scope);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
@@ -39,6 +41,10 @@ const BodyWindow = ({ onClose }: Props) => {
     const [editingName, setEditingName]           = useState<string | null>(null);
     const [editingEntry, setEditingEntry]         = useState<Entry | null>(null);
     const [activeTab, setActiveTab]               = useState<ActiveTab>("chart");
+
+    useRevealTimeline(true, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope, [docs.length, selectedName, activeTab]);
 
     const fetchDocs = useCallback(async () => {
         try {
@@ -170,11 +176,15 @@ const BodyWindow = ({ onClose }: Props) => {
                                         </div>
 
                                         {activeTab === "chart" ? (
-                                            <MovementChart
-                                                name={selected.displayName}
-                                                entries={selectedEntries}
-                                                goal={selected.goal}
-                                            />
+                                            // data-reveal-own: a chart draws itself; the window Cascade
+                                            // steps over it rather than animating a canvas.
+                                            <div data-reveal-own>
+                                                <MovementChart
+                                                    name={selected.displayName}
+                                                    entries={selectedEntries}
+                                                    goal={selected.goal}
+                                                />
+                                            </div>
                                         ) : (
                                             <section aria-label="History" className="h-64 bg-nier-100-lighter border border-nier-150 relative flex flex-col">
                                                 <div className="h-7 bg-nier-150 flex items-center px-3 shrink-0">

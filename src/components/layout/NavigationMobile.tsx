@@ -4,7 +4,7 @@ import { navItems } from "./NavItems";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
 import { useScrollLock } from "../../utils/scrollLock";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { domino } from "../../utils/motion";
+import { cascade } from "../../utils/motion";
 
 interface NavigationMobileProps{
     isOpen: boolean;
@@ -29,9 +29,12 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     // `transition-colors`, not `transition-all`, so this GSAP transform/opacity
     // is not fought by a CSS transition on the same properties (see docs/motion.md
     // on the vocabulary/Response boundary).
+    // The drawer slides in on CSS; its contents then Cascade so every item and
+    // any chrome arrives on the timeline rather than popping (ADR-0012). Keyed on
+    // `isOpen` so it replays each time the drawer opens.
     const drawerScope = useRef<HTMLElement>(null);
     useRevealTimeline(isOpen, (tl) => {
-        domino(tl, '[data-drawer-item]');
+        if (drawerScope.current) cascade(tl, drawerScope.current);
     }, drawerScope, [isOpen]);
 
     return (

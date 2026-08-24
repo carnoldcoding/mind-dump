@@ -9,7 +9,7 @@ import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { decode, fade, growth, wipe } from "../../utils/motion";
+import { cascade, fade, growth, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { Modal } from "../../components/common/Modal";
@@ -166,11 +166,16 @@ const ReviewDetail = () => {
     // nothing once the panel appeared.
     useRevealTimeline(contentActive, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        decode(tl, '[data-detail-title]', data?.title ?? '', '<0.15');
-        growth(tl, '[data-hairline]', '<0.1');
-        fade(tl, '[data-detail-chrome]', '<0.2');
     }, scope, [loading, slug]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+
+    // The frame Wipes as stable chrome; the page then Cascades so nothing arrives
+    // un-animated (ADR-0012). Keyed on [loading, slug] so it rebuilds when the
+    // record lands and when you move between reviews. The critique below carries
+    // data-reveal-own and runs its own prose Fade, so the Cascade steps over it.
+    useRevealTimeline(contentActive, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope, [loading, slug]);
 
     /**
      * The critique itself. Rebuilt on every tab change, because switching
@@ -392,7 +397,7 @@ const ReviewDetail = () => {
                                         version of that count here: it says how
                                         much of the critique you have seen,
                                         which nothing else on the page does. */}
-                                    <div ref={critiqueScope} className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
+                                    <div ref={critiqueScope} data-reveal-own className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
                                         <div data-critique-heading className="h-7 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
                                             <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark">
                                                 {activeTab === 'mods'

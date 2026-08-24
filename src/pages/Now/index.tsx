@@ -35,7 +35,7 @@ import { byNewestCompleted } from "../../utils/completionDate";
 import { reviewPath } from "../../utils/categories";
 import { useRevealSignal } from "../../hooks/useRevealSignal";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { decode, domino, wipe } from "../../utils/motion";
+import { cascade, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { Link } from "react-router";
@@ -275,26 +275,18 @@ const Now = () => {
     const revealed = useRevealSignal();
     const scope = useRef<HTMLDivElement>(null);
 
-    // The frame arrives, its title decodes over the tail of that, and the
-    // sections fall in underneath. Each beat starts before the one before it
-    // has finished — that overlap is the `"<"` positions, and it is what makes
-    // the panel read as one machine coming online rather than three beats
-    // politely waiting for each other.
+    // The frame Wipes as stable chrome; everything inside then Cascades so
+    // nothing arrives un-animated (ADR-0012). The frame is built at mount, when
+    // the fetch has not answered; the Cascade is keyed on `loading` so it rebuilds
+    // and re-runs once the sections are actually there, rather than popping them.
     useRevealTimeline(revealed, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        decode(tl, '[data-panel-title]', PANEL_TITLE, '<0.15');
     }, scope);
 
-    // The sections get their own timeline because they arrive on a different
-    // signal. The frame's is built at mount, when the fetch has not answered
-    // and there are no sections to address; these domino in when the list is
-    // actually there. Two timelines, two readinesses — not one timeline that
-    // has to be rebuilt, which would replay the frame's wipe.
-    const listScope = useRef<HTMLDivElement>(null);
-    useRevealTimeline(revealed && !loading, (tl) => {
-        domino(tl, '[data-now-section]');
-    }, listScope, [loading]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+    useRevealTimeline(revealed, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope, [loading]);
 
     // Keyed rather than held by object identity: the store replaces Review
     // objects on every refetch, and a stale reference would silently stop
@@ -388,7 +380,7 @@ const Now = () => {
                             <span className="w-full flex-[5] bg-nier-150/50" />
                         </div>
 
-                        <div ref={listScope} className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4 pl-4">
+                        <div className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4 pl-4">
                             {loading ? (
                                 <div className="flex-1 flex items-center justify-center">
                                     <Loader />

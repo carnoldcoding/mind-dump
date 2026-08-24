@@ -5,7 +5,7 @@ import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
 import { Modal } from "../../../../components/common/Modal";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
-import { decode, domino } from "../../../../utils/motion";
+import { cascade } from "../../../../utils/motion";
 import { atLocalMidnight, fieldNumber, fieldValue } from "./entry";
 import type { Entry } from "./entry";
 
@@ -33,12 +33,12 @@ const EntryEditModal = ({ entry, movementName, open, onClose, onSaved, onDelete 
     const [error, setError]   = useState("");
 
     // The heavy editor's internal cascade, on top of Modal's surface wipe: the
-    // header title Decodes, then the fields Domino in. Keyed on `open` so it
-    // replays each time the editor is opened.
+    // Modal Wipes the surface; the article's contents then Cascade so nothing
+    // arrives un-animated (ADR-0012). Keyed on `open` so it replays each time the
+    // editor is opened.
     const articleScope = useRef<HTMLElement>(null);
     useRevealTimeline(open, (tl) => {
-        decode(tl, '[data-modal-title]', 'Edit Entry');
-        domino(tl, '[data-modal-body] > *', '<0.15');
+        if (articleScope.current) cascade(tl, articleScope.current, 0.1);
     }, articleScope, [open]);
 
     useEffect(() => {

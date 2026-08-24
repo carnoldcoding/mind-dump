@@ -39,7 +39,7 @@ import { datesForTransition } from "../../../../utils/lifecycle";
 import { daysWaiting } from "../../../../utils/capturedAt";
 import { writtenSections, SECTION_GLYPH } from "../../../../utils/critique";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
-import { decode, domino, fade, growth, wipe } from "../../../../utils/motion";
+import { cascade, domino, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
 import { Panel } from "../../../../components/common/Panel";
 import { ReviewCover } from "../../../../components/review/ReviewCover";
@@ -231,6 +231,7 @@ const Section = ({ label, items, selected, ...actions }: SectionProps) => (
                 <ul
                     aria-label={label}
                     data-backlog-shelf
+                    data-reveal-own
                     className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2"
                 >
                     {items.map(review => (
@@ -342,20 +343,25 @@ const BacklogWindow = ({ onClose }: Props) => {
     const scope = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        decode(tl, '[data-window-title]', 'Backlog', '<0.15');
-        growth(tl, '[data-hairline]', '<0.1');
-        fade(tl, '[data-window-chrome]', '<0.2');
     }, scope);
 
     // The shelves themselves. Their own timeline and their own readiness,
     // because the cards arrive with the collection rather than with the frame
     // — a timeline built at mount would address nothing, and go on addressing
-    // nothing once they turned up.
+    // nothing once they turned up. They carry data-reveal-own, so the window
+    // Cascade steps over them and leaves this Domino to run.
     const shelvesScope = useRef<HTMLDivElement>(null);
     useRevealTimeline(reviews.length > 0, (tl) => {
         domino(tl, '[data-backlog-shelf] > li');
     }, shelvesScope, [reviews.length > 0]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+
+    // The frame Wipes as stable chrome; the window then Cascades so nothing else
+    // arrives un-animated (ADR-0012). Keyed on the collection size so the chrome
+    // and captions re-cascade once the reviews land.
+    useRevealTimeline(true, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope, [reviews.length]);
 
     const [error, setError] = useState<string | null>(null);
     const [justFinished, setJustFinished] = useState<string | null>(null);
@@ -558,6 +564,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                                         <ul
                                             aria-label="Not Started"
                                             data-backlog-shelf
+                                            data-reveal-own
                                             // No key handler here: nothing in
                                             // the list is focusable, so one
                                             // would never fire. The search

@@ -5,7 +5,7 @@ import { BarChart } from "./barChart";
 import { ReviewPanel } from "./ReviewPanel";
 import { ReviewModal } from "./ReviewPanel/ReviewModal";
 import { useRevealTimeline } from "../../../hooks/useRevealTimeline";
-import { decode, fade, wipe } from "../../../utils/motion";
+import { cascade, wipe } from "../../../utils/motion";
 import { usePanelHeight } from "../../../hooks/usePanelHeight";
 import { Panel } from "../../../components/common/Panel";
 
@@ -17,19 +17,19 @@ const ReviewsWindow = ({ onClose }: Props) => {
     const { reviews }                 = useReviews();
     const [editingReview, setEditingReview] = useState<any>(null);
     const [modalOpen, setModalOpen]   = useState(false);
-    // No signal to wait on: this window only ever mounts well after boot is
-    // done — the user has to open System, then click a folder icon — and
-    // Desktop's conditional render gives it a fresh mount each time. The
-    // canonical order: the frame Wipes, its title Decodes, and the rest of the
-    // chrome Fades a beat behind. The review grid Dominoes on its own timeline
-    // inside ReviewPanel.
+    // The frame Wipes as stable chrome; the window then Cascades so nothing
+    // arrives un-animated (ADR-0012). The review grid inside carries
+    // data-reveal-own and Dominoes on its own timeline, so the Cascade steps over
+    // it. Keyed on the collection size so the charts and chrome re-cascade once
+    // the reviews land.
     const scope = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        decode(tl, '[data-window-title]', 'Reviews', '<0.15');
-        fade(tl, '[data-window-chrome]', '<0.2');
     }, scope);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+    useRevealTimeline(true, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope, [reviews.length]);
 
     return (
         <>
