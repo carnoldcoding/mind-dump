@@ -44,6 +44,8 @@ export const DOMINO_STAGGER = 0.03;
 export const FADE_DURATION = 0.24;
 export const RIPPLE_DURATION = 0.28;
 export const RIPPLE_STAGGER = 0.035;
+/** The gap between one leaf's beat and the next in a full-surface Cascade. */
+export const REVEAL_STEP = 0.025;
 
 /**
  * How long each character of a Decode takes. The lever for a reveal's overall
@@ -210,27 +212,71 @@ export const decode = (
  * twice.
  */
 /**
- * The group beat: a set of section headers decoded together, each toward its own
- * text and all sharing one start time.
- *
- * It takes an explicit set rather than a scope because a surface can carry
- * headers that replay on different keys — a Category shelf's RELEASED section
- * appears and disappears with the data, so its header decodes on a
- * presence-keyed timeline, while GENRE and RATING decode on the arrival-only
- * one. Both call this with the same `position` so the two sets still land as one
- * beat on arrival. Pass `scope.querySelectorAll('[data-section-header]')` for the
- * whole-surface case. `<` on every header but the first starts them together.
+ * The tags a Cascade reads to pick a leaf's primitive, and the elements it
+ * reveals whole rather than walking into.
  */
-export const decodeGroup = (
+const ATOMIC_TAGS = new Set(['INPUT', 'BUTTON', 'SELECT', 'TEXTAREA', 'SVG', 'IMG', 'CANVAS', 'A', 'LABEL']);
+
+const hasDirectText = (el: Element): boolean =>
+  Array.from(el.childNodes).some((node) => node.nodeType === 3 && (node.textContent ?? '').trim() !== '');
+
+/**
+ * A leaf is revealed as one beat; a wrapper is descended into. A node is a leaf
+ * when it carries its own text, is an interactive or media element, is a marked
+ * card, or has no element children — anything else is layout to walk through.
+ */
+const isRevealUnit = (el: Element): boolean =>
+  el.matches('[data-shelf-card]') ||
+  ATOMIC_TAGS.has(el.tagName) ||
+  hasDirectText(el) ||
+  el.children.length === 0;
+
+const revealUnit = (timeline: gsap.core.Timeline, el: Element, position: number) => {
+  if (el.matches('[data-hairline]')) return growth(timeline, el, position);
+  if (el.matches('[data-panel-title], [data-page-title], [data-section-header]'))
+    return decode(timeline, el, el.textContent ?? '', position);
+  if (el.matches('[data-shelf-card]')) return domino(timeline, el, position);
+  return ripple(timeline, el, position);
+};
+
+/**
+ * CASCADE — a surface's whole content revealed in one sequence, so nothing
+ * arrives un-animated (ADR-0012).
+ *
+ * It walks `root` in DOM order and gives every leaf its own beat at a running
+ * position: a wrapper is descended into, a leaf is revealed with the primitive
+ * its markers call for — a header or title Decodes, a hairline Grows, a card
+ * falls in a Domino, everything else Ripples in place. The guarantee that
+ * nothing pops is structural rather than a matter of hand-tagging: the walk
+ * reaches every leaf, and a leaf with no tween is the only thing that can pop —
+ * `.from()` hides on build, so a leaf that has a tween starts hidden.
+ *
+ * Skips the frame surfaces (their Wipe is a separate, stable timeline) and any
+ * element the stylesheet has hidden, so a `lg:hidden` control does not spend a
+ * beat on a viewport that never shows it. Returns the position after the last
+ * beat.
+ */
+export const cascade = (
   timeline: gsap.core.Timeline,
-  headers: Iterable<Element>,
-  position?: Position,
-) => {
-  let first = true;
-  for (const header of headers) {
-    decode(timeline, header, header.textContent ?? '', first ? position : '<');
-    first = false;
-  }
+  root: HTMLElement,
+  startPosition = 0,
+  step = REVEAL_STEP,
+): number => {
+  let position = startPosition;
+  const visit = (el: Element) => {
+    for (const child of Array.from(el.children)) {
+      if (child.matches('[data-panel-surface]')) continue;
+      if (typeof window !== 'undefined' && window.getComputedStyle(child).display === 'none') continue;
+      if (isRevealUnit(child)) {
+        revealUnit(timeline, child, position);
+        position += step;
+      } else {
+        visit(child);
+      }
+    }
+  };
+  visit(root);
+  return position;
 };
 
 /**

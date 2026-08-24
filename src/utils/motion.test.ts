@@ -1,9 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import gsap from 'gsap';
-import { decodeGroup, ripple } from './motion';
-
-const headersIn = (scope: HTMLElement) =>
-  scope.querySelectorAll<HTMLElement>('[data-section-header]');
+import { cascade, ripple } from './motion';
 
 /**
  * The primitives are seeked, not ticked: a paused timeline set to a fixed
@@ -17,6 +14,8 @@ const makeItems = (count: number): HTMLElement[] =>
     document.body.appendChild(el);
     return el;
   });
+
+const tweensOf = (tl: gsap.core.Timeline) => tl.getChildren(false, true, false);
 
 afterEach(() => {
   document.body.innerHTML = '';
@@ -59,52 +58,71 @@ describe('Ripple', () => {
   });
 });
 
-describe('decodeGroup', () => {
-  const makeScope = (labels: string[]): HTMLElement => {
-    const scope = document.createElement('div');
-    for (const label of labels) {
-      const h = document.createElement('h2');
-      h.setAttribute('data-section-header', '');
-      h.textContent = label;
-      scope.appendChild(h);
-    }
-    document.body.appendChild(scope);
-    return scope;
+/**
+ * Cascade is the guarantee that nothing arrives un-animated: it walks a subtree
+ * and gives every leaf a beat. These hold that guarantee (a tween per leaf, none
+ * skipped bar the frame surfaces) and the primitive it picks per leaf.
+ */
+describe('cascade', () => {
+  const build = (html: string): HTMLElement => {
+    const root = document.createElement('div');
+    root.innerHTML = html;
+    document.body.appendChild(root);
+    return root;
   };
 
-  it('adds one Decode per section header', () => {
-    const scope = makeScope(['Genre', 'Rating', 'Released']);
+  it('gives every leaf a beat, so nothing is left un-tweened', () => {
+    const root = build(
+      '<div><h2 data-section-header>Genre</h2><ul><li>Action</li><li>RPG</li></ul></div><p>caption</p>',
+    );
     const tl = gsap.timeline({ paused: true });
-    decodeGroup(tl, headersIn(scope));
+    cascade(tl, root);
 
-    expect(tl.getChildren(false, true, false).length).toBe(3);
+    // Leaves: the h2, the two li, the p — the wrapping div and ul are walked
+    // through, not revealed as units.
+    expect(tweensOf(tl).length).toBe(4);
   });
 
-  it('starts every header at the same moment — one group beat', () => {
-    const scope = makeScope(['Genre', 'Rating', 'Released']);
+  it('reveals leaves in DOM order, each beat after the last', () => {
+    const root = build('<span>a</span><span>b</span><span>c</span>');
     const tl = gsap.timeline({ paused: true });
-    decodeGroup(tl, headersIn(scope));
+    cascade(tl, root, 0, 0.1);
 
-    const starts = tl.getChildren(false, true, false).map((t) => t.startTime());
-    expect(new Set(starts).size).toBe(1);
+    const starts = tweensOf(tl).map((t) => t.startTime());
+    expect(starts).toEqual([...starts].sort((a, b) => a - b));
+    expect(new Set(starts).size).toBe(3);
   });
 
-  it('decodes each header toward its own text', () => {
-    const scope = makeScope(['Genre', 'Rating']);
+  it('skips the frame surfaces — their Wipe is a separate timeline', () => {
+    const root = build('<article data-panel-surface><span>x</span></article><p>y</p>');
     const tl = gsap.timeline({ paused: true });
-    decodeGroup(tl, headersIn(scope));
+    cascade(tl, root);
+
+    // The data-panel-surface element is skipped whole, its child with it; only
+    // the <p> outside it gets a beat.
+    expect(tweensOf(tl).length).toBe(1);
+  });
+
+  it('decodes a section header toward its own text', () => {
+    const root = build('<h2 data-section-header>Rating</h2>');
+    const tl = gsap.timeline({ paused: true });
+    cascade(tl, root);
 
     tl.progress(1);
-    const texts = Array.from(scope.querySelectorAll('[data-section-header]')).map(
-      (el) => el.textContent,
-    );
-    expect(texts).toEqual(['Genre', 'Rating']);
+    expect(root.querySelector('[data-section-header]')?.textContent).toBe('Rating');
   });
 
-  it('leaves a scope with no headers as an empty build', () => {
-    const scope = makeScope([]);
+  it('slides a card on y but leaves a plain leaf on opacity only', () => {
+    const root = build('<div data-shelf-card>card</div><p>text</p>');
     const tl = gsap.timeline({ paused: true });
-    expect(() => decodeGroup(tl, headersIn(scope))).not.toThrow();
-    expect(tl.getChildren(false, true, false).length).toBe(0);
+    cascade(tl, root);
+
+    tl.progress(0.3);
+    const card = root.querySelector('[data-shelf-card]')!;
+    const plain = root.querySelector('p')!;
+    // The card falls in a Domino (moves on y); the plain leaf Ripples (never
+    // transforms).
+    expect(Number(gsap.getProperty(card, 'y'))).not.toBe(0);
+    expect(Number(gsap.getProperty(plain, 'y'))).toBe(0);
   });
 });
