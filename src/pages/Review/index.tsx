@@ -11,7 +11,7 @@ import { gameGenres, movieGenres, bookGenres } from "../../utils/helpers";
 import { useLocation } from "react-router";
 import { useStageState } from "../../context/BootSequenceContext";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { decode, domino, growth, wipe } from "../../utils/motion";
+import { decode, decodeGroup, domino, growth, ripple, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { Modal } from "../../components/common/Modal";
@@ -54,7 +54,7 @@ const shelfLine = (review: Pick<ReviewRecord, "rating" | "date_completed">): str
 
 /** One `label ......... value` line of the status readout. Same object as Now's. */
 const Readout = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div className="flex items-baseline justify-between gap-3 text-label">
+    <div data-ripple-item className="flex items-baseline justify-between gap-3 text-label">
         <span className="uppercase tracking-wide text-nier-text-dark/70">{label}</span>
         <span className="uppercase text-nier-text-dark">{value}</span>
     </div>
@@ -91,8 +91,8 @@ const ShelfStatus = ({ shelved, showing, error }: {
     const unknown = "—";
 
     return (
-        <div className="flex flex-col">
-            <h2 className="bg-nier-dark text-nier-text-light text-label uppercase tracking-widest px-2 py-1">
+        <div data-section="shelf" className="flex flex-col">
+            <h2 data-section-header className="bg-nier-dark text-nier-text-light text-label uppercase tracking-widest px-2 py-1">
                 Shelf
             </h2>
             <div className="flex flex-col gap-1 px-2 py-3">
@@ -153,7 +153,7 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
 }) => {
     const dead = count === 0 && !selected;
     return (
-        <li data-genre-row className="relative">
+        <li data-ripple-item className="relative">
             <span
                 aria-hidden="true"
                 className={`absolute -left-3 top-1/2 -translate-y-1/2 text-eyebrow text-nier-text-dark transition-opacity duration-150 ${
@@ -199,8 +199,8 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
 /** A titled group in the filter column. The dark bar is the panel's own title
  *  bar, one level in — the same object the reference reuses at every depth. */
 const Group = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <section aria-label={title} className="flex flex-col min-h-0">
-        <h2 className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1 flex-shrink-0">
+    <section data-section={title.toLowerCase()} aria-label={title} className="flex flex-col min-h-0">
+        <h2 data-section-header className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1 flex-shrink-0">
             {title}
         </h2>
         {children}
@@ -291,6 +291,7 @@ const Track = ({ cells, selection, onChange, onClear, ticks, readout }: {
                     return (
                         <button
                             key={cell.key}
+                            data-ripple-item
                             title={cell.title}
                             aria-label={cell.title}
                             aria-pressed={state === 'filled'}
@@ -364,31 +365,84 @@ const Review = () => {
     // rebuildOn changes, which is what "a fresh entrance, not the same one at a
     // different moment" means.
     //
-    // The frame is stable chrome. It wipes once when the shelf first mounts
-    // (arriving from another page) and is NOT keyed on the Category, so toggling
-    // Games/Cinema/Books leaves it in place rather than re-wiping it each time.
+    // The arrival grammar, one level finer than a single content beat (ADR-0011):
+    // the frame Wipes, the section headers Decode together as a group, then each
+    // section's body fills in its own idiom — genre rows and track cells Ripple
+    // in place, the search underline Grows, the cards fall in a Domino. The
+    // bodies overlap in waves, each section a beat behind the one above it.
+    //
+    // Positions below are absolute seconds, not `<` offsets, on purpose: the
+    // waves are split across several timelines by what replays on a Category
+    // toggle, and every one of them starts at t=0 when the reveal signal fires —
+    // so an absolute position is the shared clock the separate timelines line up
+    // against. HEADERS_LEAD holds the bodies back until the header group has
+    // begun; SECTION_STEP is the gap between one section's wave and the next.
+    const HEADERS_LEAD = 0.35;
+    const SECTION_STEP = 0.08;
+    const bodyAt = (index: number) => HEADERS_LEAD + index * SECTION_STEP;
+    // Column order, top to bottom — the order the wave travels down the surface.
+    const GENRE = 0, RATING = 1, RELEASED = 2, FINISHED = 3, SEARCH = 4, SHELF = 5;
+
+    // FRAME — stable chrome. Wipes once on arrival from another page; NOT keyed
+    // on the Category, so a toggle leaves it in place rather than re-wiping.
     useRevealTimeline(contentActive, (tl) => {
         wipe(tl, '[data-panel-surface]');
     }, scope);
 
-    // The frame's chrome, in canonical order and overlapping in waves: the panel
-    // title Decodes toward the new Category name, then the structural hairlines
-    // Grow from their left edge. Both exist from the first frame — no fetch — so
-    // this is keyed on `category` alone and replays on every toggle while the
-    // frame above stays put.
+    // SCAFFOLD — everything identical across every Category, so it plays once on
+    // arrival and stays put on a toggle (keyed on nothing): the always-present
+    // headers Decode as the group beat, the Rating cells and Shelf readouts
+    // Ripple, and the structural hairlines (search underline, footer divider)
+    // Grow. RELEASED and FINISHED are omitted here — they appear and disappear
+    // with the data, so they ride the volatile timeline below.
     useRevealTimeline(contentActive, (tl) => {
-        decode(tl, '[data-panel-title]', panelTitle);
-        growth(tl, '[data-hairline]', '<0.1');
-    }, scope, [category]);
-    // The genre-row Domino is wired below, once `visibleGenres` is in scope —
-    // it keys on that set, not on `category`.
+        if (scope.current) {
+            decodeGroup(
+                tl,
+                scope.current.querySelectorAll(
+                    '[data-section="genre"] [data-section-header],' +
+                    '[data-section="rating"] [data-section-header],' +
+                    '[data-section="search"] [data-section-header],' +
+                    '[data-section="shelf"] [data-section-header]',
+                ),
+                0,
+            );
+        }
+        ripple(tl, '[data-section="rating"] [data-ripple-item]', bodyAt(RATING));
+        ripple(tl, '[data-section="shelf"] [data-ripple-item]', bodyAt(SHELF));
+        growth(tl, '[data-hairline]', bodyAt(SEARCH));
+    }, scope);
 
-    // The shelf's cards Domino in on their own timeline: on the fetch (`loading`)
-    // the first time there are cards to address, and on every Category toggle
-    // after, so switching shelves replays the stagger over the new cards.
+    // TITLE — reads the Category ("GAMES VIEW PANEL"), so it re-Decodes toward
+    // the new name on every toggle. The long pole; starts at the top.
+    useRevealTimeline(contentActive, (tl) => {
+        decode(tl, '[data-panel-title]', panelTitle, 0);
+    }, scope, [category]);
+
+    // RELEASED + FINISHED — present only when the shelf has the data for them, so
+    // their header and cells arrive with the fetch and change per Category. Keyed
+    // on [loading, category] so they build once the sections exist and replay on
+    // a toggle. Headers Decode at position 0 to join the arrival group.
+    useRevealTimeline(contentActive && !loading, (tl) => {
+        if (scope.current) {
+            decodeGroup(
+                tl,
+                scope.current.querySelectorAll(
+                    '[data-section="released"] [data-section-header],' +
+                    '[data-section="finished"] [data-section-header]',
+                ),
+                0,
+            );
+        }
+        ripple(tl, '[data-section="released"] [data-ripple-item]', bodyAt(RELEASED));
+        ripple(tl, '[data-section="finished"] [data-ripple-item]', bodyAt(FINISHED));
+    }, scope, [loading, category]);
+
+    // CARDS — the shelf grid, on its own scope. Falls in a Domino on the fetch
+    // and on every Category toggle, over the new Category's cards.
     const shelfScope = useRef<HTMLDivElement>(null);
     useRevealTimeline(contentActive && !loading, (tl) => {
-        domino(tl, '[data-shelf-card]');
+        domino(tl, '[data-shelf-card]', bodyAt(GENRE));
     }, shelfScope, [loading, category]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
@@ -532,16 +586,17 @@ const Review = () => {
         [shelved, genreOptions],
     );
 
-    // The genre rows are their own Domino wave: like the cards, they do not
-    // exist when the frame mounts — they are the fetched shelf run through
-    // genresInUse, and `genreOptions` is filled by an effect that runs after
-    // layout. Keyed on the actual visible set (not `category`), so the timeline
-    // is built once the rows are really on screen and replays whenever the set
-    // changes. A `category`-keyed build fired a frame too early and caught a
-    // stale subset — which is what left some rows animating and the rest popping
-    // in.
+    // GENRE ROWS — a Ripple wave: they fade in one after another in place, they
+    // do not slide (that is the line between Ripple and the cards' Domino). Like
+    // the cards they do not exist when the frame mounts — they are the fetched
+    // shelf run through genresInUse, and `genreOptions` is filled by an effect
+    // that runs after layout. Keyed on the actual visible set (not `category`),
+    // so the timeline is built once the rows are really on screen and replays
+    // whenever the set changes. A `category`-keyed build fired a frame too early
+    // and caught a stale subset — which left some rows animating and the rest
+    // popping in.
     useRevealTimeline(contentActive, (tl) => {
-        domino(tl, '[data-genre-row]');
+        ripple(tl, '[data-section="genre"] [data-ripple-item]', bodyAt(GENRE));
     }, scope, [visibleGenres.join('|')]);
 
     // The five-year spans the shelf actually covers, not a fixed range — a
@@ -817,12 +872,12 @@ const Review = () => {
                                 reference has no search box to copy, but it has
                                 plenty of labelled values, and that is what a
                                 query is. */}
-                            <div className="relative flex items-center gap-3 pb-2 mb-3 flex-shrink-0">
+                            <div data-section="search" className="relative flex items-center gap-3 pb-2 mb-3 flex-shrink-0">
                                 {/* The underline is a line element, not a border,
                                     so it can Grow in from the left as the shelf
                                     arrives. */}
                                 <span data-hairline aria-hidden="true" className="absolute bottom-0 left-0 w-full h-px bg-nier-150 origin-left" />
-                                <label htmlFor="shelf-search" className="text-eyebrow uppercase tracking-widest text-nier-text-dark/40 flex-shrink-0">
+                                <label htmlFor="shelf-search" data-section-header className="text-eyebrow uppercase tracking-widest text-nier-text-dark/40 flex-shrink-0">
                                     Search
                                 </label>
                                 <input
