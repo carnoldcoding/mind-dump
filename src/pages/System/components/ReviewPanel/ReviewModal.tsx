@@ -25,7 +25,7 @@ import { TabBar } from "./TabBar"
 import { FieldRow } from "./FieldRow"
 import { DEFAULT_TAB, hintFor, resolveTab, tabsFor, type TabId } from "./tabs"
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline"
-import { domino } from "../../../../utils/motion"
+import { cascade, domino } from "../../../../utils/motion"
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -409,8 +409,9 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const hint = hintFor({ field: focusedField, tab: activeTab, tabs, hovered: hoveredTab });
 
     // The rows of whichever section is open arrive one after another. Rebuilt
-    // on the tab, which is what replays it — a different section is a
-    // different entrance, not the same one at a different moment.
+    // on the tab, which is what replays it — a different section is a different
+    // entrance. The panel carries data-reveal-own, so the article Cascade below
+    // steps over it and leaves this Domino to run on tab switches.
     //
     // `ready` is true rather than gated on the boot signal: the modal is not
     // part of the page's reveal, and Modal has already played it in.
@@ -420,6 +421,19 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         (timeline) => domino(timeline, '[data-tab-row]'),
         panelScope,
         [activeTab, isOpen],
+    );
+
+    // Modal Wipes the surface; the article's chrome then Cascades so nothing
+    // arrives un-animated (ADR-0012) — the title Decodes, the tab bar and footer
+    // fill in. Keyed on the title, not the tab, so switching sections replays the
+    // panel Domino above without re-cascading the whole header.
+    const articleScope = useRef<HTMLElement>(null);
+    const modalTitle = editingReview ? `Edit — ${editingReview.title}` : 'New Review';
+    useRevealTimeline(
+        isOpen,
+        (timeline) => { if (articleScope.current) cascade(timeline, articleScope.current, 0.1); },
+        articleScope,
+        [isOpen, modalTitle],
     );
 
     // A fallback has to be committed, not just displayed. Leaving the original
@@ -453,13 +467,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             {/* One height whatever the section. The frame is the constant and
                 its contents change inside it, so the bar and the hint line do
                 not move under the pointer when a section is switched. */}
-            <article className="bg-nier-100-lighter relative w-full h-[calc(100dvh-1rem)] sm:h-[calc(100dvh-2rem)] sm:max-h-[46rem] flex flex-col">
+            <article ref={articleScope} className="bg-nier-100-lighter relative w-full h-[calc(100dvh-1rem)] sm:h-[calc(100dvh-2rem)] sm:max-h-[46rem] flex flex-col">
 
                 {/* Header. The section is a suffix in the reference's register:
                     the subject, then which part of it is open. */}
                 <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 gap-3 min-w-0">
                     <h3 className="text-nier-text-dark text-title uppercase tracking-wide truncate min-w-0">
-                        {editingReview ? `Edit — ${editingReview.title}` : 'New Review'}
+                        <span data-modal-title>{modalTitle}</span>
                         <span className="text-body tracking-[0.2em] text-nier-text-dark/50 ml-3">
                             · {tabs.find(t => t.id === activeTab)?.label}
                         </span>
@@ -476,6 +490,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
                 <div
                     ref={panelScope}
+                    data-reveal-own
                     role="tabpanel"
                     id={`review-panel-${activeTab}`}
                     aria-labelledby={`review-tab-${activeTab}`}

@@ -132,7 +132,7 @@ export const ReviewList = () => {
 
     // ── Renderers ────────────────────────────────────────────────────
     const renderGrid = () => (
-        <div ref={gridScope} data-review-grid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4 overflow-y-auto flex-1 items-start content-start">
+        <div ref={gridScope} data-review-grid data-reveal-own className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4 overflow-y-auto flex-1 items-start content-start">
             {displayPosts.length > 0
                 ? displayPosts.map((post: any) => (
                     <ReviewGridCard

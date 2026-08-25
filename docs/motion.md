@@ -58,7 +58,8 @@ round. The names survived the move to GSAP unchanged.
 | Primitive  | Motion                                   | Owns                                     |
 |------------|------------------------------------------|------------------------------------------|
 | **Wipe**   | `clip-path: inset()`, hard edge, no fade | panels, frames, modals                   |
-| **Domino** | staggered entrance, per-item delay       | card grids, list rows, nav items         |
+| **Domino** | staggered slide-and-fade, per-item delay | card grids that fall into place          |
+| **Ripple** | staggered opacity, per-item delay, no transform | groups that brighten in place — genre rows, segmented-track cells |
 | **Growth** | `scaleX` from an anchored edge           | horizontal bars, rules, dividers         |
 | **Decode** | glyph scramble locking left-to-right     | short uppercase chrome                   |
 | **Fade**   | opacity only                             | prose, backdrops                         |
@@ -70,6 +71,11 @@ Three rules decide which to reach for:
 - **If it wraps, it fades.** Decode is unreadable on a paragraph. It is for page
   headers, panel titles, readout labels and nav labels — not critique sections
   or notes.
+- **A group that falls Dominoes; a group that fills in place Ripples.** Cards
+  slide down as they arrive (Domino). The cells of a rating track are fixed
+  segments and the genre rows sit in a list — they brighten where they stand
+  (Ripple), they do not move. The two share a stagger; the transform is the line
+  between them.
 
 ### Phase — entrance or exit
 
@@ -106,6 +112,56 @@ What changed is that it now has a name and answers to the seam. There are 93 of
 these across 31 files; before they were named, none of them respected
 `prefers-reduced-motion`, because only the vocabulary consulted
 `animations.ts`. That was a correctness bug rather than a coverage gap.
+
+## Timing sheet
+
+Every number that sets how fast the app moves, in one place — consult this before
+a site-wide timing change rather than hunting the values down. Seconds unless
+noted.
+
+### Primitives — [`src/utils/motion.ts`](../src/utils/motion.ts)
+
+| Constant | Value | Sets |
+|---|---|---|
+| `WIPE_DURATION` | 0.32 | a solid surface's clip wipe |
+| `GROWTH_DURATION` | 0.30 | a hairline / rule growing across |
+| `DOMINO_DURATION` | 0.35 | one card's slide-and-fade |
+| `DOMINO_STAGGER` | 0.03 | the gap between successive cards in a Domino wave |
+| `RIPPLE_DURATION` | 0.28 | one item's in-place fade (genre row, track cell) |
+| `RIPPLE_STAGGER` | 0.035 | the gap between successive items in a Ripple wave |
+| `REVEAL_STEP` | 0.025 | the gap between one leaf's beat and the next within a run of sibling leaves in a Cascade |
+| `BRANCH_STEP` | 0.08 | the gap between one sub-tree's start and the next in a Cascade — shorter than a component's span, so separate components overlap |
+| `FADE_DURATION` | 0.24 | a prose or backdrop fade |
+| `DECODE_PER_CHAR` | 0.055 | per-character scramble rate; a title's length sets the whole sequence's length, so this is the main pacing lever |
+
+### Boot — [`src/utils/bootMotion.ts`](../src/utils/bootMotion.ts)
+
+| Constant | Value | Sets |
+|---|---|---|
+| `LINES_HOLD` | 0.5 | the lines stage's hold before it hands over |
+| `TRIANGLES_HOLD` | 0.7 | the triangle-mesh stage hold |
+| `BORDERS_HOLD` | 0.5 | the border-draw stage hold |
+| `NAV_HOLD` | 0.6 | the nav-items stage hold |
+| `HEADER_HOLD` | 0.8 | the header stage hold — where the reveal signal is raised |
+| `TRIANGLE_STEP` | 0.018 | stagger between triangles across the mesh |
+| `TRIANGLE_PAIR_OFFSET` | 0.006 | offset between the two triangles in a cell |
+
+A stage *hold* and a gesture *duration* are deliberately different numbers — a
+hold is how long a stage waits before handing over, a duration is how long the
+gesture takes — so they do not track each other. See the boot notes above.
+
+### Overlap — per call site, by design
+
+Beats overlap by a GSAP position argument on the primitive call: `"<0.2"` starts
+200ms after the previous tween *began*. These are per-surface choices — a shelf
+overlaps its beats differently from a modal — so they live at the call site, not
+in a global. Grep `'<0` across `src/pages` and `src/components` to find them.
+
+**To rescale the whole app's pace**, change the primitive durations (and, for the
+intro, the boot holds). The overlaps are relative offsets and mostly scale with
+the durations; the per-site ones are tuned by eye afterwards. If a single knob is
+ever wanted, wrap the durations in one `SCALE` multiplier here — deliberately not
+done yet, since the values are still being tuned per primitive.
 
 ## The reveal sequence
 
@@ -146,6 +202,66 @@ nothing after the subject appears. A shelf's cards and a list's sections
 therefore get their own timeline on their own readiness, keyed on `loading`.
 The frame does not: rebuilding replays, and a frame that re-wipes because its
 contents arrived is the flash this whole design exists to remove.
+
+## The arrival grammar
+
+A surface reveals in one continuous sequence, and the rule is total: **nothing
+arrives un-animated** (ADR-0012). The frame Wipes, then its whole content
+Cascades — the reveal walks the frame in DOM order and gives every leaf its own
+beat at a running position.
+
+```
+Frame Wipe ─► Cascade (walk the frame; every leaf, in DOM order):
+                 title / section header  ─► Decode
+                 hairline                ─► Grow
+                 card                    ─► Domino
+                 anything else           ─► Ripple in place
+```
+
+The primitive a leaf gets is read off its markers (a title/header marker Decodes —
+and gets a Fade alongside it, because Decode is a `.to()` and would otherwise sit
+visible until its beat; `data-hairline` Grows, `data-shelf-card` Dominoes, the
+rest Ripple); the *coverage* is not — the walk reaches every leaf, so an element
+with no tween, the only thing that can pop, cannot exist. This is why the
+guarantee holds without tagging each element: `.from()` hides a leaf on build, so
+a leaf that has a tween starts hidden and is revealed on its beat, and every leaf
+has a tween.
+
+**A leaf is not always the deepest node.** A small compound with no chrome inside
+it — a labelled field: a wrapper, a label, an input — is revealed as one beat
+rather than three (`COALESCE_MAX` bounds "small"). Without this a form is a
+hundred-odd beats, too granular to read and slow enough to build to time a test
+out. A sub-tree that holds a header, or that is large, is still walked into.
+
+**A sub-tree can opt out with `data-reveal-own`** when it runs its own timeline —
+a shared list that Dominoes on its own readiness, a chart that draws itself. The
+Cascade steps over it rather than double-animating it.
+
+Two step sizes set the pace and the concurrency. `REVEAL_STEP` is the gap between
+sibling leaves within one component (a tight in-place stagger). `BRANCH_STEP` is
+the gap before the next sibling *sub-tree* starts — shorter than a component's own
+span, so separate components overlap and run almost in parallel rather than one
+finishing before the next begins. `cascade`'s `startPosition` places the whole
+thing after the frame Wipe begins. The frame's clip reveals the panel's
+backgrounds and bars geometrically as it Wipes; the leaves inside stay hidden
+until their beat, so the bars arrive with the frame rather than popping.
+
+**Every surface reveals this way** — the frame's stable Wipe plus one
+`cascade(frame)` over its content, keyed on what its content depends on (a
+Category shelf on `[loading, category, visibleGenres]`, a Body window on its docs
+and selection, an editor on `open`). This replaced a marker-driven grammar that
+revealed only the elements it was told to (ADR-0011) and so left everything
+untagged to pop. Its primitives and markers survive; its per-section split
+timelines do not.
+
+**Arrival is a first-class moment: a surface re-runs its entrance every time you
+arrive at it**, not only on first load. A page that is a distinct route
+re-animates because navigating to it remounts it. A component shared across
+routes — the Category shelf — keys its *content* timelines on the thing that
+changed (the Category) so they replay, while keeping its *frame* keyed on
+nothing, so the frame is stable chrome that wipes once and persists across
+toggles rather than re-wiping. A heading whose text changes without a remount
+keys its Decode on that text, or it will not track the change. See ADR-0010.
 
 ## Panels
 
@@ -195,12 +311,14 @@ Response is gated differently, because it is not a timeline: the seam puts a
 `motion-off` class on the document element, and one rule suppresses transition
 durations beneath it.
 
-**Open:** whether the seam should silence the **boot sequence**. It was
-deliberately ungated before, on the grounds that it was outside the
-vocabulary's remit — that reason is gone now that it is a timeline like any
-other, and a ~2.3s animated boot is exactly what someone asking for reduced
-motion is asking not to sit through. Left as it was until decided, rather than
-changed in passing.
+**The boot sequence is silenced too.** `prefers-reduced-motion` skips boot to
+its final frame like any other timeline — `BootSequenceContext` seeks it to
+`progress(1)`, which fires every stage callback in order and lands the app on
+`done` with no play. It was once left ungated on the grounds that boot sat
+outside the vocabulary's remit; that reason went when boot became a timeline
+like any other, and a ~2.3s animated intro is exactly what a reduced-motion
+preference asks not to sit through. The dev chords still turn motion on to watch
+it. (This was the one open question this file used to record; it is resolved.)
 
 `VITE_DISABLE_ANIMATIONS` is build-time, so changing it means restarting Vite.
 It is unset in the production build, which is why these animations have always

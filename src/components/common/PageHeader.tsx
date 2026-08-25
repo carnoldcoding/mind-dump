@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { useRevealSignal } from "../../hooks/useRevealSignal";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { decode } from "../../utils/motion";
+import { decode, fade } from "../../utils/motion";
 
 /**
  * The page's own title, drawn twice: the text, and the offset shadow it casts.
@@ -16,13 +16,21 @@ const PageHeader = ({ name }: { name: string }) => {
     const revealed = useRevealSignal();
     const scope = useRef<HTMLDivElement>(null);
 
+    // Keyed on `name`: the shared Category shelf swaps its title (GAMES→CINEMA)
+    // without remounting this component, and a title whose text has changed is a
+    // different entrance, not the same one — so it re-Decodes on the change. A
+    // page whose title is constant never rebuilds, so this costs nothing there.
     useRevealTimeline(revealed, (tl) => {
-        decode(tl, '[data-page-title]', name).eventCallback('onUpdate', () => {
+        // Decode is a `.to()` and does not hide on build, so the title and its
+        // shadow would sit visible before the beat — a pop. A Fade at the same
+        // beat hides them on build and brings them in as the text scrambles.
+        fade(tl, '[data-page-title], [data-page-title-shadow]');
+        decode(tl, '[data-page-title]', name, '<').eventCallback('onUpdate', () => {
             const title = scope.current?.querySelector('[data-page-title]');
             const shadow = scope.current?.querySelector('[data-page-title-shadow]');
             if (title && shadow) shadow.textContent = title.textContent;
         });
-    }, scope);
+    }, scope, [name]);
 
     return (
         <div ref={scope} className="relative mb-2 lg:mb-0">

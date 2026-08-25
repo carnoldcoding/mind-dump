@@ -11,10 +11,10 @@ import { gameGenres, movieGenres, bookGenres } from "../../utils/helpers";
 import { useLocation } from "react-router";
 import { useStageState } from "../../context/BootSequenceContext";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { decode, domino, wipe } from "../../utils/motion";
+import { cascade, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
-import { useScrollLock } from "../../utils/scrollLock";
+import { Modal } from "../../components/common/Modal";
 import { genresInUse } from "../../utils/visibleGenres";
 
 // The rating scale, asserted in one place. Every rating stored is between 3
@@ -92,7 +92,7 @@ const ShelfStatus = ({ shelved, showing, error }: {
 
     return (
         <div className="flex flex-col">
-            <h2 className="bg-nier-dark text-nier-text-light text-label uppercase tracking-widest px-2 py-1">
+            <h2 data-section-header className="bg-nier-dark text-nier-text-light text-label uppercase tracking-widest px-2 py-1">
                 Shelf
             </h2>
             <div className="flex flex-col gap-1 px-2 py-3">
@@ -200,7 +200,7 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
  *  bar, one level in — the same object the reference reuses at every depth. */
 const Group = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <section aria-label={title} className="flex flex-col min-h-0">
-        <h2 className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1 flex-shrink-0">
+        <h2 data-section-header className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1 flex-shrink-0">
             {title}
         </h2>
         {children}
@@ -339,9 +339,6 @@ const Review = () => {
     // The filter column is permanent from `lg` up, where there is room for it
     // beside the grid. Below that it is an overlay, and this is what opens it.
     const [showFilters, setShowFilters] = useState<boolean>(false);
-    // The mobile filter menu already dims and closes on outside-press; the one
-    // thing it lacked was freezing the shelf behind it (item 7).
-    useScrollLock(showFilters);
     // What the caption bar is talking about. Whatever the pointer or the
     // keyboard is on — the cards are anchors already, so Tab walks them and
     // Enter opens them without this page handling a key.
@@ -360,28 +357,24 @@ const Review = () => {
     const panelTitle = `${category ?? ''} VIEW PANEL`.toUpperCase();
     const scope = useRef<HTMLDivElement>(null);
 
-    // Review does not unmount between categories — React Router keeps the same
-    // component instance and re-renders with new params — so the Fragment is
-    // keyed on `category`, which remounts the panel and builds this afresh.
-    // That is what the old resetKey argument was for.
-    //
-    // The frame wipes, its title decodes over the tail of that, and the shelf
-    // dominoes in underneath. The stagger is the Domino primitive's own; the
-    // version this replaces had to nominate the first card as a reporter and
-    // hand-write a per-card delay to get the same overlap.
+    // Review does not unmount between Categories — React Router keeps the same
+    // component instance and re-renders with new params. So arrival on a toggle
+    // is expressed by keying the reveal timeline on what changed, not by
+    // remounting the DOM: the reveal system replays a timeline exactly when its
+    // rebuildOn changes, which is what "a fresh entrance, not the same one at a
+    // different moment" means.
+
+    // FRAME — stable chrome. Wipes once on arrival from another page; NOT keyed
+    // on the Category, so a toggle leaves it in place rather than re-wiping. Its
+    // clip reveals the panel's backgrounds and bars geometrically; the leaves
+    // inside stay hidden (Cascade builds them paused) until their own beat.
     useRevealTimeline(contentActive, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        decode(tl, '[data-panel-title]', panelTitle, '<0.15');
     }, scope);
 
-    // The shelf gets its own timeline because it arrives on a different
-    // signal: the frame's is built at mount, before the fetch has answered
-    // and while there are no cards to address. Rebuilding one shared timeline
-    // when the data lands would replay the frame's wipe underneath them.
+    // The content Cascade is wired below, once the derived sets it keys on are in
+    // scope. shelfScope is retained only as the grid's ref.
     const shelfScope = useRef<HTMLDivElement>(null);
-    useRevealTimeline(contentActive && !loading, (tl) => {
-        domino(tl, '[data-shelf-card]');
-    }, shelfScope, [loading]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleFieldChange = (field: string, value: any) => {
@@ -552,6 +545,41 @@ const Review = () => {
         return Array.from({ length: Math.max(...years) - first + 1 }, (_, i) => first + i);
     }, [shelved]);
 
+    // CONTENT CASCADE — the whole panel content revealed as one sequence, so that
+    // nothing arrives un-animated (ADR-0012). It walks the frame in DOM order and
+    // gives every leaf its own beat: titles and section headers Decode, hairlines
+    // Grow, cards fall in a Domino, everything else Ripples in place. The guarantee
+    // that nothing pops is that the walk reaches every leaf and `.from()` hides on
+    // build — a leaf with no tween is the only thing that can pop.
+    //
+    // Built at `contentActive` (not gated on the fetch) so it hides the content at
+    // mount rather than letting it show un-animated, and keyed on [loading,
+    // category, the visible genre set] so it rebuilds once the fetched cards and
+    // rows exist and re-runs the whole sequence on a Category toggle. A mere
+    // filter toggle changes none of those keys, so filtering does not re-cascade.
+    // Starts a beat after the frame's Wipe begins.
+    useRevealTimeline(contentActive, (tl) => {
+        const frame = scope.current?.querySelector<HTMLElement>('[data-testid="panel-frame"]');
+        if (frame) cascade(tl, frame, 0.15);
+        // A scroll region carries its bar the moment it holds overflowing content,
+        // and the panel is framed before the cascade fills it — so the bar was
+        // there ahead of the cards and rows it belongs to. Hold overflow hidden
+        // for the length of the reveal, then hand it back to auto as the final
+        // beat, so the bar arrives after the content, not before it. Scoped to the
+        // panel, so the mobile filter Modal (portalled out) keeps its own scroll.
+        const regions = scope.current?.querySelectorAll<HTMLElement>('[data-scroll-region]');
+        if (regions?.length) {
+            // Hide the bar now, for the whole reveal, then hand it back to auto as
+            // the final beat. The hide is applied directly rather than as a beat at
+            // position 0, because a paused timeline does not render a zero-time set
+            // on build — and hiding the bar is exactly the "apply on build" job the
+            // reveal's `.from()` primitives rely on. The closing set lives in the
+            // timeline so it reverts to the stylesheet's auto on the next rebuild.
+            regions.forEach((region) => { region.style.overflowY = 'hidden'; });
+            tl.set(regions, { overflowY: 'auto' }, tl.duration());
+        }
+    }, scope, [loading, category, visibleGenres.join('|')]);
+
     // A span reads back off the filters rather than being held twice. The
     // filters are what actually narrows the shelf, so anything that sets them
     // — a `?genre=` link today, a saved view later — shows up on the tracks
@@ -647,9 +675,9 @@ const Review = () => {
         // two things that have no row form — a bounded number and a pair of
         // dates — under section bars of their own.
         const filterColumn = (
-            <div className="flex flex-col gap-4 min-h-0 h-full overflow-y-auto">
+            <div data-scroll-region className="flex flex-col gap-4 min-h-0 h-full overflow-y-auto">
                 <Group title="Genre">
-                    <ul className="flex flex-col gap-0.5 mt-1 pl-3 max-h-52 min-h-0 overflow-y-auto">
+                    <ul data-scroll-region className="flex flex-col gap-0.5 mt-1 pl-3 max-h-52 min-h-0 overflow-y-auto">
                         {visibleGenres.map(genre => (
                             <GenreRow
                                 key={genre}
@@ -756,7 +784,10 @@ const Review = () => {
         // 22px low instead of 2px. With the margin on the wrapper neither box
         // can collapse away from the other.
         return (
-          <Fragment key={category}>
+          // No key on the Category: the frame persists across toggles as stable
+          // chrome, and the reveal timelines (keyed on `category`) replay the
+          // contents in place. Remounting here would re-wipe the frame.
+          <Fragment>
           <Panel
                 wrapperRef={scope}
                 wrapperClassName="mt-0 lg:mt-5"
@@ -794,8 +825,12 @@ const Review = () => {
                                 reference has no search box to copy, but it has
                                 plenty of labelled values, and that is what a
                                 query is. */}
-                            <div className="flex items-center gap-3 border-b border-nier-150 pb-2 mb-3 flex-shrink-0">
-                                <label htmlFor="shelf-search" className="text-eyebrow uppercase tracking-widest text-nier-text-dark/40 flex-shrink-0">
+                            <div className="relative flex items-center gap-3 pb-2 mb-3 flex-shrink-0">
+                                {/* The underline is a line element, not a border,
+                                    so it can Grow in from the left as the shelf
+                                    arrives. */}
+                                <span data-hairline aria-hidden="true" className="absolute bottom-0 left-0 w-full h-px bg-nier-150 origin-left" />
+                                <label htmlFor="shelf-search" data-section-header className="text-eyebrow uppercase tracking-widest text-nier-text-dark/40 flex-shrink-0">
                                     Search
                                 </label>
                                 <input
@@ -831,7 +866,15 @@ const Review = () => {
                                 centred spinner while the fetch was in flight,
                                 which threw the panel away and made the reveal
                                 wait on network latency. See docs/motion.md. */}
-                            <div ref={shelfScope} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto flex-1 items-start content-start">
+                            {/* overflow-x-hidden is deliberate, not redundant: a
+                                box with one axis set to `auto` computes the other
+                                from `visible` to `auto` too, so `overflow-y-auto`
+                                alone was giving the grid a horizontal scrollbar off
+                                any sub-pixel width. The cards already fit (the
+                                tracks are minmax(0,1fr) and the text truncates), so
+                                pinning x to hidden removes the phantom bar and the
+                                option to scroll sideways without clipping anything. */}
+                            <div ref={shelfScope} data-scroll-region className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto overflow-x-hidden flex-1 items-start content-start">
                                 {loading
                                     ? (
                                         <div className="col-span-full flex justify-center py-8">
@@ -879,7 +922,10 @@ const Review = () => {
                     {/* The caption bar. What is under the pointer on the left,
                         how to act on it on the right — the reference's bottom
                         strip, accent block and all. */}
-                    <div className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
+                    <div className="relative flex-shrink-0 flex items-center gap-3 px-4 py-2">
+                        {/* Growable line rather than a top border — the divider
+                            above the footer Grows in with the rest. */}
+                        <span data-hairline aria-hidden="true" className="absolute top-0 left-0 w-full h-px bg-nier-150 origin-left" />
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                         <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(selected, !!error, shown.length === 0)}
@@ -896,28 +942,30 @@ const Review = () => {
                     smaller set of controls that can drift from it. It is
                     `fixed`, so it does not need to sit inside the panel's
                     wrapper to land in the right place. */}
-                {showFilters && (
-                    <div
-                        className="lg:hidden fixed inset-0 z-40 bg-nier-dark/40 flex items-start justify-center p-4 pt-20"
-                        onClick={() => setShowFilters(false)}
-                    >
-                        <div className="relative w-full max-w-xs" onClick={e => e.stopPropagation()}>
-                            <div aria-hidden="true" className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
-                            <div className="relative bg-nier-100 flex flex-col max-h-[70vh]">
-                                <div className="h-8 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
-                                    <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/70">Filter</span>
-                                    <button
-                                        onClick={() => setShowFilters(false)}
-                                        className="text-title leading-none cursor-pointer hover:opacity-60 transition-opacity"
-                                    >×</button>
-                                </div>
-                                <div className="p-3 overflow-y-auto">
-                                    {filterColumn}
-                                </div>
-                            </div>
+                {/* The mobile filter menu is a light overlay: Modal wipes it in,
+                    dims and locks the shelf behind it, closes on outside-press or
+                    Escape, and plays it back out — the entrance the bare
+                    `{showFilters && …}` could never animate away. */}
+                <Modal
+                    open={showFilters}
+                    onClose={() => setShowFilters(false)}
+                    label="Filter"
+                    backdropClassName="lg:hidden z-40 flex items-start justify-center p-4 pt-20"
+                    className="w-full max-w-xs"
+                >
+                    <div className="relative bg-nier-100 flex flex-col max-h-[70vh]">
+                        <div className="h-8 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
+                            <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/70">Filter</span>
+                            <button
+                                onClick={() => setShowFilters(false)}
+                                className="text-title leading-none cursor-pointer hover:opacity-60 transition-opacity"
+                            >×</button>
+                        </div>
+                        <div className="p-3 overflow-y-auto">
+                            {filterColumn}
                         </div>
                     </div>
-                )}
+                </Modal>
           </Fragment>
         );
       };

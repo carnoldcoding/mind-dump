@@ -4,7 +4,7 @@ import BodyWindow from "./components/Body";
 import BacklogWindow from "./components/Backlog";
 import { useRevealSignal } from "../../hooks/useRevealSignal";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { fade, wipe } from "../../utils/motion";
+import { cascade, wipe } from "../../utils/motion";
 import { Panel } from "../../components/common/Panel";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 
@@ -32,16 +32,19 @@ const Desktop = () => {
     const revealed = useRevealSignal();
     const scope = useRef<HTMLDivElement>(null);
 
-    // The screen has no decoded title and no card grid, so its whole entrance
-    // is the frame arriving with its chrome a beat behind.
+    // The frame Wipes as stable chrome; everything inside then Cascades so that
+    // nothing arrives un-animated (ADR-0012). Desktop is static, so the Cascade
+    // is built once.
     useRevealTimeline(revealed, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        fade(tl, '[data-desktop-chrome]', '<0.2');
     }, scope);
     const [time, setTime] = useState("");
     const [date, setDate] = useState("");
     const [openApp, setOpenApp] = useState<string | null>(null);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+    useRevealTimeline(revealed, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope);
 
     useEffect(() => {
         const update = () => {
@@ -70,9 +73,9 @@ const Desktop = () => {
         >
 
                 {/* Title bar */}
-                <div data-desktop-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
+                <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                     <div className="flex items-center gap-3">
-                        <span className="text-nier-text-dark text-body uppercase tracking-widest font-semibold">
+                        <span data-window-title className="text-nier-text-dark text-body uppercase tracking-widest font-semibold">
                             SYSTEM.OS
                         </span>
                         <span className="text-nier-text-dark/40 text-label uppercase tracking-widest hidden sm:block">
@@ -82,7 +85,7 @@ const Desktop = () => {
                 </div>
 
                 {/* Desktop area */}
-                <div data-desktop-chrome className="relative p-4 flex-1 overflow-y-auto min-h-0">
+                <div className="relative p-4 flex-1 overflow-y-auto min-h-0">
                     {/* Icons — own stacking context, sit beneath any open window */}
                     <div className="absolute top-4 left-4 flex gap-4 z-0">
                         {(["backlog", "reviews", "body"] as const).map(app => (
@@ -124,7 +127,7 @@ const Desktop = () => {
                 </div>
 
                 {/* Taskbar */}
-                <div data-desktop-chrome className="h-8 bg-nier-150 border-t border-nier-dark/20 flex items-center justify-between px-4 flex-shrink-0">
+                <div className="h-8 bg-nier-150 border-t border-nier-dark/20 flex items-center justify-between px-4 flex-shrink-0">
                     <span className="text-label text-nier-text-dark uppercase tracking-widest opacity-50">
                         MIND DUMP OS
                     </span>

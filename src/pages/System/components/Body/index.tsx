@@ -10,7 +10,7 @@ import EntryEditModal from "./EntryEditModal";
 import { partitionBodyDocs, describeEntry, docId } from "./entry";
 import type { BodyDoc, Entry } from "./entry";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
-import { fade, wipe } from "../../../../utils/motion";
+import { cascade, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
 import { useRetained } from "../../../../hooks/useRetained";
 import { Panel } from "../../../../components/common/Panel";
@@ -22,13 +22,16 @@ type Props = { onClose: () => void };
 const BodyWindow = ({ onClose }: Props) => {
     // No signal to wait on: this window only ever mounts well after boot is
     // done — the user has to open System, then click a folder icon — and
-    // Desktop's conditional render gives it a fresh mount each time. It has no
-    // decoded title and no card grid, so its whole entrance is the frame
-    // arriving with its chrome a beat behind.
+    // Desktop's conditional render gives it a fresh mount each time. The
+    // canonical order: the frame Wipes, its title Decodes, and the rest of the
+    // chrome Fades a beat behind.
+    // The frame Wipes as stable chrome; the whole window then Cascades so nothing
+    // arrives un-animated (ADR-0012). The Cascade is keyed on the content it shows
+    // — the fetched docs, the selected movement, the active tab — so it re-runs
+    // when the data lands and when the view changes, rather than popping.
     const scope = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        fade(tl, '[data-window-chrome]', '<0.2');
     }, scope);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
@@ -38,6 +41,10 @@ const BodyWindow = ({ onClose }: Props) => {
     const [editingName, setEditingName]           = useState<string | null>(null);
     const [editingEntry, setEditingEntry]         = useState<Entry | null>(null);
     const [activeTab, setActiveTab]               = useState<ActiveTab>("chart");
+
+    useRevealTimeline(true, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope, [docs.length, selectedName, activeTab]);
 
     const fetchDocs = useCallback(async () => {
         try {
@@ -134,14 +141,14 @@ const BodyWindow = ({ onClose }: Props) => {
             >
 
                     {/* Window title bar */}
-                    <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 className="text-nier-text-dark text-title uppercase tracking-wider">Body</h3>
+                    <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
+                        <h3 data-window-title className="text-nier-text-dark text-title uppercase tracking-wider">Body</h3>
                         <button onClick={onClose} aria-label="Close" className="text-body px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none">
                             ✕
                         </button>
                     </div>
 
-                    <div data-window-chrome className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
+                    <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
                         <div className="flex gap-4 flex-col md:flex-row md:items-start">
                             <MovementList
@@ -169,11 +176,15 @@ const BodyWindow = ({ onClose }: Props) => {
                                         </div>
 
                                         {activeTab === "chart" ? (
-                                            <MovementChart
-                                                name={selected.displayName}
-                                                entries={selectedEntries}
-                                                goal={selected.goal}
-                                            />
+                                            // data-reveal-own: a chart draws itself; the window Cascade
+                                            // steps over it rather than animating a canvas.
+                                            <div data-reveal-own>
+                                                <MovementChart
+                                                    name={selected.displayName}
+                                                    entries={selectedEntries}
+                                                    goal={selected.goal}
+                                                />
+                                            </div>
                                         ) : (
                                             <section aria-label="History" className="h-64 bg-nier-100-lighter border border-nier-150 relative flex flex-col">
                                                 <div className="h-7 bg-nier-150 flex items-center px-3 shrink-0">

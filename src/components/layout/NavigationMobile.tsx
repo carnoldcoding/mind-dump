@@ -1,7 +1,10 @@
+import { useRef } from "react";
 import { Link, useLocation } from "react-router";
 import { navItems } from "./NavItems";
 import { useTrustedDevice } from "../../context/TrustedDeviceContext";
 import { useScrollLock } from "../../utils/scrollLock";
+import { useRevealTimeline } from "../../hooks/useRevealTimeline";
+import { cascade } from "../../utils/motion";
 
 interface NavigationMobileProps{
     isOpen: boolean;
@@ -18,6 +21,21 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
     // drawer overlaps the × in the bar, so without a press-outside there was
     // no way out but picking a destination.
     useScrollLock(isOpen);
+
+    // The drawer keeps its slide-from-the-right (the CSS width transition on the
+    // <nav> below); its items Domino in on top of that when it opens. Keyed on
+    // `isOpen` so opening replays the stagger and closing hides them again —
+    // unseen, since the drawer has slid to zero width by then. The items carry
+    // `transition-colors`, not `transition-all`, so this GSAP transform/opacity
+    // is not fought by a CSS transition on the same properties (see docs/motion.md
+    // on the vocabulary/Response boundary).
+    // The drawer slides in on CSS; its contents then Cascade so every item and
+    // any chrome arrives on the timeline rather than popping (ADR-0012). Keyed on
+    // `isOpen` so it replays each time the drawer opens.
+    const drawerScope = useRef<HTMLElement>(null);
+    useRevealTimeline(isOpen, (tl) => {
+        if (drawerScope.current) cascade(tl, drawerScope.current);
+    }, drawerScope, [isOpen]);
 
     return (
         <>
@@ -61,7 +79,7 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
             }`}
         />
 
-        <nav className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-dvh p
+        <nav ref={drawerScope} className={`fixed right-0 top-0 flex flex-col justify-start items-center gap-5 bg-nier-100 max-w-md h-dvh p
             transition-all ease-in-out duration-300 overflow-hidden
             shadow-[-3px_5px_0_0] shadow-nier-shadow pt-24 z-100 ${isOpen ? 'w-60 p-5' : 'w-0 p0'}`}>
             {visibleNavItems.map(item => {
@@ -70,11 +88,12 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
                 location.pathname.startsWith(item.path + "/");
                 return (
                     isActive ?
-                    <Link 
-                        key={item.path} 
+                    <Link
+                        key={item.path}
+                        data-drawer-item
                         to={item.path}
                         onClick={onClose}
-                        className="flex bg-nier-text-dark px-1 py-2 pt-2 w-45 items-center justify-start transition-all duration-300 ease-in-out -translate-x-1 "
+                        className="flex bg-nier-text-dark px-1 py-2 pt-2 w-45 items-center justify-start transition-colors duration-300 ease-in-out -translate-x-1 "
                     >
                     <div className="bg-nier-text-light h-5.5 w-5.5 flex items-center justify-center p-0.5 mr-1 ml-0.5 transition-all duration-300 ease-in-out">
                         <img
@@ -88,11 +107,12 @@ const NavigationMobile = ({ isOpen, onClose } : NavigationMobileProps) => {
                     </h3>
                     </Link>
                     :
-                    <Link 
-                        key={item.path} 
-                        to={item.path} 
+                    <Link
+                        key={item.path}
+                        data-drawer-item
+                        to={item.path}
                         onClick={onClose}
-                        className="flex bg-nier-150/60 px-1 py-2 pt-2 w-45 items-center justify-start transition-all duration-300 ease-in-out hover:bg-nier-150/80"
+                        className="flex bg-nier-150/60 px-1 py-2 pt-2 w-45 items-center justify-start transition-colors duration-300 ease-in-out hover:bg-nier-150/80"
                     >
                     <div className="bg-nier-text-dark h-5.5 w-5.5 flex items-center justify-center p-0.5 mr-1 ml-0.5 transition-all duration-300 ease-in-out">
                         <img

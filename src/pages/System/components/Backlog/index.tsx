@@ -39,7 +39,7 @@ import { datesForTransition } from "../../../../utils/lifecycle";
 import { daysWaiting } from "../../../../utils/capturedAt";
 import { writtenSections, SECTION_GLYPH } from "../../../../utils/critique";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
-import { domino, fade, wipe } from "../../../../utils/motion";
+import { cascade, domino, wipe } from "../../../../utils/motion";
 import { usePanelHeight } from "../../../../hooks/usePanelHeight";
 import { Panel } from "../../../../components/common/Panel";
 import { ReviewCover } from "../../../../components/review/ReviewCover";
@@ -231,6 +231,7 @@ const Section = ({ label, items, selected, ...actions }: SectionProps) => (
                 <ul
                     aria-label={label}
                     data-backlog-shelf
+                    data-reveal-own
                     className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2"
                 >
                     {items.map(review => (
@@ -342,18 +343,25 @@ const BacklogWindow = ({ onClose }: Props) => {
     const scope = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        fade(tl, '[data-window-chrome]', '<0.2');
     }, scope);
 
     // The shelves themselves. Their own timeline and their own readiness,
     // because the cards arrive with the collection rather than with the frame
     // — a timeline built at mount would address nothing, and go on addressing
-    // nothing once they turned up.
+    // nothing once they turned up. They carry data-reveal-own, so the window
+    // Cascade steps over them and leaves this Domino to run.
     const shelvesScope = useRef<HTMLDivElement>(null);
     useRevealTimeline(reviews.length > 0, (tl) => {
         domino(tl, '[data-backlog-shelf] > li');
     }, shelvesScope, [reviews.length > 0]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+
+    // The frame Wipes as stable chrome; the window then Cascades so nothing else
+    // arrives un-animated (ADR-0012). Keyed on the collection size so the chrome
+    // and captions re-cascade once the reviews land.
+    useRevealTimeline(true, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope, [reviews.length]);
 
     const [error, setError] = useState<string | null>(null);
     const [justFinished, setJustFinished] = useState<string | null>(null);
@@ -494,8 +502,8 @@ const BacklogWindow = ({ onClose }: Props) => {
             style={maxHeight ? { maxHeight } : undefined}
             frameRef={panelRef}
         >
-                <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                    <h3 className="text-nier-text-dark text-title uppercase tracking-wider">Backlog</h3>
+                <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
+                    <h3 data-window-title className="text-nier-text-dark text-title uppercase tracking-wider">Backlog</h3>
                     <button
                         onClick={onClose}
                         aria-label="Close backlog"
@@ -503,7 +511,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                     >✕</button>
                 </div>
 
-                <div data-window-chrome ref={shelvesScope} className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
+                <div ref={shelvesScope} className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
                     <Capture reviews={reviews} />
 
@@ -556,6 +564,7 @@ const BacklogWindow = ({ onClose }: Props) => {
                                         <ul
                                             aria-label="Not Started"
                                             data-backlog-shelf
+                                            data-reveal-own
                                             // No key handler here: nothing in
                                             // the list is focusable, so one
                                             // would never fire. The search
@@ -603,7 +612,8 @@ const BacklogWindow = ({ onClose }: Props) => {
                 {/* The caption bar. Says what is under the pointer, and carries
                     the fault as well, because the state column is desktop-only
                     and a phone would otherwise be told nothing. */}
-                <div data-window-chrome className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
+                <div className="relative flex-shrink-0 flex items-center gap-3 px-4 py-2">
+                    <span data-hairline aria-hidden="true" className="absolute top-0 left-0 w-full h-px bg-nier-150 origin-left" />
                     <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                     <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
                         {captionFor(selected, error, listed)}

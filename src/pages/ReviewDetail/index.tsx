@@ -9,7 +9,7 @@ import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { fade, growth, wipe } from "../../utils/motion";
+import { cascade, fade, growth, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { Modal } from "../../components/common/Modal";
@@ -39,6 +39,12 @@ const reviewPropMap = {
     cinematography: 'Cinematography',
     casting:        'Casting',
 } as const;
+
+// How long after the panel starts Cascading the critique section reveals, in
+// seconds. The tab strip above the section gets its Cascade beat about half a
+// second in; holding the section back to here lands its heading and prose just
+// after the tabs, not before them. Arrival only — see the reveal hook below.
+const SECTION_ARRIVAL_LEAD = 0.5;
 
 
 /**
@@ -145,7 +151,7 @@ const ReviewDetail = () => {
     const [loading,   setLoading]   = useState<boolean>(false);
     const [error,     setError]     = useState<string | null>(null);
     const [data,      setData]      = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<string>('');
+    const [selectedTab, setSelectedTab] = useState<string>('');
     const [mods,        setMods]        = useState<Mod[]>([]);
     const [tracks,      setTracks]      = useState<AudioTrack[]>([]);
     const [screenshots, setScreenshots] = useState<{ _id: string; url: string; title?: string }[]>([]);
@@ -166,9 +172,30 @@ const ReviewDetail = () => {
     // nothing once the panel appeared.
     useRevealTimeline(contentActive, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        fade(tl, '[data-detail-chrome]', '<0.2');
     }, scope, [loading, slug]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+
+    // The section on show: the user's pick, or the first written one before they
+    // have picked. Derived here, in render, rather than set from an effect after
+    // the record lands. An effect ran one commit late, so the first commit that
+    // had data still named the empty string — the critique reveal built its Fade
+    // over an empty paragraph, then had to rebuild past it once the tab arrived.
+    // When the page was already onscreen (contentActive latched true), that
+    // rebuild raced the play and the prose popped in at full opacity instead of
+    // fading. Deriving the tab means the first commit with data already names a
+    // real section, so the reveal builds once, over the real prose.
+    const firstTab = data
+        ? (writtenSections(data)[0] ?? (data.mods?.length ? 'mods' : ''))
+        : '';
+    const activeTab = selectedTab || firstTab;
+
+    // The frame Wipes as stable chrome; the page then Cascades so nothing arrives
+    // un-animated (ADR-0012). Keyed on [loading, slug] so it rebuilds when the
+    // record lands and when you move between reviews. The critique below carries
+    // data-reveal-own and runs its own prose Fade, so the Cascade steps over it.
+    useRevealTimeline(contentActive, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope, [loading, slug]);
 
     /**
      * The critique itself. Rebuilt on every tab change, because switching
@@ -181,9 +208,34 @@ const ReviewDetail = () => {
      * above is short chrome, so it may wipe with the panel it sits in.
      */
     const critiqueScope = useRef<HTMLDivElement>(null);
+    // On first arrival the whole panel Cascades, and the tab strip — a sibling
+    // above this box — gets its beat part-way through that walk. The critique runs
+    // its own timeline, so without a lead its heading and prose start at once and
+    // land before the tabs they sit under. SECTION_ARRIVAL_LEAD holds the section
+    // back until the tab row is underway. It is an arrival-only offset: a tab
+    // *switch* does not re-Cascade the tabs, so re-running the section with the
+    // same lead would only stall the new text. `sectionArrived` tracks which of
+    // the two a rebuild is — reset whenever a fresh record starts loading.
+    const sectionArrived = useRef(false);
     useRevealTimeline(contentActive, (tl) => {
-        growth(tl, '[data-critique-heading]');
-        fade(tl, '[data-critique-prose]', '<0.1');
+        if (loading) { sectionArrived.current = false; return; }
+        if (!sectionArrived.current && critiqueScope.current) {
+            // First arrival: the section's own surface is solid chrome, so it
+            // Wipes in before its heading and prose — the canonical Frame Wipe →
+            // Title → Content order. Held back to SECTION_ARRIVAL_LEAD so the
+            // surface draws in after the tab row above it, not under it. Without
+            // this the box's background was the one thing here with no beat, so
+            // it popped while everything else animated.
+            wipe(tl, critiqueScope.current, SECTION_ARRIVAL_LEAD);
+            growth(tl, '[data-critique-heading]', '<0.15');
+            fade(tl, '[data-critique-prose]', '<0.1');
+        } else {
+            // A tab switch: the surface is stable chrome that stays put; only the
+            // heading and prose re-run, and promptly — the tabs are not moving.
+            growth(tl, '[data-critique-heading]');
+            fade(tl, '[data-critique-prose]', '<0.1');
+        }
+        sectionArrived.current = true;
     }, critiqueScope, [activeTab, loading]);
 
     const handleClose   = () => navigate(`/${parent}`);
@@ -211,14 +263,11 @@ const ReviewDetail = () => {
         fetchPost();
     }, []);
 
-    // Set initial tab and mods once data loads, then fetch audio tracks
+    // Load mods once data lands, then fetch audio tracks. The active tab is not
+    // set here — it is derived in render from the record itself (see `firstTab`).
     useEffect(() => {
         if (!data) return;
-        const entries = writtenSections(data);
-        const loadedMods: Mod[] = data.mods ?? [];
-        setMods(loadedMods);
-        if (entries.length > 0) setActiveTab(entries[0]);
-        else if (loadedMods.length > 0) setActiveTab('mods');
+        setMods(data.mods ?? []);
 
         backend.getAudioTracks(data._id).then(setTracks).catch(() => { /* network error */ });
         backend.getImages(data._id, 'screenshot').then(setScreenshots).catch(() => { /* network error */ });
@@ -279,7 +328,7 @@ const ReviewDetail = () => {
                     <div data-detail-chrome className="h-10 bg-nier-150 flex items-stretch flex-shrink-0">
                         <div className="flex items-center gap-2 px-4 flex-1 min-w-0">
                             <ion-icon name={TYPE_ICON[data.type]} style={{ flexShrink: 0 }}></ion-icon>
-                            <h3 className="text-nier-text-dark text-heading truncate uppercase tracking-wide">
+                            <h3 data-detail-title className="text-nier-text-dark text-heading truncate uppercase tracking-wide">
                                 {data.title}
                             </h3>
                         </div>
@@ -369,7 +418,7 @@ const ReviewDetail = () => {
                                                 id={key}
                                                 label={reviewPropMap[key as keyof typeof reviewPropMap] ?? key}
                                                 active={activeTab === key}
-                                                onSelect={() => setActiveTab(key)}
+                                                onSelect={() => setSelectedTab(key)}
                                             />
                                         ))}
                                         {data.type === 'game' && mods.length > 0 && (
@@ -377,7 +426,7 @@ const ReviewDetail = () => {
                                                 id="mods"
                                                 label={`Mods (${mods.length})`}
                                                 active={activeTab === 'mods'}
-                                                onSelect={() => setActiveTab('mods')}
+                                                onSelect={() => setSelectedTab('mods')}
                                             />
                                         )}
                                     </div>
@@ -390,7 +439,7 @@ const ReviewDetail = () => {
                                         version of that count here: it says how
                                         much of the critique you have seen,
                                         which nothing else on the page does. */}
-                                    <div ref={critiqueScope} className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
+                                    <div ref={critiqueScope} data-reveal-own className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
                                         <div data-critique-heading className="h-7 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
                                             <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark">
                                                 {activeTab === 'mods'
@@ -480,7 +529,8 @@ const ReviewDetail = () => {
                         the right. It replaces an italic line that repeated the
                         release date and the creator, both of which now sit
                         under the cover they belong to. */}
-                    <div data-detail-chrome className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
+                    <div data-detail-chrome className="relative flex-shrink-0 flex items-center gap-3 px-4 py-2">
+                        <span data-hairline aria-hidden="true" className="absolute top-0 left-0 w-full h-px bg-nier-150 origin-left" />
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                         <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(data.title, activeTab, sectionCount)}
