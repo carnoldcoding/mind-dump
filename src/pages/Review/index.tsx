@@ -561,6 +561,23 @@ const Review = () => {
     useRevealTimeline(contentActive, (tl) => {
         const frame = scope.current?.querySelector<HTMLElement>('[data-testid="panel-frame"]');
         if (frame) cascade(tl, frame, 0.15);
+        // A scroll region carries its bar the moment it holds overflowing content,
+        // and the panel is framed before the cascade fills it — so the bar was
+        // there ahead of the cards and rows it belongs to. Hold overflow hidden
+        // for the length of the reveal, then hand it back to auto as the final
+        // beat, so the bar arrives after the content, not before it. Scoped to the
+        // panel, so the mobile filter Modal (portalled out) keeps its own scroll.
+        const regions = scope.current?.querySelectorAll<HTMLElement>('[data-scroll-region]');
+        if (regions?.length) {
+            // Hide the bar now, for the whole reveal, then hand it back to auto as
+            // the final beat. The hide is applied directly rather than as a beat at
+            // position 0, because a paused timeline does not render a zero-time set
+            // on build — and hiding the bar is exactly the "apply on build" job the
+            // reveal's `.from()` primitives rely on. The closing set lives in the
+            // timeline so it reverts to the stylesheet's auto on the next rebuild.
+            regions.forEach((region) => { region.style.overflowY = 'hidden'; });
+            tl.set(regions, { overflowY: 'auto' }, tl.duration());
+        }
     }, scope, [loading, category, visibleGenres.join('|')]);
 
     // A span reads back off the filters rather than being held twice. The
@@ -658,9 +675,9 @@ const Review = () => {
         // two things that have no row form — a bounded number and a pair of
         // dates — under section bars of their own.
         const filterColumn = (
-            <div className="flex flex-col gap-4 min-h-0 h-full overflow-y-auto">
+            <div data-scroll-region className="flex flex-col gap-4 min-h-0 h-full overflow-y-auto">
                 <Group title="Genre">
-                    <ul className="flex flex-col gap-0.5 mt-1 pl-3 max-h-52 min-h-0 overflow-y-auto">
+                    <ul data-scroll-region className="flex flex-col gap-0.5 mt-1 pl-3 max-h-52 min-h-0 overflow-y-auto">
                         {visibleGenres.map(genre => (
                             <GenreRow
                                 key={genre}
@@ -849,7 +866,15 @@ const Review = () => {
                                 centred spinner while the fetch was in flight,
                                 which threw the panel away and made the reveal
                                 wait on network latency. See docs/motion.md. */}
-                            <div ref={shelfScope} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto flex-1 items-start content-start">
+                            {/* overflow-x-hidden is deliberate, not redundant: a
+                                box with one axis set to `auto` computes the other
+                                from `visible` to `auto` too, so `overflow-y-auto`
+                                alone was giving the grid a horizontal scrollbar off
+                                any sub-pixel width. The cards already fit (the
+                                tracks are minmax(0,1fr) and the text truncates), so
+                                pinning x to hidden removes the phantom bar and the
+                                option to scroll sideways without clipping anything. */}
+                            <div ref={shelfScope} data-scroll-region className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto overflow-x-hidden flex-1 items-start content-start">
                                 {loading
                                     ? (
                                         <div className="col-span-full flex justify-center py-8">
