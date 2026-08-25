@@ -141,14 +141,14 @@ const BodyWindow = ({ onClose }: Props) => {
             >
 
                     {/* Window title bar */}
-                    <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
+                    <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                         <h3 data-window-title className="text-nier-text-dark text-title uppercase tracking-wider">Body</h3>
                         <button onClick={onClose} aria-label="Close" className="text-body px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none">
                             ✕
                         </button>
                     </div>
 
-                    <div data-window-chrome className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
+                    <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
                         <div className="flex gap-4 flex-col md:flex-row md:items-start">
                             <MovementList

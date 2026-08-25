@@ -73,7 +73,7 @@ const Desktop = () => {
         >
 
                 {/* Title bar */}
-                <div data-desktop-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
+                <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                     <div className="flex items-center gap-3">
                         <span data-window-title className="text-nier-text-dark text-body uppercase tracking-widest font-semibold">
                             SYSTEM.OS
@@ -85,7 +85,7 @@ const Desktop = () => {
                 </div>
 
                 {/* Desktop area */}
-                <div data-desktop-chrome className="relative p-4 flex-1 overflow-y-auto min-h-0">
+                <div className="relative p-4 flex-1 overflow-y-auto min-h-0">
                     {/* Icons — own stacking context, sit beneath any open window */}
                     <div className="absolute top-4 left-4 flex gap-4 z-0">
                         {(["backlog", "reviews", "body"] as const).map(app => (
@@ -127,7 +127,7 @@ const Desktop = () => {
                 </div>
 
                 {/* Taskbar */}
-                <div data-desktop-chrome className="h-8 bg-nier-150 border-t border-nier-dark/20 flex items-center justify-between px-4 flex-shrink-0">
+                <div className="h-8 bg-nier-150 border-t border-nier-dark/20 flex items-center justify-between px-4 flex-shrink-0">
                     <span className="text-label text-nier-text-dark uppercase tracking-widest opacity-50">
                         MIND DUMP OS
                     </span>

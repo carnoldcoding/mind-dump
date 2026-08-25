@@ -204,21 +204,6 @@ export const decode = (
   );
 
 /**
- * DECODE, as a group over a surface's section headers.
- *
- * The nested arrival grammar (ADR-0011) lands every section header — GENRE,
- * RATING, RELEASED — as one beat before any section body fills. Each header
- * decodes toward its *own* text, so this reads the labels off the DOM rather
- * than taking a list: a header is a Decode target because it carries
- * `data-section-header`, and a new section joins the group for free by carrying
- * the marker. Every header starts at the same `position`, which is what makes
- * the beat a group rather than a stagger.
- *
- * Scoped to `scope` so the mobile filter column — the same markup rendered a
- * second time inside a portalled Modal, outside this subtree — is not addressed
- * twice.
- */
-/**
  * The tags a Cascade reads to pick a leaf's primitive, and the elements it
  * reveals whole rather than walking into.
  */

@@ -54,7 +54,7 @@ const shelfLine = (review: Pick<ReviewRecord, "rating" | "date_completed">): str
 
 /** One `label ......... value` line of the status readout. Same object as Now's. */
 const Readout = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div data-ripple-item className="flex items-baseline justify-between gap-3 text-label">
+    <div className="flex items-baseline justify-between gap-3 text-label">
         <span className="uppercase tracking-wide text-nier-text-dark/70">{label}</span>
         <span className="uppercase text-nier-text-dark">{value}</span>
     </div>
@@ -91,7 +91,7 @@ const ShelfStatus = ({ shelved, showing, error }: {
     const unknown = "—";
 
     return (
-        <div data-section="shelf" className="flex flex-col">
+        <div className="flex flex-col">
             <h2 data-section-header className="bg-nier-dark text-nier-text-light text-label uppercase tracking-widest px-2 py-1">
                 Shelf
             </h2>
@@ -153,7 +153,7 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
 }) => {
     const dead = count === 0 && !selected;
     return (
-        <li data-ripple-item className="relative">
+        <li className="relative">
             <span
                 aria-hidden="true"
                 className={`absolute -left-3 top-1/2 -translate-y-1/2 text-eyebrow text-nier-text-dark transition-opacity duration-150 ${
@@ -199,7 +199,7 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
 /** A titled group in the filter column. The dark bar is the panel's own title
  *  bar, one level in — the same object the reference reuses at every depth. */
 const Group = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <section data-section={title.toLowerCase()} aria-label={title} className="flex flex-col min-h-0">
+    <section aria-label={title} className="flex flex-col min-h-0">
         <h2 data-section-header className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1 flex-shrink-0">
             {title}
         </h2>
@@ -291,7 +291,6 @@ const Track = ({ cells, selection, onChange, onClear, ticks, readout }: {
                     return (
                         <button
                             key={cell.key}
-                            data-ripple-item
                             title={cell.title}
                             aria-label={cell.title}
                             aria-pressed={state === 'filled'}
@@ -809,7 +808,7 @@ const Review = () => {
                                 reference has no search box to copy, but it has
                                 plenty of labelled values, and that is what a
                                 query is. */}
-                            <div data-section="search" className="relative flex items-center gap-3 pb-2 mb-3 flex-shrink-0">
+                            <div className="relative flex items-center gap-3 pb-2 mb-3 flex-shrink-0">
                                 {/* The underline is a line element, not a border,
                                     so it can Grow in from the left as the shelf
                                     arrives. */}

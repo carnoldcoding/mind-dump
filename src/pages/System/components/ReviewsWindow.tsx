@@ -39,7 +39,7 @@ const ReviewsWindow = ({ onClose }: Props) => {
             style={maxHeight ? { maxHeight } : undefined}
             frameRef={panelRef}
         >
-                <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
+                <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
                     <h3 data-window-title className="text-nier-text-dark text-title uppercase tracking-wider">Reviews</h3>
                     <button
                         onClick={onClose}
@@ -48,7 +48,7 @@ const ReviewsWindow = ({ onClose }: Props) => {
                         ✕
                     </button>
                 </div>
-                <div data-window-chrome className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
+                <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
                     {/* Charts read the whole collection, deliberately:
                         narrowing the list below should not narrow the sense of

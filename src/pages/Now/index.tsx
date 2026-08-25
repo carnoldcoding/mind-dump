@@ -128,7 +128,7 @@ const Section = ({ title, empty, children }: {
     empty: string;
     children?: React.ReactNode;
 }) => (
-    <section data-now-section aria-label={title}>
+    <section aria-label={title}>
         <h2 className="bg-nier-dark text-nier-text-light text-label uppercase tracking-widest px-2 py-1">
             {title}
         </h2>
