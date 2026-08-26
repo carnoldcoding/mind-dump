@@ -16,7 +16,7 @@ type Props = {
 };
 
 const ctrlBtn =
-    "text-[10px] uppercase tracking-wide px-3 py-2 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors";
+    "text-eyebrow uppercase tracking-wide px-3 py-2 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors";
 
 // Selecting a Movement happens constantly; reordering and renaming happen
 // once and then basically never. They used to share a row, which is why the
@@ -43,14 +43,14 @@ const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCrea
                 aria-expanded={pickerOpen}
                 className="md:hidden min-h-11 bg-nier-150 flex items-center justify-between px-3 cursor-pointer"
             >
-                <span className="text-nier-text-dark text-sm uppercase tracking-wide truncate">
+                <span className="text-nier-text-dark text-body uppercase tracking-wide truncate">
                     {selectedMovement?.displayName ?? "Movements"}
                 </span>
-                <span className="text-nier-text-dark/60 text-xs">{pickerOpen ? "▲" : "▼"}</span>
+                <span className="text-nier-text-dark/60 text-label">{pickerOpen ? "▲" : "▼"}</span>
             </button>
 
             <div className="hidden md:flex h-7 bg-nier-150 items-center px-3">
-                <span className="text-nier-text-dark text-sm">Movements</span>
+                <span className="text-nier-text-dark text-body">Movements</span>
             </div>
 
             <div className={`${pickerOpen ? "flex" : "hidden"} md:flex flex-col flex-1 min-h-0`}>
@@ -60,7 +60,7 @@ const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCrea
                         <button
                             key={f}
                             onClick={() => setTagFilter(f)}
-                            className={`text-[10px] uppercase tracking-wide px-3 py-2 cursor-pointer transition-colors ${
+                            className={`text-eyebrow uppercase tracking-wide px-3 py-2 cursor-pointer transition-colors ${
                                 tagFilter === f
                                     ? "bg-nier-text-dark text-nier-100-lighter"
                                     : "text-nier-text-dark/50 hover:text-nier-text-dark"
@@ -73,7 +73,7 @@ const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCrea
 
                 <ul aria-label="Movements" className="flex flex-col overflow-y-auto flex-1 min-h-0 max-h-64 md:max-h-none">
                     {filtered.length === 0 ? (
-                        <li className="text-nier-text-dark/40 text-xs uppercase px-3 py-3">
+                        <li className="text-nier-text-dark/40 text-label uppercase px-3 py-3">
                             {movements.length === 0 ? "No movements yet" : "None in this category"}
                         </li>
                     ) : filtered.map((m, visibleIdx) => {
@@ -93,20 +93,20 @@ const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCrea
                                             onClick={() => above && onReorder(m.workoutName, above.workoutName)}
                                             disabled={!above}
                                             aria-label={`Move ${m.displayName} up`}
-                                            className={`w-9 min-h-11 text-xs cursor-pointer disabled:opacity-20 disabled:cursor-default ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/60"}`}
+                                            className={`w-9 min-h-11 text-label cursor-pointer disabled:opacity-20 disabled:cursor-default ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/60"}`}
                                         >▲</button>
                                         <button
                                             onClick={() => below && onReorder(m.workoutName, below.workoutName)}
                                             disabled={!below}
                                             aria-label={`Move ${m.displayName} down`}
-                                            className={`w-9 min-h-11 text-xs cursor-pointer disabled:opacity-20 disabled:cursor-default ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/60"}`}
+                                            className={`w-9 min-h-11 text-label cursor-pointer disabled:opacity-20 disabled:cursor-default ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/60"}`}
                                         >▼</button>
                                     </div>
                                 )}
 
                                 <button
                                     onClick={() => { onSelect(m.workoutName); setPickerOpen(false); }}
-                                    className={`flex-1 min-w-0 text-left text-xs uppercase tracking-wide px-3 min-h-11 truncate ${isSelected ? "text-nier-100-lighter" : "text-nier-text-dark"}`}
+                                    className={`flex-1 min-w-0 text-left text-label uppercase tracking-wide px-3 min-h-11 truncate ${isSelected ? "text-nier-100-lighter" : "text-nier-text-dark"}`}
                                 >
                                     {m.displayName}
                                 </button>
@@ -115,7 +115,7 @@ const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCrea
                                     <button
                                         onClick={() => onEdit(m.workoutName)}
                                         aria-label={`Edit ${m.displayName}`}
-                                        className={`w-11 min-h-11 text-sm cursor-pointer shrink-0 ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/50"}`}
+                                        className={`w-11 min-h-11 text-body cursor-pointer shrink-0 ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/50"}`}
                                     >✎</button>
                                 )}
                             </li>

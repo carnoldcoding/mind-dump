@@ -10,27 +10,30 @@ import EntryEditModal from "./EntryEditModal";
 import { partitionBodyDocs, describeEntry, docId } from "./entry";
 import type { BodyDoc, Entry } from "./entry";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
-import { fade, wipe } from "../../../../utils/motion";
-import { usePanelHeight } from "../../../../hooks/usePanelHeight";
+import { cascade, wipe } from "../../../../utils/motion";
 import { useRetained } from "../../../../hooks/useRetained";
 import { Panel } from "../../../../components/common/Panel";
 
 type ActiveTab = "chart" | "history";
 
-type Props = { onClose: () => void };
-
-const BodyWindow = ({ onClose }: Props) => {
+// Runs as a tab on the SYSTEM.OS desktop: the Desktop owns the frame chrome and
+// the close control, so this window carries no title bar of its own and fills
+// the content area it is given.
+const BodyWindow = () => {
     // No signal to wait on: this window only ever mounts well after boot is
     // done — the user has to open System, then click a folder icon — and
-    // Desktop's conditional render gives it a fresh mount each time. It has no
-    // decoded title and no card grid, so its whole entrance is the frame
-    // arriving with its chrome a beat behind.
+    // Desktop's conditional render gives it a fresh mount each time. The
+    // canonical order: the frame Wipes, its title Decodes, and the rest of the
+    // chrome Fades a beat behind.
+    // The frame Wipes as stable chrome; the whole window then Cascades so nothing
+    // arrives un-animated (ADR-0012). The Cascade is keyed on the content it shows
+    // — the fetched docs, the selected movement, the active tab — so it re-runs
+    // when the data lands and when the view changes, rather than popping.
     const scope = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        fade(tl, '[data-window-chrome]', '<0.2');
     }, scope);
-    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+    const panelRef = useRef<HTMLElement>(null);
 
     const [docs, setDocs]                         = useState<BodyDoc[]>([]);
     const [selectedName, setSelectedName]         = useState<string | null>(null);
@@ -38,6 +41,10 @@ const BodyWindow = ({ onClose }: Props) => {
     const [editingName, setEditingName]           = useState<string | null>(null);
     const [editingEntry, setEditingEntry]         = useState<Entry | null>(null);
     const [activeTab, setActiveTab]               = useState<ActiveTab>("chart");
+
+    useRevealTimeline(true, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope, [docs.length, selectedName, activeTab]);
 
     const fetchDocs = useCallback(async () => {
         try {
@@ -120,7 +127,7 @@ const BodyWindow = ({ onClose }: Props) => {
     }, [movements, fetchDocs]);
 
     const tabBtn = (active: boolean) =>
-        `text-xs uppercase tracking-wide px-4 py-2 border-b-2 transition-colors cursor-pointer ${
+        `text-label uppercase tracking-wide px-4 py-2 border-b-2 transition-colors cursor-pointer ${
             active ? "border-nier-dark text-nier-text-dark" : "border-transparent text-nier-text-dark/40 hover:text-nier-text-dark"
         }`;
 
@@ -128,20 +135,12 @@ const BodyWindow = ({ onClose }: Props) => {
         <>
             <Panel
                 wrapperRef={scope}
-                className="bg-nier-100 border border-nier-150"
-                style={maxHeight ? { maxHeight } : undefined}
+                wrapperClassName="h-full"
+                className="bg-nier-100 border border-nier-150 h-full"
                 frameRef={panelRef}
             >
 
-                    {/* Window title bar */}
-                    <div data-window-chrome className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 className="text-nier-text-dark text-xl uppercase tracking-wider">Body</h3>
-                        <button onClick={onClose} aria-label="Close" className="text-sm px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none">
-                            ✕
-                        </button>
-                    </div>
-
-                    <div data-window-chrome className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
+                    <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
                         <div className="flex gap-4 flex-col md:flex-row md:items-start">
                             <MovementList
@@ -169,30 +168,34 @@ const BodyWindow = ({ onClose }: Props) => {
                                         </div>
 
                                         {activeTab === "chart" ? (
-                                            <MovementChart
-                                                name={selected.displayName}
-                                                entries={selectedEntries}
-                                                goal={selected.goal}
-                                            />
+                                            // data-reveal-own: a chart draws itself; the window Cascade
+                                            // steps over it rather than animating a canvas.
+                                            <div data-reveal-own>
+                                                <MovementChart
+                                                    name={selected.displayName}
+                                                    entries={selectedEntries}
+                                                    goal={selected.goal}
+                                                />
+                                            </div>
                                         ) : (
                                             <section aria-label="History" className="h-64 bg-nier-100-lighter border border-nier-150 relative flex flex-col">
                                                 <div className="h-7 bg-nier-150 flex items-center px-3 shrink-0">
-                                                    <span className="text-nier-text-dark text-sm uppercase tracking-wide">Entries</span>
+                                                    <span className="text-nier-text-dark text-body uppercase tracking-wide">Entries</span>
                                                 </div>
                                                 <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
                                                 <div className="overflow-y-auto flex-1">
                                                     {selectedEntries.length === 0 ? (
-                                                        <p className="text-xs text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">No entries yet.</p>
+                                                        <p className="text-label text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">No entries yet.</p>
                                                     ) : selectedEntries.map(e => (
                                                         <button
                                                             key={e.id ?? e.datetime}
                                                             onClick={() => e.id && setEditingEntry(e)}
                                                             className="w-full flex items-center justify-between gap-3 px-3 py-3 border-b border-nier-150/30 last:border-0 hover:bg-nier-150/30 text-left cursor-pointer transition-colors"
                                                         >
-                                                            <span className="text-[10px] text-nier-text-dark/50 uppercase tracking-wide shrink-0">
+                                                            <span className="text-eyebrow text-nier-text-dark/50 uppercase tracking-wide shrink-0">
                                                                 {new Date(e.datetime).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
                                                             </span>
-                                                            <span className="text-xs text-nier-text-dark">{describeEntry(e)}</span>
+                                                            <span className="text-label text-nier-text-dark">{describeEntry(e)}</span>
                                                         </button>
                                                     ))}
                                                 </div>
@@ -201,7 +204,7 @@ const BodyWindow = ({ onClose }: Props) => {
                                     </>
                                 ) : (
                                     <div className="h-64 bg-nier-100-lighter border border-nier-150 flex items-center justify-center">
-                                        <span className="text-nier-text-dark/40 text-xs uppercase tracking-widest">
+                                        <span className="text-nier-text-dark/40 text-label uppercase tracking-widest">
                                             {movements.length === 0 ? "Add a movement to begin" : "Select a movement"}
                                         </span>
                                     </div>

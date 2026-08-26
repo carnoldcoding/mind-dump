@@ -10,13 +10,18 @@ import { rankByTitle } from '../../../../utils/rankByTitle';
 import { capturedAt, daysWaiting } from '../../../../utils/capturedAt';
 import { CATEGORIES } from '../../../../utils/categories';
 
-export type SortKey = 'waiting' | 'title' | 'release';
+export type SortKey = 'status' | 'waiting' | 'title' | 'release';
+
+/** All, or one Status. Not nullable — 'all' is the un-narrowed value. */
+export type StatusFilter = 'all' | 'active' | 'todo';
 
 export type UnstartedControls = {
     /** Title text. Matched by rankByTitle, the same as every other search. */
     query: string;
     /** A Category, or null for all of them. */
     category: string | null;
+    /** Which Status to show — 'all' hides nothing. */
+    status: StatusFilter;
     genre: string | null;
     creator: string | null;
     sort: SortKey;
@@ -27,9 +32,12 @@ export type UnstartedControls = {
 export const NO_CONTROLS: UnstartedControls = {
     query: '',
     category: null,
+    status: 'all',
     genre: null,
     creator: null,
-    sort: 'waiting',
+    // Started first, then longest-waiting — so "what am I on" is answerable
+    // from the top of one mixed list, without a pinned section (spec §3a).
+    sort: 'status',
     ascending: true,
 };
 
@@ -47,6 +55,7 @@ export const NO_CONTROLS: UnstartedControls = {
 export function applyControls(items: Review[], controls: UnstartedControls): Review[] {
     let result = items;
 
+    if (controls.status !== 'all') result = result.filter(r => r.status === controls.status);
     if (controls.category) result = result.filter(r => r.type === controls.category);
     if (controls.genre) result = result.filter(r => (r.genres ?? []).includes(controls.genre!));
     if (controls.creator) result = result.filter(r => r.creator === controls.creator);
@@ -56,7 +65,10 @@ export function applyControls(items: Review[], controls: UnstartedControls): Rev
     // query the ranking stands. Reversing is still honoured either way — it is
     // an explicit instruction, and silently ignoring it while typing was a bug.
     const ordered = [...result];
-    const rankingStands = controls.sort === 'waiting' && controls.query !== '';
+    // With the default key and a query, the search's own ranking stands — a
+    // prefix above a substring is the point of typing. Picking any explicit
+    // sort key (waiting, title, release) overrides it.
+    const rankingStands = controls.sort === 'status' && controls.query !== '';
 
     if (!rankingStands) ordered.sort(comparatorFor(controls.sort));
     if (!controls.ascending) ordered.reverse();
@@ -70,6 +82,14 @@ export function applyControls(items: Review[], controls: UnstartedControls): Rev
  * `ascending: false` flips whichever that is.
  */
 function comparatorFor(sort: SortKey): (a: Review, b: Review) => number {
+    if (sort === 'status') {
+        // Started (active) ahead of queued (todo), longest-waiting within each.
+        // The default order, and what keeps "what am I on" at the top of a list
+        // that no longer pins Started as its own section.
+        const rank = (r: Review) => (r.status === 'active' ? 0 : 1);
+        return (a, b) => rank(a) - rank(b) || byLongestWaiting(a, b);
+    }
+
     if (sort === 'title') {
         return (a, b) => a.title.localeCompare(b.title);
     }
@@ -104,6 +124,8 @@ export type Facet = { value: string | null; count: number };
 export type Facets = {
     /** Every Category, in CATEGORIES order, with `null` first for all of them. */
     categories: Facet[];
+    /** All / Started / Queued, each counted against the other controls. */
+    statuses: Facet[];
     genres: Facet[];
     creators: Facet[];
 };
@@ -123,10 +145,17 @@ export type Facets = {
  * the same rule the editor's section bar follows, in docs/chrome.md.
  */
 export function facetsFor(items: Review[], controls: UnstartedControls): Facets {
+    // Each control's own counts must not answer to its own choice. Resetting a
+    // control to its un-narrowed value ('' for query, 'all' for status, null
+    // for the rest) is what "count against the *other* controls" means.
     const without = (key: keyof UnstartedControls) =>
-        applyControls(items, { ...controls, [key]: key === 'query' ? '' : null });
+        applyControls(items, {
+            ...controls,
+            [key]: key === 'query' ? '' : key === 'status' ? 'all' : null,
+        });
 
     const forCategories = without('category');
+    const forStatuses = without('status');
     const inCategory = applyControls(items, { ...controls, genre: null, creator: null });
 
     const tally = (rows: Review[], read: (r: Review) => string[]) => {
@@ -146,6 +175,12 @@ export function facetsFor(items: Review[], controls: UnstartedControls): Facets 
                 value: category.type,
                 count: forCategories.filter(r => r.type === category.type).length,
             })),
+        ],
+        // Always all three, so the control keeps its shape as the list narrows.
+        statuses: [
+            { value: 'all', count: forStatuses.length },
+            { value: 'active', count: forStatuses.filter(r => r.status === 'active').length },
+            { value: 'todo', count: forStatuses.filter(r => r.status === 'todo').length },
         ],
         genres: tally(inCategory, r => r.genres ?? []),
         creators: tally(inCategory, r => (r.creator ? [r.creator] : [])),
@@ -210,9 +245,10 @@ export function unstartedReadouts(
             const captured = capturedAt(review._id);
             return captured !== undefined && captured.getTime() >= since;
         }).length,
-        // Narrowed the same way as the rest, minus the Status the list is
-        // built on, so "added against started" compares like with like.
-        started30: applyControls(unfinished, { ...controls, query: '' }).filter(review => {
+        // Narrowed by the same facets, but never by the status view — "added
+        // against started" is a signal about the whole queue, not about
+        // whichever Status the list is filtered to right now.
+        started30: applyControls(unfinished, { ...controls, query: '', status: 'all' }).filter(review => {
             const value = review.date_started?.trim();
             if (!value) return false;
             const time = new Date(value).getTime();

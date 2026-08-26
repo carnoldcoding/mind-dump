@@ -9,7 +9,7 @@ import type { AudioTrack } from "../../types";
 import AudioPlayer from "./AudioPlayer";
 import { useStageState } from "../../context/BootSequenceContext";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { fade, growth, wipe } from "../../utils/motion";
+import { cascade, fade, growth, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { Modal } from "../../components/common/Modal";
@@ -40,6 +40,12 @@ const reviewPropMap = {
     casting:        'Casting',
 } as const;
 
+// How long after the panel starts Cascading the critique section reveals, in
+// seconds. The tab strip above the section gets its Cascade beat about half a
+// second in; holding the section back to here lands its heading and prose just
+// after the tabs, not before them. Arrival only — see the reveal hook below.
+const SECTION_ARRIVAL_LEAD = 0.5;
+
 
 /**
  * One tab of the reference's top menu bar — the one screen element this site
@@ -63,7 +69,7 @@ const Tab = ({ id, label, active, onSelect }: {
     <div className="group/tab relative flex-shrink-0">
         <span
             aria-hidden="true"
-            className={`absolute -left-2.5 top-3 -translate-y-1/2 text-[9px] text-nier-text-dark transition-opacity duration-150 ${
+            className={`absolute -left-2.5 top-3 -translate-y-1/2 text-eyebrow text-nier-text-dark transition-opacity duration-150 ${
                 active ? 'opacity-0' : 'opacity-0 group-hover/tab:opacity-100'
             }`}
         >
@@ -80,10 +86,10 @@ const Tab = ({ id, label, active, onSelect }: {
                     : 'h-6 bg-nier-150/60 border border-transparent hover:bg-nier-100-lighter hover:border-nier-dark'
             }`}
         >
-            <span aria-hidden="true" className="text-[10px] leading-none opacity-70">
+            <span aria-hidden="true" className="text-eyebrow leading-none opacity-70">
                 {SECTION_GLYPH[id] ?? '▪'}
             </span>
-            <span className="text-xs uppercase tracking-wide whitespace-nowrap">{label}</span>
+            <span className="text-label uppercase tracking-wide whitespace-nowrap">{label}</span>
         </button>
         {/* The foot under the selected tab. */}
         {active && (
@@ -123,13 +129,13 @@ const Annotation = ({ label, name, detail }: {
     detail?: string;
 }) => (
     <div className="flex flex-col gap-0.5 pt-2 flex-shrink-0">
-        <p className="text-[10px] uppercase tracking-widest text-nier-text-dark/40">{label}</p>
+        <p className="text-eyebrow uppercase tracking-widest text-nier-text-dark/40">{label}</p>
         <div className="border-t border-nier-text-dark/30 pt-1 flex items-baseline gap-1.5">
-            <span aria-hidden="true" className="text-[10px] text-nier-text-dark/60">❖</span>
-            <p className="text-sm uppercase tracking-wide truncate">{name}</p>
+            <span aria-hidden="true" className="text-eyebrow text-nier-text-dark/60">❖</span>
+            <p className="text-body uppercase tracking-wide truncate">{name}</p>
         </div>
         {detail && (
-            <p className="text-xs text-nier-text-dark/60 pl-4">{detail}</p>
+            <p className="text-label text-nier-text-dark/60 pl-4">{detail}</p>
         )}
     </div>
 );
@@ -145,7 +151,7 @@ const ReviewDetail = () => {
     const [loading,   setLoading]   = useState<boolean>(false);
     const [error,     setError]     = useState<string | null>(null);
     const [data,      setData]      = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<string>('');
+    const [selectedTab, setSelectedTab] = useState<string>('');
     const [mods,        setMods]        = useState<Mod[]>([]);
     const [tracks,      setTracks]      = useState<AudioTrack[]>([]);
     const [screenshots, setScreenshots] = useState<{ _id: string; url: string; title?: string }[]>([]);
@@ -166,9 +172,30 @@ const ReviewDetail = () => {
     // nothing once the panel appeared.
     useRevealTimeline(contentActive, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        fade(tl, '[data-detail-chrome]', '<0.2');
     }, scope, [loading, slug]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+
+    // The section on show: the user's pick, or the first written one before they
+    // have picked. Derived here, in render, rather than set from an effect after
+    // the record lands. An effect ran one commit late, so the first commit that
+    // had data still named the empty string — the critique reveal built its Fade
+    // over an empty paragraph, then had to rebuild past it once the tab arrived.
+    // When the page was already onscreen (contentActive latched true), that
+    // rebuild raced the play and the prose popped in at full opacity instead of
+    // fading. Deriving the tab means the first commit with data already names a
+    // real section, so the reveal builds once, over the real prose.
+    const firstTab = data
+        ? (writtenSections(data)[0] ?? (data.mods?.length ? 'mods' : ''))
+        : '';
+    const activeTab = selectedTab || firstTab;
+
+    // The frame Wipes as stable chrome; the page then Cascades so nothing arrives
+    // un-animated (ADR-0012). Keyed on [loading, slug] so it rebuilds when the
+    // record lands and when you move between reviews. The critique below carries
+    // data-reveal-own and runs its own prose Fade, so the Cascade steps over it.
+    useRevealTimeline(contentActive, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope, [loading, slug]);
 
     /**
      * The critique itself. Rebuilt on every tab change, because switching
@@ -181,9 +208,34 @@ const ReviewDetail = () => {
      * above is short chrome, so it may wipe with the panel it sits in.
      */
     const critiqueScope = useRef<HTMLDivElement>(null);
+    // On first arrival the whole panel Cascades, and the tab strip — a sibling
+    // above this box — gets its beat part-way through that walk. The critique runs
+    // its own timeline, so without a lead its heading and prose start at once and
+    // land before the tabs they sit under. SECTION_ARRIVAL_LEAD holds the section
+    // back until the tab row is underway. It is an arrival-only offset: a tab
+    // *switch* does not re-Cascade the tabs, so re-running the section with the
+    // same lead would only stall the new text. `sectionArrived` tracks which of
+    // the two a rebuild is — reset whenever a fresh record starts loading.
+    const sectionArrived = useRef(false);
     useRevealTimeline(contentActive, (tl) => {
-        growth(tl, '[data-critique-heading]');
-        fade(tl, '[data-critique-prose]', '<0.1');
+        if (loading) { sectionArrived.current = false; return; }
+        if (!sectionArrived.current && critiqueScope.current) {
+            // First arrival: the section's own surface is solid chrome, so it
+            // Wipes in before its heading and prose — the canonical Frame Wipe →
+            // Title → Content order. Held back to SECTION_ARRIVAL_LEAD so the
+            // surface draws in after the tab row above it, not under it. Without
+            // this the box's background was the one thing here with no beat, so
+            // it popped while everything else animated.
+            wipe(tl, critiqueScope.current, SECTION_ARRIVAL_LEAD);
+            growth(tl, '[data-critique-heading]', '<0.15');
+            fade(tl, '[data-critique-prose]', '<0.1');
+        } else {
+            // A tab switch: the surface is stable chrome that stays put; only the
+            // heading and prose re-run, and promptly — the tabs are not moving.
+            growth(tl, '[data-critique-heading]');
+            fade(tl, '[data-critique-prose]', '<0.1');
+        }
+        sectionArrived.current = true;
     }, critiqueScope, [activeTab, loading]);
 
     const handleClose   = () => navigate(`/${parent}`);
@@ -211,14 +263,11 @@ const ReviewDetail = () => {
         fetchPost();
     }, []);
 
-    // Set initial tab and mods once data loads, then fetch audio tracks
+    // Load mods once data lands, then fetch audio tracks. The active tab is not
+    // set here — it is derived in render from the record itself (see `firstTab`).
     useEffect(() => {
         if (!data) return;
-        const entries = writtenSections(data);
-        const loadedMods: Mod[] = data.mods ?? [];
-        setMods(loadedMods);
-        if (entries.length > 0) setActiveTab(entries[0]);
-        else if (loadedMods.length > 0) setActiveTab('mods');
+        setMods(data.mods ?? []);
 
         backend.getAudioTracks(data._id).then(setTracks).catch(() => { /* network error */ });
         backend.getImages(data._id, 'screenshot').then(setScreenshots).catch(() => { /* network error */ });
@@ -269,7 +318,7 @@ const ReviewDetail = () => {
             <Panel
                 key={slug}
                 wrapperRef={scope}
-                wrapperClassName="mt-5"
+                wrapperClassName="mt-0 lg:mt-5"
                 className="bg-nier-100 md:h-[34rem]"
                 style={maxHeight ? { maxHeight } : undefined}
                 frameRef={panelRef}
@@ -279,7 +328,7 @@ const ReviewDetail = () => {
                     <div data-detail-chrome className="h-10 bg-nier-150 flex items-stretch flex-shrink-0">
                         <div className="flex items-center gap-2 px-4 flex-1 min-w-0">
                             <ion-icon name={TYPE_ICON[data.type]} style={{ flexShrink: 0 }}></ion-icon>
-                            <h3 className="text-nier-text-dark text-lg truncate uppercase tracking-wide">
+                            <h3 data-detail-title className="text-nier-text-dark text-heading truncate uppercase tracking-wide">
                                 {data.title}
                             </h3>
                         </div>
@@ -293,12 +342,12 @@ const ReviewDetail = () => {
                             genuinely rated 0. Only Status tells them apart. */}
                         {data.status === 'done' && data.rating != null && (
                             <div className="bg-nier-dark flex items-center justify-center px-4 flex-shrink-0">
-                                <p className="text-nier-text-light text-lg leading-none font-medium">{data.rating}</p>
+                                <p className="text-nier-text-light text-heading leading-none font-medium">{data.rating}</p>
                             </div>
                         )}
                         <button
                             onClick={handleClose}
-                            className="px-4 text-2xl leading-none cursor-pointer flex items-center hover:bg-nier-dark hover:text-nier-text-light transition-colors duration-150"
+                            className="px-4 text-title leading-none cursor-pointer flex items-center hover:bg-nier-dark hover:text-nier-text-light transition-colors duration-150"
                         >×</button>
                     </div>
 
@@ -341,7 +390,7 @@ const ReviewDetail = () => {
                                     <button
                                         key={genre}
                                         onClick={() => filterByGenre(genre)}
-                                        className="px-2 py-0.5 bg-nier-150/60 text-xs cursor-pointer hover:bg-nier-150 transition-colors duration-150"
+                                        className="px-2 py-0.5 bg-nier-150/60 text-label cursor-pointer hover:bg-nier-150 transition-colors duration-150"
                                     >
                                         {genre}
                                     </button>
@@ -349,7 +398,7 @@ const ReviewDetail = () => {
                             </div>
 
                             {/* Description */}
-                            <p className="text-sm leading-relaxed flex-shrink-0">{data.description}</p>
+                            <p className="text-body leading-relaxed flex-shrink-0">{data.description}</p>
 
                             {/* Analysis tabs */}
                             {(reviewEntries.length > 0 || mods.length > 0) && (
@@ -369,7 +418,7 @@ const ReviewDetail = () => {
                                                 id={key}
                                                 label={reviewPropMap[key as keyof typeof reviewPropMap] ?? key}
                                                 active={activeTab === key}
-                                                onSelect={() => setActiveTab(key)}
+                                                onSelect={() => setSelectedTab(key)}
                                             />
                                         ))}
                                         {data.type === 'game' && mods.length > 0 && (
@@ -377,7 +426,7 @@ const ReviewDetail = () => {
                                                 id="mods"
                                                 label={`Mods (${mods.length})`}
                                                 active={activeTab === 'mods'}
-                                                onSelect={() => setActiveTab('mods')}
+                                                onSelect={() => setSelectedTab('mods')}
                                             />
                                         )}
                                     </div>
@@ -390,9 +439,9 @@ const ReviewDetail = () => {
                                         version of that count here: it says how
                                         much of the critique you have seen,
                                         which nothing else on the page does. */}
-                                    <div ref={critiqueScope} className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
+                                    <div ref={critiqueScope} data-reveal-own className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
                                         <div data-critique-heading className="h-7 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
-                                            <span className="text-[10px] uppercase tracking-widest text-nier-text-dark">
+                                            <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark">
                                                 {activeTab === 'mods'
                                                     ? 'Installed Mods'
                                                     : reviewPropMap[activeTab as keyof typeof reviewPropMap] ?? activeTab}
@@ -407,12 +456,12 @@ const ReviewDetail = () => {
                                                             const rowClass = `flex items-center gap-2 px-3 py-1.5 transition-colors group ${mod.url ? 'cursor-pointer hover:bg-nier-150/50' : 'hover:bg-nier-150/30'}`;
                                                             const inner = (
                                                                 <>
-                                                                    <span className="text-nier-text-dark/60 text-sm shrink-0">◎</span>
+                                                                    <span className="text-nier-text-dark/60 text-body shrink-0">◎</span>
                                                                     <div className="flex flex-col flex-1 min-w-0">
-                                                                        <span className="text-sm uppercase tracking-wide text-nier-text-dark truncate">{mod.name}</span>
-                                                                        {mod.author && <span className="text-xs text-nier-text-dark/60">{mod.author}</span>}
+                                                                        <span className="text-body uppercase tracking-wide text-nier-text-dark truncate">{mod.name}</span>
+                                                                        {mod.author && <span className="text-label text-nier-text-dark/60">{mod.author}</span>}
                                                                     </div>
-                                                                    <span className="text-xs text-nier-text-dark/60 font-mono shrink-0">[{String(i + 1).padStart(2, '0')}]</span>
+                                                                    <span className="text-label text-nier-text-dark/60 font-mono shrink-0">[{String(i + 1).padStart(2, '0')}]</span>
                                                                 </>
                                                             );
                                                             return mod.url
@@ -420,14 +469,14 @@ const ReviewDetail = () => {
                                                                 : <div className={rowClass}>{inner}</div>;
                                                         })()}
                                                         {mod.notes && (
-                                                            <p className="text-xs text-nier-text-dark/60 leading-relaxed px-8 pb-2 whitespace-pre-wrap">{mod.notes}</p>
+                                                            <p className="text-label text-nier-text-dark/60 leading-relaxed px-8 pb-2 whitespace-pre-wrap">{mod.notes}</p>
                                                         )}
                                                     </li>
                                                 ))}
                                             </ul>
                                         ) : (
                                             <div className="flex-1 overflow-y-auto p-3 min-h-0 flex flex-col gap-3">
-                                                <p data-critique-prose className="text-sm leading-relaxed whitespace-pre-wrap">{activeContent}</p>
+                                                <p data-critique-prose className="text-body leading-relaxed whitespace-pre-wrap">{activeContent}</p>
                                                 {activeTab === 'sound' && tracks.length > 0 && (
                                                     <ul className="flex flex-col border-t border-nier-150 pt-2">
                                                         {tracks.map((track, i) => (
@@ -463,7 +512,7 @@ const ReviewDetail = () => {
 
                                         {/* The reference's 所持数 3/99, in the
                                             corner it puts it in. */}
-                                        <p className="flex-shrink-0 text-right text-[10px] uppercase tracking-widest text-nier-text-dark/50 px-3 py-1.5 border-t border-nier-150/60">
+                                        <p className="flex-shrink-0 text-right text-eyebrow uppercase tracking-widest text-nier-text-dark/50 px-3 py-1.5 border-t border-nier-150/60">
                                             Section {sectionPosition} / {sectionCount}
                                         </p>
                                     </div>
@@ -480,12 +529,13 @@ const ReviewDetail = () => {
                         the right. It replaces an italic line that repeated the
                         release date and the creator, both of which now sit
                         under the cover they belong to. */}
-                    <div data-detail-chrome className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
+                    <div data-detail-chrome className="relative flex-shrink-0 flex items-center gap-3 px-4 py-2">
+                        <span data-hairline aria-hidden="true" className="absolute top-0 left-0 w-full h-px bg-nier-150 origin-left" />
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
-                        <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
+                        <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(data.title, activeTab, sectionCount)}
                         </p>
-                        <p className="ml-auto flex-shrink-0 text-xs uppercase tracking-wide text-nier-text-dark/50">
+                        <p className="ml-auto flex-shrink-0 text-label uppercase tracking-wide text-nier-text-dark/50">
                             <span className="hidden sm:inline">↔ Section&nbsp;&nbsp;&nbsp;</span>✕ Back
                         </p>
                     </div>
@@ -503,12 +553,12 @@ const ReviewDetail = () => {
                 >
                         <article className="bg-nier-100-lighter relative flex flex-col">
                             <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                                <span className="text-nier-text-dark text-sm uppercase tracking-widest truncate">
+                                <span className="text-nier-text-dark text-body uppercase tracking-widest truncate">
                                     {shownImg.title || 'Screenshot'}
                                 </span>
                                 <button
                                     onClick={() => setSelectedImg(null)}
-                                    className="text-3xl leading-none cursor-pointer hover:text-nier-dark transition-colors ml-4 flex-shrink-0"
+                                    className="text-title leading-none cursor-pointer hover:text-nier-dark transition-colors ml-4 flex-shrink-0"
                                 >×</button>
                             </div>
                             <div className="bg-nier-100 p-2">

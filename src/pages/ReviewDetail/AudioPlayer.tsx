@@ -142,7 +142,7 @@ const AudioPlayer = ({ src, title, index, compact = false }: Props) => {
             </div>
 
             {/* Time */}
-            <span className="text-[10px] font-mono text-nier-text-dark/40 shrink-0 tabular-nums w-20 text-right">
+            <span className="text-eyebrow font-mono text-nier-text-dark/40 shrink-0 tabular-nums w-20 text-right">
                 {fmt(current)} / {fmt(duration)}
             </span>
         </>
@@ -159,12 +159,12 @@ const AudioPlayer = ({ src, title, index, compact = false }: Props) => {
     return (
         <li className="flex items-center gap-3 px-1 py-1.5 group/player hover:bg-nier-150/20 transition-colors">
             {/* Index */}
-            <span className="text-[10px] text-nier-text-dark/35 font-mono shrink-0 tabular-nums w-6 text-right">
+            <span className="text-eyebrow text-nier-text-dark/35 font-mono shrink-0 tabular-nums w-6 text-right">
                 {String(index + 1).padStart(2, '0')}
             </span>
 
             {/* Title */}
-            <span className="text-[11px] uppercase tracking-widest text-nier-text-dark/70 w-36 truncate shrink-0">
+            <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/70 w-36 truncate shrink-0">
                 {title}
             </span>
 

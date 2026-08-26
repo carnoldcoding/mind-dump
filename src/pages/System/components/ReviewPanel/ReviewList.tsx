@@ -132,7 +132,7 @@ export const ReviewList = () => {
 
     // ── Renderers ────────────────────────────────────────────────────
     const renderGrid = () => (
-        <div ref={gridScope} data-review-grid className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4 overflow-y-auto flex-1 items-start content-start">
+        <div ref={gridScope} data-review-grid data-reveal-own className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 p-4 overflow-y-auto flex-1 items-start content-start">
             {displayPosts.length > 0
                 ? displayPosts.map((post: any) => (
                     <ReviewGridCard
@@ -141,7 +141,7 @@ export const ReviewList = () => {
                         onEdit={handleEdit}
                     />
                 ))
-                : <p className="col-span-full text-sm text-nier-text-dark/50 py-4">No reviews found.</p>
+                : <p className="col-span-full text-body text-nier-text-dark/50 py-4">No reviews found.</p>
             }
         </div>
     );
@@ -150,11 +150,11 @@ export const ReviewList = () => {
         <div className="overflow-auto flex-1">
             <div className="min-w-[48rem]">
                 <div className="grid grid-cols-6 bg-nier-150 text-center h-10 px-4 border-b border-b-nier-dark/50">
-                    <div className="col-span-2 flex items-center justify-center"><p className="text-sm uppercase tracking-wide select-none">Title</p></div>
-                    <div className="col-span-1 flex items-center justify-center"><p className="text-sm uppercase tracking-wide select-none">Category</p></div>
-                    <div className="col-span-1 flex items-center justify-center"><p className="text-sm uppercase tracking-wide select-none">Rating</p></div>
-                    <div className="col-span-1 flex items-center justify-center"><p className="text-sm uppercase tracking-wide select-none">Status</p></div>
-                    <div className="flex items-center justify-center"><p className="text-sm uppercase tracking-wide select-none">Actions</p></div>
+                    <div className="col-span-2 flex items-center justify-center"><p className="text-body uppercase tracking-wide select-none">Title</p></div>
+                    <div className="col-span-1 flex items-center justify-center"><p className="text-body uppercase tracking-wide select-none">Category</p></div>
+                    <div className="col-span-1 flex items-center justify-center"><p className="text-body uppercase tracking-wide select-none">Rating</p></div>
+                    <div className="col-span-1 flex items-center justify-center"><p className="text-body uppercase tracking-wide select-none">Status</p></div>
+                    <div className="flex items-center justify-center"><p className="text-body uppercase tracking-wide select-none">Actions</p></div>
                 </div>
                 <ul>
                     {displayPosts.map((post: any) => (
@@ -188,7 +188,7 @@ export const ReviewList = () => {
                             }`}
                         >
                             <ion-icon name="grid-outline" style={{ color: viewMode === 'grid' ? '#C4BEAC' : 'inherit' }}></ion-icon>
-                            <p className={`text-sm ${viewMode === 'grid' ? 'text-nier-text-light' : ''}`}>Grid</p>
+                            <p className={`text-body ${viewMode === 'grid' ? 'text-nier-text-light' : ''}`}>Grid</p>
                         </button>
                         <button
                             onClick={() => setViewMode('list')}
@@ -197,7 +197,7 @@ export const ReviewList = () => {
                             }`}
                         >
                             <ion-icon name="list-outline" style={{ color: viewMode === 'list' ? '#C4BEAC' : 'inherit' }}></ion-icon>
-                            <p className={`text-sm ${viewMode === 'list' ? 'text-nier-text-light' : ''}`}>List</p>
+                            <p className={`text-body ${viewMode === 'list' ? 'text-nier-text-light' : ''}`}>List</p>
                         </button>
                     </div>
                     <div className="hidden sm:block h-12">
@@ -214,7 +214,7 @@ export const ReviewList = () => {
                         <button
                             key={key ?? 'all'}
                             onClick={() => setTypeFilter(key ?? null)}
-                            className={`flex items-center gap-1.5 px-3 py-1 text-sm cursor-pointer transition-colors duration-150 ${
+                            className={`flex items-center gap-1.5 px-3 py-1 text-body cursor-pointer transition-colors duration-150 ${
                                 typeFilter === key
                                     ? 'bg-nier-dark text-nier-text-light'
                                     : 'bg-nier-150/60 hover:bg-nier-150'
@@ -233,12 +233,12 @@ export const ReviewList = () => {
 
                 {/* Sort + entry count */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="text-xs text-nier-text-dark/40 uppercase tracking-wide mr-0.5">Sort</p>
+                    <p className="text-label text-nier-text-dark/40 uppercase tracking-wide mr-0.5">Sort</p>
                     {(['status', 'date', 'rating'] as const).map(metric => (
                         <button
                             key={metric}
                             onClick={() => sortPosts(metric)}
-                            className="flex items-center gap-1 px-2 py-1 text-xs bg-nier-150/60 hover:bg-nier-150 transition-colors duration-150 cursor-pointer capitalize"
+                            className="flex items-center gap-1 px-2 py-1 text-label bg-nier-150/60 hover:bg-nier-150 transition-colors duration-150 cursor-pointer capitalize"
                         >
                             {metric}
                             <ion-icon
@@ -247,7 +247,7 @@ export const ReviewList = () => {
                             ></ion-icon>
                         </button>
                     ))}
-                    <p className="text-xs text-nier-text-dark/50 italic whitespace-nowrap ml-2">{displayPosts.length} entries</p>
+                    <p className="text-label text-nier-text-dark/50 italic whitespace-nowrap ml-2">{displayPosts.length} entries</p>
                 </div>
             </div>
 
@@ -259,7 +259,7 @@ export const ReviewList = () => {
             />
 
             {(error || loadError) && (
-                <p className="px-4 py-2 text-red-700 text-sm">{error ?? 'Network error'}</p>
+                <p className="px-4 py-2 text-red-700 text-body">{error ?? 'Network error'}</p>
             )}
 
             {viewMode === 'grid' ? renderGrid() : renderList()}
@@ -269,7 +269,7 @@ export const ReviewList = () => {
         {createPortal(
             <button
                 onClick={handleAdd}
-                className="sm:hidden fixed bottom-6 right-6 z-40 w-12 h-12 bg-nier-dark text-nier-text-light text-2xl flex items-center justify-center shadow-[3px_3px_0_0] shadow-nier-shadow cursor-pointer hover:bg-nier-text-dark transition-colors duration-150"
+                className="sm:hidden fixed bottom-6 right-6 z-40 w-12 h-12 bg-nier-dark text-nier-text-light text-title flex items-center justify-center shadow-[3px_3px_0_0] shadow-nier-shadow cursor-pointer hover:bg-nier-text-dark transition-colors duration-150"
                 aria-label="Add Review"
             >+</button>,
             document.body

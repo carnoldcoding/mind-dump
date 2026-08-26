@@ -16,6 +16,39 @@ const review = (over: Partial<Record<string, unknown>> = {}) => ({
 
 const controls = (over: Partial<UnstartedControls> = {}): UnstartedControls => ({ ...NO_CONTROLS, ...over });
 
+// The Backlog bug (item 11): the category rail read GAMES 1 while the Not
+// Started list showed no game, with the rail on ALL. The rail count and the
+// rendered list must agree — and with ALL selected they derive from the same
+// applyControls call, so this pins that they cannot drift. Uses a real Mongo
+// _id shape, the one the live todo game had.
+describe('rail count and list agree on ALL', () => {
+    const CATS = ['game', 'cinema', 'book'];
+    const railCountFor = (items: never[], type: string) => {
+        const facet = facetsFor(items, NO_CONTROLS).categories.find(c => c.value === type);
+        return facet?.count ?? 0;
+    };
+
+    it('a lone todo game is both counted and listed', () => {
+        const items = [review({ _id: '694addd252765511fcd353a8', title: 'Claire Obscure Expedition 33', type: 'game', status: 'todo', genres: ['third-person', 'rpg'] })];
+
+        expect(railCountFor(items, 'game')).toBe(1);
+        expect(applyControls(items, controls()).filter(r => r.type === 'game')).toHaveLength(1);
+    });
+
+    it('every rail count equals what the list holds of that Category', () => {
+        const items = [
+            review({ _id: '694addd252765511fcd353a8', title: 'Claire Obscure', type: 'game', status: 'todo' }),
+            review({ _id: 'b', title: 'Dune', type: 'cinema', status: 'todo' }),
+            review({ _id: 'c', title: 'Nioh', type: 'game', status: 'todo' }),
+        ];
+        const listed = applyControls(items, controls());
+
+        for (const type of CATS) {
+            expect(railCountFor(items, type)).toBe(listed.filter(r => r.type === type).length);
+        }
+    });
+});
+
 describe('narrowing Not Started', () => {
     it('shows everything when nothing is set', () => {
         const items = [review({ title: 'Nioh' }), review({ title: 'Elden Ring' })];
@@ -71,6 +104,60 @@ describe('filtering', () => {
     it('does not search creators or genres', () => {
         expect(applyControls(items, controls({ query: 'tolkien' }))).toEqual([]);
         expect(applyControls(items, controls({ query: 'fantasy' }))).toEqual([]);
+    });
+});
+
+// §3 folded Started and Not Started into one list, so Status is a filter, a
+// sort key and — by default — what orders the list.
+describe('status as a facet and a sort key', () => {
+    const idAt = (iso: string) =>
+        Math.floor(new Date(iso).getTime() / 1000).toString(16).padStart(8, '0') + '0'.repeat(16);
+
+    const mixed = [
+        review({ title: 'Queued-old', status: 'todo', _id: idAt('2026-01-01') }),
+        review({ title: 'Started-new', status: 'active', _id: idAt('2026-07-01') }),
+        review({ title: 'Queued-new', status: 'todo', _id: idAt('2026-06-01') }),
+    ];
+
+    it('shows both Statuses by default', () => {
+        expect(applyControls(mixed, controls()).map(r => r.title))
+            .toContain('Started-new');
+        expect(applyControls(mixed, controls()).map(r => r.title))
+            .toContain('Queued-old');
+    });
+
+    it('narrows to a single Status', () => {
+        expect(applyControls(mixed, controls({ status: 'active' })).map(r => r.title))
+            .toEqual(['Started-new']);
+        expect(applyControls(mixed, controls({ status: 'todo' })).map(r => r.title).sort())
+            .toEqual(['Queued-new', 'Queued-old']);
+    });
+
+    // The default order: started first even though a queued item has waited
+    // longer, so "what am I on" stays at the top of one mixed list.
+    it('puts started ahead of a longer-waiting queued item by default', () => {
+        expect(applyControls(mixed, controls()).map(r => r.title))
+            .toEqual(['Started-new', 'Queued-old', 'Queued-new']);
+    });
+
+    // Within a Status, the same longest-waiting order the list has always used.
+    it('orders by longest wait within each Status', () => {
+        expect(applyControls(mixed, controls({ sort: 'status' })).map(r => r.title))
+            .toEqual(['Started-new', 'Queued-old', 'Queued-new']);
+    });
+
+    it('counts All, Started and Queued against the other controls', () => {
+        const s = facetsFor(mixed, NO_CONTROLS).statuses;
+        expect(s.find(f => f.value === 'all')?.count).toBe(3);
+        expect(s.find(f => f.value === 'active')?.count).toBe(1);
+        expect(s.find(f => f.value === 'todo')?.count).toBe(2);
+    });
+
+    // The status count answers to the other controls, not to itself — so the
+    // control still shows every Status while one is selected.
+    it('does not zero the other Statuses when one is chosen', () => {
+        const s = facetsFor(mixed, { ...NO_CONTROLS, status: 'active' }).statuses;
+        expect(s.find(f => f.value === 'todo')?.count).toBe(2);
     });
 });
 

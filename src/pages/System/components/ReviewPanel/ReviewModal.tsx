@@ -25,7 +25,7 @@ import { TabBar } from "./TabBar"
 import { FieldRow } from "./FieldRow"
 import { DEFAULT_TAB, hintFor, resolveTab, tabsFor, type TabId } from "./tabs"
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline"
-import { domino } from "../../../../utils/motion"
+import { cascade, domino } from "../../../../utils/motion"
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -118,11 +118,9 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     modsRef.current          = mods;
     editingReviewRef.current = editingReview;
 
-    // ── Body scroll lock ─────────────────────────────────────────────
-    useEffect(() => {
-        document.body.style.overflow = isOpen ? 'hidden' : '';
-        return () => { document.body.style.overflow = ''; };
-    }, [isOpen]);
+    // Scroll lock is the shared overlay contract's job now (Modal calls
+    // useScrollLock), so the ad-hoc body-overflow toggle that used to live
+    // here is gone — it locked the body, which no longer scrolls anyway.
 
     // ── Load / reset when modal opens or editing target changes ─────
     useEffect(() => {
@@ -411,8 +409,9 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     const hint = hintFor({ field: focusedField, tab: activeTab, tabs, hovered: hoveredTab });
 
     // The rows of whichever section is open arrive one after another. Rebuilt
-    // on the tab, which is what replays it — a different section is a
-    // different entrance, not the same one at a different moment.
+    // on the tab, which is what replays it — a different section is a different
+    // entrance. The panel carries data-reveal-own, so the article Cascade below
+    // steps over it and leaves this Domino to run on tab switches.
     //
     // `ready` is true rather than gated on the boot signal: the modal is not
     // part of the page's reveal, and Modal has already played it in.
@@ -422,6 +421,19 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         (timeline) => domino(timeline, '[data-tab-row]'),
         panelScope,
         [activeTab, isOpen],
+    );
+
+    // Modal Wipes the surface; the article's chrome then Cascades so nothing
+    // arrives un-animated (ADR-0012) — the title Decodes, the tab bar and footer
+    // fill in. Keyed on the title, not the tab, so switching sections replays the
+    // panel Domino above without re-cascading the whole header.
+    const articleScope = useRef<HTMLElement>(null);
+    const modalTitle = editingReview ? `Edit — ${editingReview.title}` : 'New Review';
+    useRevealTimeline(
+        isOpen,
+        (timeline) => { if (articleScope.current) cascade(timeline, articleScope.current, 0.1); },
+        articleScope,
+        [isOpen, modalTitle],
     );
 
     // A fallback has to be committed, not just displayed. Leaving the original
@@ -446,7 +458,8 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     return (
         <Modal
             open={isOpen}
-            onClose={() => setIsOpen(false)}
+            onClose={handleClose}
+            dismissOnOutsidePress={false}
             label="Review"
             backdropClassName="z-[110] overflow-y-auto flex flex-col items-center justify-start sm:justify-center p-2 sm:p-4"
             className="w-full max-w-4xl"
@@ -454,14 +467,14 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
             {/* One height whatever the section. The frame is the constant and
                 its contents change inside it, so the bar and the hint line do
                 not move under the pointer when a section is switched. */}
-            <article className="bg-nier-100-lighter relative w-full h-[calc(100dvh-1rem)] sm:h-[calc(100dvh-2rem)] sm:max-h-[46rem] flex flex-col">
+            <article ref={articleScope} className="bg-nier-100-lighter relative w-full h-[calc(100dvh-1rem)] sm:h-[calc(100dvh-2rem)] sm:max-h-[46rem] flex flex-col">
 
                 {/* Header. The section is a suffix in the reference's register:
                     the subject, then which part of it is open. */}
                 <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0 gap-3 min-w-0">
-                    <h3 className="text-nier-text-dark text-xl uppercase tracking-wide truncate min-w-0">
-                        {editingReview ? `Edit — ${editingReview.title}` : 'New Review'}
-                        <span className="text-sm tracking-[0.2em] text-nier-text-dark/50 ml-3">
+                    <h3 className="text-nier-text-dark text-title uppercase tracking-wide truncate min-w-0">
+                        <span data-modal-title>{modalTitle}</span>
+                        <span className="text-body tracking-[0.2em] text-nier-text-dark/50 ml-3">
                             · {tabs.find(t => t.id === activeTab)?.label}
                         </span>
                     </h3>
@@ -469,7 +482,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                         type="button"
                         aria-label="Close"
                         onClick={handleClose}
-                        className="text-3xl leading-none cursor-pointer hover:text-nier-dark transition-colors duration-150 flex-shrink-0"
+                        className="text-title leading-none cursor-pointer hover:text-nier-dark transition-colors duration-150 flex-shrink-0"
                     >×</button>
                 </div>
 
@@ -477,6 +490,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
                 <div
                     ref={panelScope}
+                    data-reveal-own
                     role="tabpanel"
                     id={`review-panel-${activeTab}`}
                     aria-labelledby={`review-tab-${activeTab}`}
@@ -495,7 +509,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                             <FieldRow field="slug" onFocusField={setFocusedField}>
                                 <TextField label="Slug" value={review.slug || ''} onChange={handleSlugChange} />
                                 {!slugManual && review.slug && (
-                                    <p className="text-xs text-nier-text-dark/40 px-1 leading-none pt-0.5">auto-generated</p>
+                                    <p className="text-label text-nier-text-dark/40 px-1 leading-none pt-0.5">auto-generated</p>
                                 )}
                             </FieldRow>
 
@@ -587,34 +601,34 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                     {activeTab === 'mods' && (
                         <>
                             <div data-tab-row className="flex items-center justify-between">
-                                <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">
+                                <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">
                                     Mods{mods.length > 0 ? ` (${mods.length})` : ''}
                                 </span>
                                 <button
                                     onClick={() => setModModal({})}
-                                    className="text-[10px] uppercase tracking-wide px-2 py-0.5 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors"
+                                    className="text-eyebrow uppercase tracking-wide px-2 py-0.5 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors"
                                 >
                                     + Add
                                 </button>
                             </div>
                             {mods.length === 0 ? (
-                                <p data-tab-row className="text-xs text-nier-text-dark/35 italic">No mods added.</p>
+                                <p data-tab-row className="text-label text-nier-text-dark/35 italic">No mods added.</p>
                             ) : (
                                 <ul className="flex flex-col divide-y divide-nier-150/30 border border-nier-150">
                                     {mods.map((mod, i) => (
                                         <li key={i} data-tab-row className="flex items-center justify-between gap-3 px-3 py-2 group hover:bg-nier-150/20 transition-colors">
                                             <div className="flex flex-col gap-0.5 min-w-0">
-                                                <span className="text-sm text-nier-text-dark truncate">{mod.name}</span>
-                                                {mod.author && <span className="text-xs text-nier-text-dark/50">{mod.author}</span>}
+                                                <span className="text-body text-nier-text-dark truncate">{mod.name}</span>
+                                                {mod.author && <span className="text-label text-nier-text-dark/50">{mod.author}</span>}
                                             </div>
                                             <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                                                 <button
                                                     onClick={() => setModModal({ mod, index: i })}
-                                                    className="text-sm text-nier-text-dark/40 hover:text-nier-text-dark cursor-pointer transition-colors"
+                                                    className="text-body text-nier-text-dark/40 hover:text-nier-text-dark cursor-pointer transition-colors"
                                                 >✎</button>
                                                 <button
                                                     onClick={() => setMods(prev => prev.filter((_, idx) => idx !== i))}
-                                                    className="text-sm text-nier-text-dark/30 hover:text-red-800 cursor-pointer transition-colors"
+                                                    className="text-body text-nier-text-dark/30 hover:text-red-800 cursor-pointer transition-colors"
                                                 >×</button>
                                             </div>
                                         </li>
@@ -626,7 +640,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
                     {activeTab === 'media' && (
                         <>
-                            <span data-tab-row className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">
+                            <span data-tab-row className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">
                                 Screenshots{images.length > 0 ? ` (${images.length})` : ''}
                             </span>
 
@@ -639,11 +653,11 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                             </a>
                                             <button
                                                 onClick={() => handleImageDelete(img._id)}
-                                                className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-800"
+                                                className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white text-label flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-800"
                                             >×</button>
                                             {img.title && (
                                                 <div className="absolute bottom-0 left-0 right-0 bg-black/50 px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <span className="text-[10px] text-white truncate block">{img.title}</span>
+                                                    <span className="text-eyebrow text-white truncate block">{img.title}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -657,10 +671,10 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                         className="sm:flex-1 flex items-center gap-2 px-3 h-9 border border-dashed border-nier-150 cursor-pointer hover:bg-nier-150/20 transition-colors"
                                         onClick={() => imgFileInputRef.current?.click()}
                                     >
-                                        <span className="text-sm text-nier-text-dark/80 truncate flex-1">
+                                        <span className="text-body text-nier-text-dark/80 truncate flex-1">
                                             {imgFiles.length === 0 ? 'Select images...' : imgFiles.length === 1 ? imgFiles[0].name : `${imgFiles.length} files selected`}
                                         </span>
-                                        <span className="text-xs uppercase tracking-widest text-nier-text-dark/50 shrink-0">Browse</span>
+                                        <span className="text-label uppercase tracking-widest text-nier-text-dark/50 shrink-0">Browse</span>
                                     </div>
                                     <div className="flex gap-2">
                                         {imgFiles.length <= 1 && (
@@ -669,13 +683,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                                 placeholder="Title (opt)"
                                                 value={imgTitle}
                                                 onChange={e => setImgTitle(e.target.value)}
-                                                className="flex-1 sm:w-36 sm:flex-none px-3 h-9 bg-nier-100-lighter border border-nier-150 text-sm outline-none"
+                                                className="flex-1 sm:w-36 sm:flex-none px-3 h-9 bg-nier-100-lighter border border-nier-150 text-body outline-none"
                                             />
                                         )}
                                         <button
                                             onClick={handleImageUpload}
                                             disabled={imageUpload.uploading || !imgFiles.length}
-                                            className="px-3 h-9 text-sm bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
+                                            className="px-3 h-9 text-body bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
                                         >
                                             {imageUpload.uploading
                                                 ? imageUpload.progress.total > 1
@@ -711,7 +725,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                 />
                             </div>
 
-                            <span data-tab-row className="text-[10px] uppercase tracking-widest text-nier-text-dark/50 border-t border-nier-150 pt-4">
+                            <span data-tab-row className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50 border-t border-nier-150 pt-4">
                                 Soundtrack{tracks.length > 0 ? ` (${tracks.length})` : ''}
                             </span>
 
@@ -719,14 +733,14 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                 <ul data-tab-row className="flex flex-col divide-y divide-nier-150/30 border border-nier-150">
                                     {tracks.map((track, i) => (
                                         <li key={track._id} className="flex items-center gap-3 px-3 py-2 group hover:bg-nier-150/20 transition-colors">
-                                            <span className="text-[10px] text-nier-text-dark/40 font-mono shrink-0 tabular-nums">
+                                            <span className="text-eyebrow text-nier-text-dark/40 font-mono shrink-0 tabular-nums">
                                                 {String(i + 1).padStart(2, '0')}
                                             </span>
-                                            <span className="text-xs uppercase tracking-wide text-nier-text-dark w-32 truncate shrink-0">{track.title}</span>
+                                            <span className="text-label uppercase tracking-wide text-nier-text-dark w-32 truncate shrink-0">{track.title}</span>
                                             <AudioPlayer compact src={track.url} title={track.title} index={i} />
                                             <button
                                                 onClick={() => handleAudioDelete(track._id)}
-                                                className="text-sm text-nier-text-dark/30 hover:text-red-800 cursor-pointer transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                                                className="text-body text-nier-text-dark/30 hover:text-red-800 cursor-pointer transition-colors opacity-0 group-hover:opacity-100 shrink-0"
                                             >×</button>
                                         </li>
                                     ))}
@@ -739,10 +753,10 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                         className="sm:flex-1 flex items-center gap-2 px-3 h-9 border border-dashed border-nier-150 cursor-pointer hover:bg-nier-150/20 transition-colors"
                                         onClick={() => fileInputRef.current?.click()}
                                     >
-                                        <span className="text-sm text-nier-text-dark/80 truncate flex-1">
+                                        <span className="text-body text-nier-text-dark/80 truncate flex-1">
                                             {uploadFile ? uploadFile.name : 'Select MP3...'}
                                         </span>
-                                        <span className="text-xs uppercase tracking-widest text-nier-text-dark/50 shrink-0">Browse</span>
+                                        <span className="text-label uppercase tracking-widest text-nier-text-dark/50 shrink-0">Browse</span>
                                     </div>
                                     <div className="flex gap-2">
                                         <input
@@ -750,12 +764,12 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                             placeholder="Title"
                                             value={uploadTitle}
                                             onChange={e => setUploadTitle(e.target.value)}
-                                            className="flex-1 sm:w-36 sm:flex-none px-3 h-9 bg-nier-100-lighter border border-nier-150 text-sm outline-none"
+                                            className="flex-1 sm:w-36 sm:flex-none px-3 h-9 bg-nier-100-lighter border border-nier-150 text-body outline-none"
                                         />
                                         <button
                                             onClick={handleAudioUpload}
                                             disabled={audioUpload.uploading || !uploadFile}
-                                            className="px-3 h-9 text-sm bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
+                                            className="px-3 h-9 text-body bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer disabled:opacity-40 disabled:cursor-default shrink-0"
                                         >
                                             {audioUpload.uploading ? `${audioUpload.progress.filePct}%` : 'Upload'}
                                         </button>
@@ -790,13 +804,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                 <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-nier-150 flex-shrink-0 min-h-[56px]">
                     {deleteStage === 'confirm' ? (
                         <div className="flex flex-col gap-1.5 w-full">
-                            <p className="text-xs text-nier-text-dark/60">
+                            <p className="text-label text-nier-text-dark/60">
                                 Type to confirm: <span className="italic">{editingReview?.slug}</span>
                             </p>
                             <div className="flex gap-2 items-center">
                                 <input
                                     autoFocus
-                                    className="focus:outline focus:border-nier-dark border border-nier-150 flex-1 px-2 py-2 text-sm bg-nier-100-lighter"
+                                    className="focus:outline focus:border-nier-dark border border-nier-150 flex-1 px-2 py-2 text-body bg-nier-100-lighter"
                                     type="text"
                                     value={deleteInput}
                                     onChange={(e) => { setDeleteInput(e.target.value); setDeleteError(''); }}
@@ -804,13 +818,13 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                 <Button type="secondary" label="Cancel" handleClick={() => { setDeleteStage('idle'); setDeleteInput(''); setDeleteError(''); }} />
                                 <Button type="primary" label="Confirm Delete" handleClick={handleDelete} />
                             </div>
-                            {deleteError && <p className="text-red-700 text-xs">{deleteError}</p>}
+                            {deleteError && <p className="text-red-700 text-label">{deleteError}</p>}
                         </div>
                     ) : (
                         <>
-                            <p className="text-xs text-nier-text-dark/60 truncate min-w-0">{hint}</p>
+                            <p className="text-label text-nier-text-dark/60 truncate min-w-0">{hint}</p>
                             <div className="flex gap-2 items-center shrink-0">
-                                <span className={`text-sm italic transition-opacity duration-200 ${
+                                <span className={`text-body italic transition-opacity duration-200 ${
                                     saveLabel ? 'opacity-100' : 'opacity-0'
                                 } ${saveStatus === 'error' ? 'text-red-700' : 'text-nier-text-dark/60'}`}>
                                     {saveLabel ?? '—'}

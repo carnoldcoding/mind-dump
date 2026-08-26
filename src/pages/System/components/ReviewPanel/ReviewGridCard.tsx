@@ -24,10 +24,10 @@ export const ReviewGridCard = ({ review, onEdit }: ReviewGridCardProps) => (
         <div className="h-8 bg-nier-150 flex items-stretch justify-between flex-shrink-0">
             <div className="flex items-center gap-1.5 min-w-0 px-2">
                 <ion-icon name={TYPE_ICON[review.type]}></ion-icon>
-                <p className="text-xs uppercase tracking-wide">{review.type}</p>
+                <p className="text-label uppercase tracking-wide">{review.type}</p>
             </div>
             <div className="bg-nier-dark flex items-center justify-center w-8 flex-shrink-0">
-                <p className="text-nier-text-light text-sm leading-none">{review.rating}</p>
+                <p className="text-nier-text-light text-body leading-none">{review.rating}</p>
             </div>
         </div>
 
@@ -39,13 +39,13 @@ export const ReviewGridCard = ({ review, onEdit }: ReviewGridCardProps) => (
 
         {/* Title */}
         <div className="bg-nier-100 px-2 py-1 border-t border-nier-150">
-            <p className="text-sm truncate">{review.title}</p>
+            <p className="text-body truncate">{review.title}</p>
         </div>
 
         {/* Footer: status */}
         <div className="bg-nier-100 flex items-center px-2 py-1 border-t border-nier-150">
             <ion-icon name={STATUS_ICON[review.status] ?? 'ellipse-outline'}></ion-icon>
-            <p className="text-xs capitalize ml-1">{review.status}</p>
+            <p className="text-label capitalize ml-1">{review.status}</p>
         </div>
 
         {/* Drop shadow */}

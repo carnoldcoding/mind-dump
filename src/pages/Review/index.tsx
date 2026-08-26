@@ -11,9 +11,11 @@ import { gameGenres, movieGenres, bookGenres } from "../../utils/helpers";
 import { useLocation } from "react-router";
 import { useStageState } from "../../context/BootSequenceContext";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { decode, domino, wipe } from "../../utils/motion";
+import { cascade, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
+import { Modal } from "../../components/common/Modal";
+import { genresInUse } from "../../utils/visibleGenres";
 
 // The rating scale, asserted in one place. Every rating stored is between 3
 // and 4.5 with a decimal, so the scale is five points and the useful grain is
@@ -52,7 +54,7 @@ const shelfLine = (review: Pick<ReviewRecord, "rating" | "date_completed">): str
 
 /** One `label ......... value` line of the status readout. Same object as Now's. */
 const Readout = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div className="flex items-baseline justify-between gap-3 text-xs">
+    <div className="flex items-baseline justify-between gap-3 text-label">
         <span className="uppercase tracking-wide text-nier-text-dark/70">{label}</span>
         <span className="uppercase text-nier-text-dark">{value}</span>
     </div>
@@ -90,7 +92,7 @@ const ShelfStatus = ({ shelved, showing, error }: {
 
     return (
         <div className="flex flex-col">
-            <h2 className="bg-nier-dark text-nier-text-light text-xs uppercase tracking-widest px-2 py-1">
+            <h2 data-section-header className="bg-nier-dark text-nier-text-light text-label uppercase tracking-widest px-2 py-1">
                 Shelf
             </h2>
             <div className="flex flex-col gap-1 px-2 py-3">
@@ -109,7 +111,7 @@ const ShelfStatus = ({ shelved, showing, error }: {
             </div>
             {/* The self-diagnostic line, and a real one: it says NO ERROR
                 because it is capable of saying something else. */}
-            <p className={`text-[10px] uppercase tracking-[0.3em] text-center py-4 ${
+            <p className={`text-eyebrow uppercase tracking-[0.3em] text-center py-4 ${
                 error ? 'text-nier-text-dark' : 'text-nier-text-dark/50'
             }`}>
                 {error ? 'Error' : 'No Error'}
@@ -154,7 +156,7 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
         <li className="relative">
             <span
                 aria-hidden="true"
-                className={`absolute -left-3 top-1/2 -translate-y-1/2 text-[10px] text-nier-text-dark transition-opacity duration-150 ${
+                className={`absolute -left-3 top-1/2 -translate-y-1/2 text-eyebrow text-nier-text-dark transition-opacity duration-150 ${
                     selected ? 'opacity-100' : 'opacity-0'
                 }`}
             >
@@ -174,17 +176,17 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
             >
                 {/* The reference's ■ bullet: filled on a live row, hollow on a
                     dead one. */}
-                <span aria-hidden="true" className={`text-[8px] leading-none ${
+                <span aria-hidden="true" className={`text-eyebrow leading-none ${
                     selected ? 'text-nier-text-light' : dead ? 'text-nier-text-dark/25' : 'text-nier-text-dark/70'
                 }`}>
                     {dead ? '□' : '■'}
                 </span>
-                <span className={`text-xs uppercase tracking-wide truncate ${
+                <span className={`text-label uppercase tracking-wide truncate ${
                     selected ? 'text-nier-text-light' : dead ? 'text-nier-text-dark/30' : 'text-nier-text-dark'
                 }`}>
                     {genre}
                 </span>
-                <span className={`ml-auto pl-2 text-[10px] tabular-nums ${
+                <span className={`ml-auto pl-2 text-eyebrow tabular-nums ${
                     selected ? 'text-nier-text-light/70' : dead ? 'text-nier-text-dark/25' : 'text-nier-text-dark/50'
                 }`}>
                     {count}
@@ -198,7 +200,7 @@ const GenreRow = ({ genre, count, selected, onToggle }: {
  *  bar, one level in — the same object the reference reuses at every depth. */
 const Group = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <section aria-label={title} className="flex flex-col min-h-0">
-        <h2 className="bg-nier-dark text-nier-text-light text-[10px] uppercase tracking-widest px-2 py-1 flex-shrink-0">
+        <h2 data-section-header className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1 flex-shrink-0">
             {title}
         </h2>
         {children}
@@ -266,7 +268,7 @@ const Track = ({ cells, selection, onChange, onClear, ticks, readout }: {
     return (
         <div className="flex flex-col gap-1 pt-2">
             <div className="flex items-baseline justify-between gap-2">
-                <span className={`text-[10px] uppercase tracking-wide tabular-nums ${
+                <span className={`text-eyebrow uppercase tracking-wide tabular-nums ${
                     selection ? 'text-nier-text-dark' : 'text-nier-text-dark/40'
                 }`}>
                     {readout}
@@ -275,7 +277,7 @@ const Track = ({ cells, selection, onChange, onClear, ticks, readout }: {
                     <button
                         onClick={() => { setAnchor(null); onClear(); }}
                         aria-label="Clear this range"
-                        className="text-sm leading-none cursor-pointer text-nier-text-dark/50 hover:text-nier-text-dark transition-colors duration-150"
+                        className="text-body leading-none cursor-pointer text-nier-text-dark/50 hover:text-nier-text-dark transition-colors duration-150"
                     >×</button>
                 )}
             </div>
@@ -307,7 +309,7 @@ const Track = ({ cells, selection, onChange, onClear, ticks, readout }: {
                 })}
             </div>
 
-            <div className="flex justify-between text-[9px] uppercase tracking-wide text-nier-text-dark/35">
+            <div className="flex justify-between text-eyebrow uppercase tracking-wide text-nier-text-dark/35">
                 <span>{ticks[0]}</span>
                 <span>{ticks[1]}</span>
             </div>
@@ -355,28 +357,24 @@ const Review = () => {
     const panelTitle = `${category ?? ''} VIEW PANEL`.toUpperCase();
     const scope = useRef<HTMLDivElement>(null);
 
-    // Review does not unmount between categories — React Router keeps the same
-    // component instance and re-renders with new params — so the Fragment is
-    // keyed on `category`, which remounts the panel and builds this afresh.
-    // That is what the old resetKey argument was for.
-    //
-    // The frame wipes, its title decodes over the tail of that, and the shelf
-    // dominoes in underneath. The stagger is the Domino primitive's own; the
-    // version this replaces had to nominate the first card as a reporter and
-    // hand-write a per-card delay to get the same overlap.
+    // Review does not unmount between Categories — React Router keeps the same
+    // component instance and re-renders with new params. So arrival on a toggle
+    // is expressed by keying the reveal timeline on what changed, not by
+    // remounting the DOM: the reveal system replays a timeline exactly when its
+    // rebuildOn changes, which is what "a fresh entrance, not the same one at a
+    // different moment" means.
+
+    // FRAME — stable chrome. Wipes once on arrival from another page; NOT keyed
+    // on the Category, so a toggle leaves it in place rather than re-wiping. Its
+    // clip reveals the panel's backgrounds and bars geometrically; the leaves
+    // inside stay hidden (Cascade builds them paused) until their own beat.
     useRevealTimeline(contentActive, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        decode(tl, '[data-panel-title]', panelTitle, '<0.15');
     }, scope);
 
-    // The shelf gets its own timeline because it arrives on a different
-    // signal: the frame's is built at mount, before the fetch has answered
-    // and while there are no cards to address. Rebuilding one shared timeline
-    // when the data lands would replay the frame's wipe underneath them.
+    // The content Cascade is wired below, once the derived sets it keys on are in
+    // scope. shelfScope is retained only as the grid's ref.
     const shelfScope = useRef<HTMLDivElement>(null);
-    useRevealTimeline(contentActive && !loading, (tl) => {
-        domino(tl, '[data-shelf-card]');
-    }, shelfScope, [loading]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
 
     const handleFieldChange = (field: string, value: any) => {
@@ -511,6 +509,14 @@ const Review = () => {
         return counts;
     }, [genreOptions, filteredPosts]);
 
+    // Only genres some finished Review on this shelf actually has. Derived from
+    // the whole shelf, not the filtered view, so the row set is stable as
+    // filters toggle. Empty genres used to render dimmed; they are gone now.
+    const visibleGenres = useMemo(
+        () => genresInUse(shelved, genreOptions),
+        [shelved, genreOptions],
+    );
+
     // The five-year spans the shelf actually covers, not a fixed range — a
     // Category whose oldest thing is from 1994 has no business offering the
     // 1930s.
@@ -538,6 +544,41 @@ const Review = () => {
         const first = Math.min(...years);
         return Array.from({ length: Math.max(...years) - first + 1 }, (_, i) => first + i);
     }, [shelved]);
+
+    // CONTENT CASCADE — the whole panel content revealed as one sequence, so that
+    // nothing arrives un-animated (ADR-0012). It walks the frame in DOM order and
+    // gives every leaf its own beat: titles and section headers Decode, hairlines
+    // Grow, cards fall in a Domino, everything else Ripples in place. The guarantee
+    // that nothing pops is that the walk reaches every leaf and `.from()` hides on
+    // build — a leaf with no tween is the only thing that can pop.
+    //
+    // Built at `contentActive` (not gated on the fetch) so it hides the content at
+    // mount rather than letting it show un-animated, and keyed on [loading,
+    // category, the visible genre set] so it rebuilds once the fetched cards and
+    // rows exist and re-runs the whole sequence on a Category toggle. A mere
+    // filter toggle changes none of those keys, so filtering does not re-cascade.
+    // Starts a beat after the frame's Wipe begins.
+    useRevealTimeline(contentActive, (tl) => {
+        const frame = scope.current?.querySelector<HTMLElement>('[data-testid="panel-frame"]');
+        if (frame) cascade(tl, frame, 0.15);
+        // A scroll region carries its bar the moment it holds overflowing content,
+        // and the panel is framed before the cascade fills it — so the bar was
+        // there ahead of the cards and rows it belongs to. Hold overflow hidden
+        // for the length of the reveal, then hand it back to auto as the final
+        // beat, so the bar arrives after the content, not before it. Scoped to the
+        // panel, so the mobile filter Modal (portalled out) keeps its own scroll.
+        const regions = scope.current?.querySelectorAll<HTMLElement>('[data-scroll-region]');
+        if (regions?.length) {
+            // Hide the bar now, for the whole reveal, then hand it back to auto as
+            // the final beat. The hide is applied directly rather than as a beat at
+            // position 0, because a paused timeline does not render a zero-time set
+            // on build — and hiding the bar is exactly the "apply on build" job the
+            // reveal's `.from()` primitives rely on. The closing set lives in the
+            // timeline so it reverts to the stylesheet's auto on the next rebuild.
+            regions.forEach((region) => { region.style.overflowY = 'hidden'; });
+            tl.set(regions, { overflowY: 'auto' }, tl.duration());
+        }
+    }, scope, [loading, category, visibleGenres.join('|')]);
 
     // A span reads back off the filters rather than being held twice. The
     // filters are what actually narrows the shelf, so anything that sets them
@@ -634,10 +675,10 @@ const Review = () => {
         // two things that have no row form — a bounded number and a pair of
         // dates — under section bars of their own.
         const filterColumn = (
-            <div className="flex flex-col gap-4 min-h-0 h-full overflow-y-auto">
+            <div data-scroll-region className="flex flex-col gap-4 min-h-0 h-full overflow-y-auto">
                 <Group title="Genre">
-                    <ul className="flex flex-col gap-0.5 mt-1 pl-3 max-h-52 min-h-0 overflow-y-auto">
-                        {genreOptions.map(genre => (
+                    <ul data-scroll-region className="flex flex-col gap-0.5 mt-1 pl-3 max-h-52 min-h-0 overflow-y-auto">
+                        {visibleGenres.map(genre => (
                             <GenreRow
                                 key={genre}
                                 genre={genre}
@@ -728,7 +769,7 @@ const Review = () => {
                 {activeFilters > 0 && (
                     <button
                         onClick={clearFilters}
-                        className="flex-shrink-0 text-[10px] uppercase tracking-widest px-2 py-1.5 bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer transition-colors duration-150"
+                        className="flex-shrink-0 text-eyebrow uppercase tracking-widest px-2 py-1.5 bg-nier-dark text-nier-text-light hover:bg-nier-text-dark cursor-pointer transition-colors duration-150"
                     >
                         Clear {activeFilters} filter{activeFilters > 1 ? 's' : ''}
                     </button>
@@ -743,16 +784,19 @@ const Review = () => {
         // 22px low instead of 2px. With the margin on the wrapper neither box
         // can collapse away from the other.
         return (
-          <Fragment key={category}>
+          // No key on the Category: the frame persists across toggles as stable
+          // chrome, and the reveal timelines (keyed on `category`) replay the
+          // contents in place. Remounting here would re-wipe the frame.
+          <Fragment>
           <Panel
                 wrapperRef={scope}
-                wrapperClassName="mt-5"
+                wrapperClassName="mt-0 lg:mt-5"
                 className="bg-nier-100 h-[42rem]"
                 style={maxHeight ? { maxHeight } : undefined}
                 frameRef={panelRef}
             >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 data-panel-title className="text-nier-text-dark text-xl uppercase">{panelTitle}</h3>
+                        <h3 data-panel-title className="text-nier-text-dark text-title uppercase">{panelTitle}</h3>
                     </div>
 
                     {/* min-h-0 so the columns scroll inside the frame instead
@@ -781,8 +825,12 @@ const Review = () => {
                                 reference has no search box to copy, but it has
                                 plenty of labelled values, and that is what a
                                 query is. */}
-                            <div className="flex items-center gap-3 border-b border-nier-150 pb-2 mb-3 flex-shrink-0">
-                                <label htmlFor="shelf-search" className="text-[10px] uppercase tracking-widest text-nier-text-dark/40 flex-shrink-0">
+                            <div className="relative flex items-center gap-3 pb-2 mb-3 flex-shrink-0">
+                                {/* The underline is a line element, not a border,
+                                    so it can Grow in from the left as the shelf
+                                    arrives. */}
+                                <span data-hairline aria-hidden="true" className="absolute bottom-0 left-0 w-full h-px bg-nier-150 origin-left" />
+                                <label htmlFor="shelf-search" data-section-header className="text-eyebrow uppercase tracking-widest text-nier-text-dark/40 flex-shrink-0">
                                     Search
                                 </label>
                                 <input
@@ -790,20 +838,20 @@ const Review = () => {
                                     value={query}
                                     onChange={e => setQuery(e.target.value)}
                                     placeholder="—"
-                                    className="flex-1 min-w-0 bg-transparent text-sm uppercase tracking-wide focus:outline-none placeholder:text-nier-text-dark/25"
+                                    className="flex-1 min-w-0 bg-transparent text-body uppercase tracking-wide focus:outline-none placeholder:text-nier-text-dark/25"
                                 />
                                 {query && (
                                     <button
                                         onClick={() => setQuery('')}
                                         aria-label="Clear search"
-                                        className="text-lg leading-none cursor-pointer text-nier-text-dark/50 hover:text-nier-text-dark transition-colors duration-150"
+                                        className="text-heading leading-none cursor-pointer text-nier-text-dark/50 hover:text-nier-text-dark transition-colors duration-150"
                                     >×</button>
                                 )}
                                 {/* Below lg the filter column is an overlay,
                                     and this is the only way to it. */}
                                 <button
                                     onClick={() => setShowFilters(true)}
-                                    className={`lg:hidden flex items-center gap-1.5 px-2 py-1 text-[10px] uppercase tracking-widest cursor-pointer transition-colors duration-150 flex-shrink-0 ${
+                                    className={`lg:hidden flex items-center gap-1.5 px-2 py-1 text-eyebrow uppercase tracking-widest cursor-pointer transition-colors duration-150 flex-shrink-0 ${
                                         activeFilters > 0
                                             ? 'bg-nier-dark text-nier-text-light'
                                             : 'bg-nier-150/60 hover:bg-nier-150'
@@ -818,7 +866,15 @@ const Review = () => {
                                 centred spinner while the fetch was in flight,
                                 which threw the panel away and made the reveal
                                 wait on network latency. See docs/motion.md. */}
-                            <div ref={shelfScope} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto flex-1 items-start content-start">
+                            {/* overflow-x-hidden is deliberate, not redundant: a
+                                box with one axis set to `auto` computes the other
+                                from `visible` to `auto` too, so `overflow-y-auto`
+                                alone was giving the grid a horizontal scrollbar off
+                                any sub-pixel width. The cards already fit (the
+                                tracks are minmax(0,1fr) and the text truncates), so
+                                pinning x to hidden removes the phantom bar and the
+                                option to scroll sideways without clipping anything. */}
+                            <div ref={shelfScope} data-scroll-region className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto overflow-x-hidden flex-1 items-start content-start">
                                 {loading
                                     ? (
                                         <div className="col-span-full flex justify-center py-8">
@@ -847,7 +903,7 @@ const Review = () => {
                                         </div>
                                     ))
                                     : (
-                                        <p className="col-span-full text-sm text-nier-text-dark/50 py-4">
+                                        <p className="col-span-full text-body text-nier-text-dark/50 py-4">
                                             {/* With nothing fetched, "no matches"
                                                 is a claim about the filters that
                                                 isn't true — nothing was searched. */}
@@ -866,12 +922,15 @@ const Review = () => {
                     {/* The caption bar. What is under the pointer on the left,
                         how to act on it on the right — the reference's bottom
                         strip, accent block and all. */}
-                    <div className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
+                    <div className="relative flex-shrink-0 flex items-center gap-3 px-4 py-2">
+                        {/* Growable line rather than a top border — the divider
+                            above the footer Grows in with the rest. */}
+                        <span data-hairline aria-hidden="true" className="absolute top-0 left-0 w-full h-px bg-nier-150 origin-left" />
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
-                        <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
+                        <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(selected, !!error, shown.length === 0)}
                         </p>
-                        <p className="ml-auto flex-shrink-0 text-xs uppercase tracking-wide text-nier-text-dark/50">
+                        <p className="ml-auto flex-shrink-0 text-label uppercase tracking-wide text-nier-text-dark/50">
                             <span className="hidden sm:inline">↕ Select&nbsp;&nbsp;&nbsp;</span>◉ Open
                         </p>
                     </div>
@@ -883,28 +942,30 @@ const Review = () => {
                     smaller set of controls that can drift from it. It is
                     `fixed`, so it does not need to sit inside the panel's
                     wrapper to land in the right place. */}
-                {showFilters && (
-                    <div
-                        className="lg:hidden fixed inset-0 z-40 bg-nier-dark/40 flex items-start justify-center p-4 pt-20"
-                        onClick={() => setShowFilters(false)}
-                    >
-                        <div className="relative w-full max-w-xs" onClick={e => e.stopPropagation()}>
-                            <div aria-hidden="true" className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
-                            <div className="relative bg-nier-100 flex flex-col max-h-[70vh]">
-                                <div className="h-8 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
-                                    <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/70">Filter</span>
-                                    <button
-                                        onClick={() => setShowFilters(false)}
-                                        className="text-xl leading-none cursor-pointer hover:opacity-60 transition-opacity"
-                                    >×</button>
-                                </div>
-                                <div className="p-3 overflow-y-auto">
-                                    {filterColumn}
-                                </div>
-                            </div>
+                {/* The mobile filter menu is a light overlay: Modal wipes it in,
+                    dims and locks the shelf behind it, closes on outside-press or
+                    Escape, and plays it back out — the entrance the bare
+                    `{showFilters && …}` could never animate away. */}
+                <Modal
+                    open={showFilters}
+                    onClose={() => setShowFilters(false)}
+                    label="Filter"
+                    backdropClassName="lg:hidden z-40 flex items-start justify-center p-4 pt-20"
+                    className="w-full max-w-xs"
+                >
+                    <div className="relative bg-nier-100 flex flex-col max-h-[70vh]">
+                        <div className="h-8 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
+                            <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/70">Filter</span>
+                            <button
+                                onClick={() => setShowFilters(false)}
+                                className="text-title leading-none cursor-pointer hover:opacity-60 transition-opacity"
+                            >×</button>
+                        </div>
+                        <div className="p-3 overflow-y-auto">
+                            {filterColumn}
                         </div>
                     </div>
-                )}
+                </Modal>
           </Fragment>
         );
       };

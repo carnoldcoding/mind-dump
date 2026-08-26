@@ -45,7 +45,7 @@ const entry = (workoutName: string, datetime: string, over: Partial<LegacyDoc> =
 
 const renderBody = async (docs: LegacyDoc[]) => {
     mocked.getBodyEntries.mockResolvedValue(docs);
-    const result = render(<BodyWindow onClose={() => {}} />);
+    const result = render(<BodyWindow />);
     // Wait on something that only exists once the fetch has landed, otherwise
     // the list renders its empty state and the assertions race the data.
     if (docs.some(d => d._meta)) await screen.findByRole("region", { name: /log/i });

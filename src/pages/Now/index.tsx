@@ -35,7 +35,7 @@ import { byNewestCompleted } from "../../utils/completionDate";
 import { reviewPath } from "../../utils/categories";
 import { useRevealSignal } from "../../hooks/useRevealSignal";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
-import { decode, domino, wipe } from "../../utils/motion";
+import { cascade, wipe } from "../../utils/motion";
 import { usePanelHeight } from "../../hooks/usePanelHeight";
 import { Panel } from "../../components/common/Panel";
 import { Link } from "react-router";
@@ -83,7 +83,7 @@ const Row = ({ review, value, selected, onSelect }: {
     <li className="relative">
         <span
             aria-hidden="true"
-            className={`absolute -left-4 top-1/2 -translate-y-1/2 text-xs text-nier-text-dark transition-opacity duration-150 ${
+            className={`absolute -left-4 top-1/2 -translate-y-1/2 text-label text-nier-text-dark transition-opacity duration-150 ${
                 selected ? 'opacity-100' : 'opacity-0'
             }`}
         >
@@ -102,13 +102,13 @@ const Row = ({ review, value, selected, onSelect }: {
             <span className="h-8 w-6 flex-shrink-0 overflow-hidden">
                 <ReviewCover imagePath={review.image_path} fill />
             </span>
-            <h3 className={`text-sm uppercase tracking-wide truncate ${
+            <h3 className={`text-body uppercase tracking-wide truncate ${
                 selected ? 'text-nier-text-light' : 'text-nier-text-dark'
             }`}>
                 {review.title}
             </h3>
             {value && (
-                <span className={`ml-auto pl-3 text-xs uppercase tracking-wide flex-shrink-0 ${
+                <span className={`ml-auto pl-3 text-label uppercase tracking-wide flex-shrink-0 ${
                     selected ? 'text-nier-text-light/70' : 'text-nier-text-dark/60'
                 }`}>
                     {value}
@@ -128,19 +128,19 @@ const Section = ({ title, empty, children }: {
     empty: string;
     children?: React.ReactNode;
 }) => (
-    <section data-now-section aria-label={title}>
-        <h2 className="bg-nier-dark text-nier-text-light text-xs uppercase tracking-widest px-2 py-1">
+    <section aria-label={title}>
+        <h2 className="bg-nier-dark text-nier-text-light text-label uppercase tracking-widest px-2 py-1">
             {title}
         </h2>
         {children
             ? <ul className="flex flex-col gap-0.5 mt-1">{children}</ul>
-            : <p className="text-nier-text-dark/50 text-sm px-2 py-2">{empty}</p>}
+            : <p className="text-nier-text-dark/50 text-body px-2 py-2">{empty}</p>}
     </section>
 );
 
 /** One `label ......... value` line of the status readout. */
 const Readout = ({ label, value }: { label: string; value: React.ReactNode }) => (
-    <div className="flex items-baseline justify-between gap-3 text-xs">
+    <div className="flex items-baseline justify-between gap-3 text-label">
         <span className="uppercase tracking-wide text-nier-text-dark/70">{label}</span>
         <span className="uppercase text-nier-text-dark">{value}</span>
     </div>
@@ -170,7 +170,7 @@ const Detail = ({ review }: { review: Review }) => {
             <div className="w-full max-w-48">
                 <ReviewCover imagePath={review.image_path} full />
             </div>
-            <h3 className="text-lg uppercase tracking-wide leading-tight">{review.title}</h3>
+            <h3 className="text-heading uppercase tracking-wide leading-tight">{review.title}</h3>
             <div className="flex flex-col gap-1 border-t border-nier-150 pt-2">
                 {facts.map(([label, value]) => (
                     <Readout key={label} label={label} value={value} />
@@ -179,7 +179,7 @@ const Detail = ({ review }: { review: Review }) => {
             {review.genres && review.genres.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                     {review.genres.map(genre => (
-                        <span key={genre} className="text-[10px] uppercase tracking-wide bg-nier-150/60 px-1.5 py-0.5">
+                        <span key={genre} className="text-eyebrow uppercase tracking-wide bg-nier-150/60 px-1.5 py-0.5">
                             {genre}
                         </span>
                     ))}
@@ -216,10 +216,10 @@ const Shelves = ({ reviews, error, loading }: { reviews: Review[]; error: boolea
 
     return (
         <div className="flex flex-col">
-            <h2 className="bg-nier-dark text-nier-text-light text-xs uppercase tracking-widest px-2 py-1">
+            <h2 className="bg-nier-dark text-nier-text-light text-label uppercase tracking-widest px-2 py-1">
                 Shelves
             </h2>
-            <p className="text-[10px] uppercase tracking-widest text-nier-text-dark/40 px-2 pt-2 text-right">
+            <p className="text-eyebrow uppercase tracking-widest text-nier-text-dark/40 px-2 pt-2 text-right">
                 Underway / Backlog
             </p>
             <div className="flex flex-col gap-1 px-2 py-2">
@@ -246,7 +246,7 @@ const Shelves = ({ reviews, error, loading }: { reviews: Review[]; error: boolea
                 else — and now because it is capable of saying what it is
                 doing, which is the field the spinner used to replace the
                 whole page to tell you. */}
-            <p className={`text-[10px] uppercase tracking-[0.3em] text-center py-4 ${
+            <p className={`text-eyebrow uppercase tracking-[0.3em] text-center py-4 ${
                 error ? 'text-nier-text-dark' : 'text-nier-text-dark/50'
             }`}>
                 {error ? 'Error' : loading ? 'Loading' : 'No Error'}
@@ -275,26 +275,18 @@ const Now = () => {
     const revealed = useRevealSignal();
     const scope = useRef<HTMLDivElement>(null);
 
-    // The frame arrives, its title decodes over the tail of that, and the
-    // sections fall in underneath. Each beat starts before the one before it
-    // has finished — that overlap is the `"<"` positions, and it is what makes
-    // the panel read as one machine coming online rather than three beats
-    // politely waiting for each other.
+    // The frame Wipes as stable chrome; everything inside then Cascades so
+    // nothing arrives un-animated (ADR-0012). The frame is built at mount, when
+    // the fetch has not answered; the Cascade is keyed on `loading` so it rebuilds
+    // and re-runs once the sections are actually there, rather than popping them.
     useRevealTimeline(revealed, (tl) => {
         wipe(tl, '[data-panel-surface]');
-        decode(tl, '[data-panel-title]', PANEL_TITLE, '<0.15');
     }, scope);
 
-    // The sections get their own timeline because they arrive on a different
-    // signal. The frame's is built at mount, when the fetch has not answered
-    // and there are no sections to address; these domino in when the list is
-    // actually there. Two timelines, two readinesses — not one timeline that
-    // has to be rebuilt, which would replay the frame's wipe.
-    const listScope = useRef<HTMLDivElement>(null);
-    useRevealTimeline(revealed && !loading, (tl) => {
-        domino(tl, '[data-now-section]');
-    }, listScope, [loading]);
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+    useRevealTimeline(revealed, (tl) => {
+        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
+    }, scope, [loading]);
 
     // Keyed rather than held by object identity: the store replaces Review
     // objects on every refetch, and a stale reference would silently stop
@@ -366,13 +358,13 @@ const Now = () => {
                 the most it wants; the cap is what is left below it. */}
             <Panel
                 wrapperRef={scope}
-                wrapperClassName="mt-5"
+                wrapperClassName="mt-0 lg:mt-5"
                 className="bg-nier-100 h-[42rem]"
                 style={maxHeight ? { maxHeight } : undefined}
                 frameRef={panelRef}
             >
                     <div className="h-10 w-full bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 data-panel-title className="text-nier-text-dark text-xl uppercase">{PANEL_TITLE}</h3>
+                        <h3 data-panel-title className="text-nier-text-dark text-title uppercase">{PANEL_TITLE}</h3>
                     </div>
 
                     {/* min-h-0 so the columns scroll inside the frame instead
@@ -388,7 +380,7 @@ const Now = () => {
                             <span className="w-full flex-[5] bg-nier-150/50" />
                         </div>
 
-                        <div ref={listScope} className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4 pl-4">
+                        <div className="flex-1 min-w-0 overflow-y-auto flex flex-col gap-4 pl-4">
                             {loading ? (
                                 <div className="flex-1 flex items-center justify-center">
                                     <Loader />
@@ -447,10 +439,10 @@ const Now = () => {
                         strip, accent block and all. */}
                     <div className="flex-shrink-0 border-t border-nier-150 flex items-center gap-3 px-4 py-2">
                         <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
-                        <p className="text-xs uppercase tracking-wide truncate text-nier-text-dark/70">
+                        <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
                             {captionFor(selected, error, loading)}
                         </p>
-                        <p className="ml-auto flex-shrink-0 text-xs uppercase tracking-wide text-nier-text-dark/50">
+                        <p className="ml-auto flex-shrink-0 text-label uppercase tracking-wide text-nier-text-dark/50">
                             <span className="hidden sm:inline">↕ Select&nbsp;&nbsp;&nbsp;</span>◉ Open
                         </p>
                     </div>

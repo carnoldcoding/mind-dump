@@ -219,79 +219,78 @@ export const Capture = ({ reviews }: Props) => {
         : undefined;
 
     return (
-        <div className="relative">
-            <aside className="absolute w-full h-full bg-nier-shadow top-1 left-1" />
-            <div className="w-full bg-nier-100-lighter relative">
-                <div className="h-7 w-full bg-nier-150 flex items-center px-2">
-                    <h3 className="text-nier-text-dark text-sm">Capture</h3>
+        // The leading control of the strip, not a panel floating above it: no
+        // shadow, no title bar, sharing the border grammar of the filters below
+        // (spec §3b). A ＋ marks it as the one control that adds rather than
+        // narrows.
+        <section aria-label="Capture" className="relative bg-nier-100-lighter border border-nier-150">
+            <div className="p-2 flex flex-col sm:flex-row gap-2 sm:items-center">
+                <span aria-hidden="true" className="hidden sm:flex items-center justify-center w-6 h-9 flex-shrink-0 bg-nier-dark text-nier-text-light text-body leading-none">＋</span>
+
+                <div className="flex-1 min-w-40 border border-nier-150 h-9 flex items-center px-3 bg-nier-100-lighter focus-within:border-nier-dark">
+                    <input
+                        type="text"
+                        aria-label="Title"
+                        placeholder="Capture a title"
+                        role="combobox"
+                        aria-expanded={candidates.length > 0}
+                        aria-controls="capture-matches"
+                        aria-autocomplete="list"
+                        aria-activedescendant={activeOption}
+                        value={title}
+                        onChange={event => setTitle(event.target.value)}
+                        onKeyDown={onKeyDown}
+                        className="w-full bg-transparent text-label focus:outline-none"
+                    />
                 </div>
-
-                {/* Stacks on narrow screens so it stays usable one-handed on
-                    the device you are holding when the thought occurs. */}
-                <div className="p-3 flex flex-col sm:flex-row gap-3 sm:items-center">
-                    <div className="flex-1 border border-nier-150 h-12 flex items-center px-4">
-                        <input
-                            type="text"
-                            aria-label="Title"
-                            role="combobox"
-                            aria-expanded={candidates.length > 0}
-                            aria-controls="capture-matches"
-                            aria-autocomplete="list"
-                            aria-activedescendant={activeOption}
-                            value={title}
-                            onChange={event => setTitle(event.target.value)}
-                            onKeyDown={onKeyDown}
-                            className="w-full bg-transparent focus:outline-none"
-                        />
-                    </div>
-                    <div className="sm:w-40">
-                        <SelectField
-                            label="Category"
-                            value={type}
-                            options={CATEGORY_OPTIONS}
-                            onChange={setType}
-                        />
-                    </div>
-                    <div className="sm:w-32 h-12">
-                        <Button
-                            label={saving ? 'Saving…' : 'Capture'}
-                            type="primary"
-                            handleClick={() => write()}
-                        />
-                    </div>
+                <div className="sm:w-36">
+                    <SelectField
+                        label="Category"
+                        value={type}
+                        options={CATEGORY_OPTIONS}
+                        onChange={setType}
+                    />
                 </div>
+                <div className="sm:w-28 h-9">
+                    <Button
+                        label={saving ? 'Saving…' : 'Capture'}
+                        type="primary"
+                        handleClick={() => write()}
+                    />
+                </div>
+            </div>
 
-                {typedDuplicate && (
-                    <p className="px-3 pb-2 text-sm text-nier-text-dark/70">
-                        Already captured: {typedDuplicate.title} ({typedDuplicate.status})
-                    </p>
-                )}
-                {error && <p className="px-3 pb-2 text-sm text-red-700">{error}</p>}
+            {typedDuplicate && (
+                <p className="px-2 pb-2 text-label text-nier-text-dark/70">
+                    Already captured: {typedDuplicate.title} ({typedDuplicate.status})
+                </p>
+            )}
+            {error && <p className="px-2 pb-2 text-label text-red-700">{error}</p>}
 
-                {lookup.status === 'searching' && (
-                    <p className="px-3 pb-3 text-sm text-nier-text-dark/50">Searching…</p>
-                )}
+            {lookup.status === 'searching' && (
+                <p className="px-2 pb-2 text-label text-nier-text-dark/50">Searching…</p>
+            )}
 
-                {lookup.status === 'failed' && (
-                    <p className="px-3 pb-3 text-sm text-nier-text-dark/70">
-                        Lookup unavailable — Capture still records the title.
-                    </p>
-                )}
+            {lookup.status === 'failed' && (
+                <p className="px-2 pb-2 text-label text-nier-text-dark/70">
+                    Lookup unavailable — Capture still records the title.
+                </p>
+            )}
 
-                {lookup.status === 'ready' && candidates.length === 0 && (
-                    <p className="px-3 pb-3 text-sm text-nier-text-dark/50">
-                        No matches — Capture records the title as typed.
-                    </p>
-                )}
+            {lookup.status === 'ready' && candidates.length === 0 && (
+                <p className="px-2 pb-2 text-label text-nier-text-dark/50">
+                    No matches — Capture records the title as typed.
+                </p>
+            )}
 
-                {candidates.length > 0 && (
-                    <ul
-                        id="capture-matches"
-                        role="listbox"
-                        aria-label="Matches"
-                        className="flex flex-col divide-y divide-nier-150/40"
-                    >
-                        {candidates.map((candidate, index) => {
+            {candidates.length > 0 && (
+                <ul
+                    id="capture-matches"
+                    role="listbox"
+                    aria-label="Matches"
+                    className="flex flex-col divide-y divide-nier-150/40 border-t border-nier-150"
+                >
+                    {candidates.map((candidate, index) => {
                             const isHighlighted = index === highlighted;
                             // Named per result, so a remake and its original
                             // stop looking alike at the moment of choosing.
@@ -318,13 +317,13 @@ export const Capture = ({ reviews }: Props) => {
                                                 />
                                             )}
                                         </div>
-                                        <span className={`flex-1 truncate text-sm uppercase tracking-wide ${
+                                        <span className={`flex-1 truncate text-body uppercase tracking-wide ${
                                             isHighlighted ? 'text-nier-text-light' : ''
                                         }`}>
                                             {candidate.title}
                                         </span>
                                         {seen && (
-                                            <span className={`text-xs uppercase tracking-wide flex-shrink-0 ${
+                                            <span className={`text-label uppercase tracking-wide flex-shrink-0 ${
                                                 isHighlighted ? 'text-nier-text-light/70' : 'text-nier-text-dark/50'
                                             }`}>
                                                 Captured
@@ -332,7 +331,7 @@ export const Capture = ({ reviews }: Props) => {
                                         )}
                                         {/* The year is what tells a remake
                                             from its original at a glance. */}
-                                        <span className={`text-xs flex-shrink-0 ${
+                                        <span className={`text-label flex-shrink-0 ${
                                             isHighlighted ? 'text-nier-text-light/70' : 'text-nier-text-dark/50'
                                         }`}>
                                             {candidate.release_date?.slice(0, 4) ?? '—'}
@@ -341,10 +340,9 @@ export const Capture = ({ reviews }: Props) => {
                                 </li>
                             );
                         })}
-                    </ul>
-                )}
-            </div>
-        </div>
+                </ul>
+            )}
+        </section>
     );
 };
 

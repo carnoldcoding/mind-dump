@@ -136,7 +136,7 @@ const MovementChart = ({ name, entries, goal }: Props) => {
     };
 
     const tabBtn = (active: boolean) =>
-        `text-[10px] uppercase tracking-wide px-3 py-1.5 border cursor-pointer transition-colors ${
+        `text-eyebrow uppercase tracking-wide px-3 py-1.5 border cursor-pointer transition-colors ${
             active
                 ? "bg-nier-text-dark text-nier-100-lighter border-nier-dark"
                 : "border-nier-dark text-nier-text-dark/60 hover:text-nier-text-dark hover:bg-nier-150/40"
@@ -145,7 +145,7 @@ const MovementChart = ({ name, entries, goal }: Props) => {
     return (
         <div className="w-full h-64 bg-nier-100-lighter relative">
             <div className="min-h-7 w-full bg-nier-150 flex items-center justify-between gap-2 px-3 py-1">
-                <span className="text-nier-text-dark text-sm uppercase tracking-wide truncate">{name}</span>
+                <span className="text-nier-text-dark text-body uppercase tracking-wide truncate">{name}</span>
                 <div className="flex gap-1 shrink-0">
                     {METRICS.map(m => (
                         <button key={m.key} onClick={() => setMetric(m.key)} className={tabBtn(metric === m.key)}>

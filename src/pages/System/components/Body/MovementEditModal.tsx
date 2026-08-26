@@ -1,10 +1,12 @@
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import { TextField } from "../../../../components/common/TextField";
 import { BigTextField } from "../../../../components/common/BigTextField";
 import { NumTextField } from "../../../../components/common/NumTextField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
 import { Modal } from "../../../../components/common/Modal";
+import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
+import { cascade } from "../../../../utils/motion";
 import { buildGoal, fieldValue } from "./entry";
 import type { Movement, MovementTag } from "./entry";
 
@@ -32,6 +34,15 @@ const MovementEditModal = ({ movement, open, onClose, onSaved, onDelete }: Props
     const [deleteStage, setDeleteStage] = useState<"idle" | "confirm">("idle");
     const [deleteInput, setDeleteInput] = useState("");
     const [deleteError, setDeleteError] = useState("");
+
+    // Heavy editor cascade over Modal's surface wipe: title Decodes, fields
+    // Domino, keyed on `open` so it replays each time the editor opens.
+    // Modal Wipes the surface; the article's contents then Cascade so nothing
+    // arrives un-animated (ADR-0012). Keyed on `open` so it replays each open.
+    const articleScope = useRef<HTMLElement>(null);
+    useRevealTimeline(open, (tl) => {
+        if (articleScope.current) cascade(tl, articleScope.current, 0.1);
+    }, articleScope, [open]);
 
     useEffect(() => {
         if (!open) return;
@@ -72,26 +83,26 @@ const MovementEditModal = ({ movement, open, onClose, onSaved, onDelete }: Props
     };
 
     return (
-        <Modal open={open} onClose={onClose} label="Edit Movement" className="w-full max-w-md">
-                <article className="bg-nier-100-lighter relative max-h-[85vh] overflow-y-auto">
+        <Modal open={open} onClose={onClose} dismissOnOutsidePress={false} label="Edit Movement" className="w-full max-w-md">
+                <article ref={articleScope} className="bg-nier-100-lighter relative max-h-[85vh] overflow-y-auto">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5 sticky top-0">
-                        <span className="text-nier-text-dark text-xl uppercase tracking-wide">Edit Movement</span>
-                        <button onClick={onClose} aria-label="Close" className="text-3xl leading-none cursor-pointer hover:text-nier-dark transition-colors">×</button>
+                        <span data-modal-title className="text-nier-text-dark text-title uppercase tracking-wide">Edit Movement</span>
+                        <button onClick={onClose} aria-label="Close" className="text-title leading-none cursor-pointer hover:text-nier-dark transition-colors">×</button>
                     </div>
 
-                    <div className="p-5 flex flex-col gap-4">
+                    <div data-modal-body className="p-5 flex flex-col gap-4">
                         <TextField label="Name" value={displayName} onChange={setDisplayName} altBg />
 
                         {/* Tag toggle */}
                         <div className="flex flex-col gap-1.5">
-                            <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">Type</span>
+                            <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">Type</span>
                             <div className="flex gap-2">
                                 {(["upper", "lower"] as const).map(t => (
                                     <button
                                         key={t}
                                         onClick={() => setTag(tag === t ? null : t)}
-                                        className={`text-xs uppercase tracking-wide px-4 min-h-11 border border-nier-dark cursor-pointer transition-colors ${
+                                        className={`text-label uppercase tracking-wide px-4 min-h-11 border border-nier-dark cursor-pointer transition-colors ${
                                             tag === t
                                                 ? "bg-nier-text-dark text-nier-100-lighter"
                                                 : "text-nier-text-dark hover:bg-nier-150/50"
@@ -104,7 +115,7 @@ const MovementEditModal = ({ movement, open, onClose, onSaved, onDelete }: Props
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <span className="text-[10px] uppercase tracking-widest text-nier-text-dark/50">Goal</span>
+                            <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">Goal</span>
                             <div className="flex gap-3">
                                 <NumTextField label="Set Goal"    value={setGoal}    onChange={setSetGoal} />
                                 <NumTextField label="Rep Goal"    value={repGoal}    onChange={setRepGoal} />
@@ -114,21 +125,21 @@ const MovementEditModal = ({ movement, open, onClose, onSaved, onDelete }: Props
 
                         <BigTextField label="Notes" value={notes} onChange={setNotes} />
 
-                        {error && <p className="text-red-800 text-sm">{error}</p>}
+                        {error && <p className="text-red-800 text-body">{error}</p>}
 
                         {deleteStage === "confirm" ? (
                             <div className="flex flex-col gap-2 border-t border-nier-150 pt-3">
-                                <label htmlFor={confirmId} className="text-xs text-nier-text-dark/60">
+                                <label htmlFor={confirmId} className="text-label text-nier-text-dark/60">
                                     Type the name <span className="italic">{movement.displayName}</span> to confirm deletion. This removes the movement and everything logged against it.
                                 </label>
                                 <input
                                     id={confirmId}
                                     autoFocus
-                                    className="border border-nier-150 px-3 py-2 text-sm bg-nier-100-lighter focus:outline-none focus:border-nier-dark"
+                                    className="border border-nier-150 px-3 py-2 text-body bg-nier-100-lighter focus:outline-none focus:border-nier-dark"
                                     value={deleteInput}
                                     onChange={e => { setDeleteInput(e.target.value); setDeleteError(""); }}
                                 />
-                                {deleteError && <p className="text-red-800 text-xs">{deleteError}</p>}
+                                {deleteError && <p className="text-red-800 text-label">{deleteError}</p>}
                                 <div className="flex gap-2 justify-end">
                                     <Button type="secondary" label="Cancel" handleClick={() => { setDeleteStage("idle"); setDeleteInput(""); }} />
                                     <Button type="primary"   label="Confirm Delete" handleClick={() => {

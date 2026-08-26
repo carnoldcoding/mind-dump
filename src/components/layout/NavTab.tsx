@@ -43,7 +43,7 @@ export const NavTab = ({ icon, iconActive, label, active, to, onClick, className
                     className="w-full h-full object-contain transition-all duration-300 ease-in-out"
                 />
             </div>
-            <h3 className={`uppercase text-2xl leading-none transition-all duration-300 ease-in-out ${
+            <h3 className={`uppercase text-title leading-none transition-all duration-300 ease-in-out ${
                 active ? 'text-nier-text-light' : 'text-nier-text-dark'
             }`}>
                 {label}

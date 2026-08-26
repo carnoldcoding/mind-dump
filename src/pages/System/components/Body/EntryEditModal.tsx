@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { NumTextField } from "../../../../components/common/NumTextField";
 import { DateField } from "../../../../components/common/DateField";
 import { Button } from "../../../../components/common/Button";
 import { backend } from "../../../../api/backend";
 import { Modal } from "../../../../components/common/Modal";
+import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
+import { cascade } from "../../../../utils/motion";
 import { atLocalMidnight, fieldNumber, fieldValue } from "./entry";
 import type { Entry } from "./entry";
 
@@ -29,6 +31,15 @@ const EntryEditModal = ({ entry, movementName, open, onClose, onSaved, onDelete 
     const [weight, setWeight] = useState(fieldValue(entry.weightUsed));
     const [saving, setSaving] = useState(false);
     const [error, setError]   = useState("");
+
+    // The heavy editor's internal cascade, on top of Modal's surface wipe: the
+    // Modal Wipes the surface; the article's contents then Cascade so nothing
+    // arrives un-animated (ADR-0012). Keyed on `open` so it replays each time the
+    // editor is opened.
+    const articleScope = useRef<HTMLElement>(null);
+    useRevealTimeline(open, (tl) => {
+        if (articleScope.current) cascade(tl, articleScope.current, 0.1);
+    }, articleScope, [open]);
 
     useEffect(() => {
         if (!open) return;
@@ -61,20 +72,20 @@ const EntryEditModal = ({ entry, movementName, open, onClose, onSaved, onDelete 
     };
 
     return (
-        <Modal open={open} onClose={onClose} label="Edit Entry" className="w-full max-w-sm">
-                <article className="bg-nier-100-lighter relative">
+        <Modal open={open} onClose={onClose} dismissOnOutsidePress={false} label="Edit Entry" className="w-full max-w-sm">
+                <article ref={articleScope} className="bg-nier-100-lighter relative">
 
                     <div className="h-10 bg-nier-150 flex items-center justify-between px-5">
                         <div className="flex items-center gap-3">
-                            <span className="text-nier-text-dark text-xl uppercase tracking-wide">Edit Entry</span>
-                            <span className="text-nier-text-dark/50 text-sm uppercase tracking-widest">
+                            <span data-modal-title className="text-nier-text-dark text-title uppercase tracking-wide">Edit Entry</span>
+                            <span className="text-nier-text-dark/50 text-body uppercase tracking-widest">
                                 // {movementName}
                             </span>
                         </div>
-                        <button onClick={onClose} aria-label="Close" className="text-3xl leading-none cursor-pointer hover:text-nier-dark transition-colors">×</button>
+                        <button onClick={onClose} aria-label="Close" className="text-title leading-none cursor-pointer hover:text-nier-dark transition-colors">×</button>
                     </div>
 
-                    <div className="p-5 flex flex-col gap-4">
+                    <div data-modal-body className="p-5 flex flex-col gap-4">
                         <DateField label="Date" value={date} onChange={setDate} />
 
                         <div className="flex gap-3">
@@ -83,7 +94,7 @@ const EntryEditModal = ({ entry, movementName, open, onClose, onSaved, onDelete 
                             <NumTextField label="Weight" value={weight} onChange={setWeight} />
                         </div>
 
-                        {error && <p className="text-red-800 text-sm">{error}</p>}
+                        {error && <p className="text-red-800 text-body">{error}</p>}
 
                         <div className="flex justify-between gap-2 pt-1">
                             <Button type="secondary" label="Delete" handleClick={() => entry.id && onDelete(entry.id)} />
