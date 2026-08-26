@@ -24,15 +24,6 @@ vi.mock("../../../../api/backend", () => ({
     },
 }));
 
-// Charts need a real canvas and jsdom has none. Rendering the row count is
-// what lets a test say "the charts still count everything" without asserting
-// on chart internals.
-vi.mock("../pieChart", () => ({
-    PieChart: ({ data }: { data: unknown[] }) => <div data-testid="pie">{data.length}</div>,
-}));
-vi.mock("../barChart", () => ({
-    BarChart: ({ data }: { data: unknown[] }) => <div data-testid="bar">{data.length}</div>,
-}));
 
 const mocked = vi.mocked(backend);
 
@@ -49,7 +40,7 @@ const review = (title: string, over: Partial<ReviewRecord> = {}) =>
 // that the collection has landed.
 const showFolder = async (docs: ReturnType<typeof review>[]) => {
     mocked.getReviews.mockResolvedValue(docs);
-    const result = render(<BacklogWindow onClose={() => {}} />);
+    const result = render(<BacklogWindow />);
     await waitFor(() => expect(mocked.getReviews).toHaveBeenCalled());
     await act(async () => {});
     return result;
@@ -57,14 +48,16 @@ const showFolder = async (docs: ReturnType<typeof review>[]) => {
 
 const captureButton = () => screen.getByRole("button", { name: "Capture" });
 
+// The Capture region, scoped so its "Category" select does not collide with
+// the filter strip's Category facet, which carries the same word.
+const captureRegion = () => within(screen.getByRole("region", { name: "Capture" }));
+
 /**
- * Pick a queued row, which is what fills the detail panel.
- *
- * Editing and removing moved there when Not Started became a list of compact
- * rows: at hundreds of items a row is one line, so the actions live where
- * there is room to label them. Hovering still only drives the caption bar.
+ * The card for a title. §3 collapsed Started and Not Started into one list of
+ * rich cards, and every action — Start, Finish, Edit, Remove — lives on the
+ * card itself, so there is nothing to select first.
  */
-const pick = (title: string) => fireEvent.click(screen.getByLabelText(`Select ${title}`));
+const cardFor = (title: string) => screen.getByText(title).closest("li") as HTMLElement;
 
 const capture = (title: string) => {
     fireEvent.change(screen.getByLabelText("Title"), { target: { value: title } });
@@ -120,11 +113,11 @@ describe("capture", () => {
         // SelectField opens on click and commits on mousedown, so that the
         // choice lands before the container's blur closes the list.
         //
-        // Scoped to the field: the state column names every Category too, so
-        // "book" is on screen twice whenever the folder has anything in it.
-        // This test is about the option in the dropdown, and now says so.
-        const categoryField = screen.getByText("Category").closest("div") as HTMLElement;
-        fireEvent.click(screen.getByText("Category"));
+        // Scoped to the Capture region: the filter strip has a Category facet
+        // carrying the same word, so "Category" and "book" are each on screen
+        // more than once. This test is about the capture select, and says so.
+        const categoryField = captureRegion().getByText("Category").closest("div") as HTMLElement;
+        fireEvent.click(captureRegion().getByText("Category"));
         fireEvent.mouseDown(within(categoryField).getByText("book"));
         capture("Project Hail Mary");
 
@@ -526,22 +519,17 @@ describe("grooming", () => {
     it("removes something gone off, on the second press", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
 
-        pick("Nioh 3");
-
         fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
         fireEvent.click(screen.getByLabelText("Confirm removing Nioh 3"));
 
         await waitFor(() => expect(mocked.deleteReview).toHaveBeenCalledWith("nioh-3"));
     });
 
-    // The card grid makes this control bigger and easier to hit than the row
-    // did, and a Review deleted here is gone — there is no undo, and one could
-    // not be built: restoring would write a new record with a new id, and the
-    // id is where the capture date comes from.
+    // A Review deleted here is gone — there is no undo, and one could not be
+    // built: restoring would write a new record with a new id, and the id is
+    // where the capture date comes from.
     it("does not remove on the first press", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
-
-        pick("Nioh 3");
 
         fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
 
@@ -552,10 +540,9 @@ describe("grooming", () => {
     it("goes back to safe when the pointer leaves without confirming", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
 
-        pick("Nioh 3");
-
         fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
-        fireEvent.mouseLeave(screen.getByLabelText("Confirm removing Nioh 3"));
+        // The disarm handler is on the card, so leaving the card is what cancels.
+        fireEvent.mouseLeave(cardFor("Nioh 3"));
 
         expect(screen.getByLabelText("Remove Nioh 3")).toBeDefined();
         expect(mocked.deleteReview).not.toHaveBeenCalled();
@@ -567,8 +554,6 @@ describe("grooming", () => {
     it("can be disarmed without a pointer", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
 
-        pick("Nioh 3");
-
         fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
         fireEvent.click(screen.getByLabelText("Keep Nioh 3"));
 
@@ -576,21 +561,18 @@ describe("grooming", () => {
         expect(mocked.deleteReview).not.toHaveBeenCalled();
     });
 
-    // One detail panel serves the whole list, so arming has to be cleared
-    // when the pick moves. Otherwise the panel arrives already armed for a
-    // Review that was never pressed, and one press removes it.
-    it("disarms when the pick moves to another Review", async () => {
+    // Arming is per card, so arming one and pressing Remove on another must
+    // not delete the second on a single press.
+    it("arms each card on its own, not the whole list", async () => {
         await showFolder([
             review("Nioh 3", { status: "todo" }),
             review("Doom", { status: "todo" }),
         ]);
 
-        pick("Nioh 3");
         fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
         expect(screen.getByLabelText("Confirm removing Nioh 3")).toBeDefined();
 
-        pick("Doom");
-
+        // Doom is untouched — its own Remove is still the safe first press.
         expect(screen.getByLabelText("Remove Doom")).toBeDefined();
         expect(screen.queryByLabelText("Confirm removing Doom")).toBeNull();
     });
@@ -613,7 +595,6 @@ describe("what a card says about a Review", () => {
             }),
         ]);
 
-        pick("Nioh 3");
         const marks = screen.getByLabelText("Sections written");
 
         // story and sound, and no mark standing in for the two that aren't.
@@ -632,9 +613,8 @@ describe("what a card says about a Review", () => {
     it("says a Review with nothing written has nothing written", async () => {
         await showFolder([review("Nioh 3", { type: "game", review: {} })]);
 
-        // Nothing written draws nothing at all in the panel, rather than a
+        // Nothing written draws nothing at all on the card, rather than a
         // dash standing in for sections that were never a target.
-        pick("Nioh 3");
         expect(screen.queryByLabelText("Sections written")).toBeNull();
     });
 
@@ -682,7 +662,25 @@ describe("the Backlog's state column", () => {
             review("C", { status: "todo" }),
         ]);
 
-        expect(stat("Showing")).toBe("Showing2");
+        // One list now: the default view holds every unfinished item, started
+        // and queued alike, so Showing counts all three.
+        expect(stat("Showing")).toBe("Showing3");
+    });
+
+    // Status is a facet on the strip now, not a section boundary. Narrowing to
+    // Started must leave only the active item, and the readout must agree.
+    it("narrows to Started when the status facet asks for it", async () => {
+        await showFolder([
+            review("A", { status: "active" }),
+            review("B", { status: "todo" }),
+            review("C", { status: "todo" }),
+        ]);
+
+        fireEvent.change(screen.getByLabelText("Status"), { target: { value: "active" } });
+
+        expect(stat("Showing")).toBe("Showing1");
+        expect(screen.getByText("A")).toBeDefined();
+        expect(screen.queryByText("B")).toBeNull();
     });
 
     it("does not repeat the rail's per-Category counts", async () => {
@@ -712,33 +710,34 @@ describe("the Backlog's state column", () => {
         await waitFor(() => expect(column.getByText(/^error$/i)).toBeDefined());
     });
 
-    // The split by Category moved to the rail, which is where it is now also
-    // a control rather than only a figure.
     // The entrance is built against `[data-backlog-shelf] > li`. Wrapping the
-    // rows in a div once made that selector match nothing, so Not Started
-    // stopped animating in and nothing failed.
-    it("keeps the rows as direct children of the shelf, for the entrance", async () => {
-        await showFolder([review("A", { status: "todo" }), review("B", { status: "todo" })]);
+    // cards in a div once made that selector match nothing, so the list stopped
+    // animating in and nothing failed.
+    it("keeps the cards as direct children of the shelf, for the entrance", async () => {
+        await showFolder([review("A", { status: "todo" }), review("B", { status: "active" })]);
 
-        const shelf = screen.getByRole("list", { name: "Not Started" });
+        const shelf = screen.getByRole("list", { name: "Backlog" });
 
         expect(shelf.getAttribute("data-backlog-shelf")).not.toBeNull();
         expect([...shelf.children].every(child => child.tagName === "LI")).toBe(true);
         expect(shelf.querySelectorAll(":scope > li").length).toBe(2);
     });
 
-    it("splits Not Started by Category on the rail", async () => {
+    // The rail is gone; Category is a facet on the strip now, each option
+    // carrying the count choosing it would leave — including an empty one.
+    it("offers each Category on the strip, counted", async () => {
         await showFolder([
             review("A", { type: "game", status: "todo" }),
-            review("B", { type: "cinema", status: "todo" }),
+            review("B", { type: "cinema", status: "active" }),
         ]);
 
-        const rail = within(screen.getByRole("tablist", { name: "Category" }));
+        const options = within(screen.getByLabelText("Category")).getAllByRole("option");
+        const text = options.map(o => o.textContent);
 
-        expect(rail.getByRole("tab", { name: /games/i }).textContent).toContain("1");
-        expect(rail.getByRole("tab", { name: /cinema/i }).textContent).toContain("1");
-        // A Category with nothing in it keeps its slot, dimmed, saying zero.
-        expect(rail.getByRole("tab", { name: /books/i }).textContent).toContain("0");
+        expect(text).toContain("game (1)");
+        expect(text).toContain("cinema (1)");
+        // A Category with nothing in it still holds its slot, saying zero.
+        expect(text).toContain("book (0)");
     });
 });
 
@@ -749,11 +748,12 @@ describe("grooming, continued", () => {
             review("Started Thing", { status: "active" }),
         ]);
 
-        const started = within(screen.getByRole("list", { name: "Started" }));
-        const notStarted = within(screen.getByRole("list", { name: "Not Started" }));
+        // One list, so the distinction is per card rather than per section.
+        const queued = within(cardFor("Queued Thing"));
+        const started = within(cardFor("Started Thing"));
 
-        expect(notStarted.getByText("Start")).toBeDefined();
-        expect(notStarted.queryByText("Finish")).toBeNull();
+        expect(queued.getByText("Start")).toBeDefined();
+        expect(queued.queryByText("Finish")).toBeNull();
         expect(started.getByText("Finish")).toBeDefined();
         expect(started.queryByText("Start")).toBeNull();
     });
@@ -762,8 +762,6 @@ describe("grooming, continued", () => {
     // heavier fields aren't reachable here they aren't reachable anywhere.
     it("opens the full editor on a queued Review", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
-
-        pick("Nioh 3");
 
         fireEvent.click(screen.getByLabelText("Edit Nioh 3"));
 
@@ -789,6 +787,35 @@ describe("grooming, continued", () => {
     });
 });
 
+// §3: Started and Not Started are one list now, told apart by a glyph and
+// ordered started-first by default.
+describe("the unified list", () => {
+    const OLD_ID = "6955b900a1b2c3d4e5f60718";      // captured 2026-01-01
+    const RECENT_ID = "6a63fc80a1b2c3d4e5f60718";   // captured 2026-07-25
+
+    it("marks a started card with a glyph and leaves a queued one unmarked", async () => {
+        await showFolder([
+            review("Frieren", { status: "active" }),
+            review("Nioh 3", { status: "todo" }),
+        ]);
+
+        expect(within(cardFor("Frieren")).getByLabelText("Started")).toBeDefined();
+        expect(within(cardFor("Nioh 3")).queryByLabelText("Started")).toBeNull();
+    });
+
+    it("leads with what is started, even when a queued item has waited longer", async () => {
+        await showFolder([
+            review("Ancient Queue", { _id: OLD_ID, status: "todo" }),
+            review("Fresh Start", { _id: RECENT_ID, status: "active" }),
+        ]);
+
+        // Started first despite the queued item being older — the default sort.
+        const position = screen.getByText("Fresh Start")
+            .compareDocumentPosition(screen.getByText("Ancient Queue"));
+        expect(Boolean(position & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+    });
+});
+
 describe("the Reviews window, narrowed", () => {
     // Story 17: the place critiques are written is no longer the place the
     // queue lives.
@@ -799,25 +826,10 @@ describe("the Reviews window, narrowed", () => {
             review("Frieren", { status: "active" }),
         ]);
 
-        render(<ReviewsWindow onClose={() => {}} />);
+        render(<ReviewsWindow />);
 
         expect(await screen.findByText("Doom")).toBeDefined();
         expect(screen.queryByText("Nioh 3")).toBeNull();
         expect(screen.queryByText("Frieren")).toBeNull();
-    });
-
-    // Story 18: narrowing the list must not narrow the sense of the whole.
-    it("keeps counting the whole collection in its charts", async () => {
-        mocked.getReviews.mockResolvedValue([
-            review("Doom", { status: "done", date_completed: "2026-05-18" }),
-            review("Nioh 3", { status: "todo" }),
-            review("Frieren", { status: "active" }),
-        ]);
-
-        render(<ReviewsWindow onClose={() => {}} />);
-        await screen.findByText("Doom");
-
-        expect(screen.getByTestId("pie").textContent).toBe("3");
-        expect(screen.getByTestId("bar").textContent).toBe("3");
     });
 });

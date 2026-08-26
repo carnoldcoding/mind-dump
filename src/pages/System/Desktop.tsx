@@ -25,6 +25,15 @@ const FolderIcon = ({ selected }: { selected: boolean }) => (
     </svg>
 );
 
+// The three apps the OS runs. Order here is the order the folder icons and the
+// tab strip render in.
+type AppId = "backlog" | "reviews" | "body";
+const APPS: { id: AppId; label: string }[] = [
+    { id: "backlog", label: "Backlog" },
+    { id: "reviews", label: "Reviews" },
+    { id: "body", label: "Body" },
+];
+
 const Desktop = () => {
     // Desktop didn't wait for boot before this — unlike Search/Review it
     // could start its own enter animation while <main> was still hidden
@@ -32,15 +41,23 @@ const Desktop = () => {
     const revealed = useRevealSignal();
     const scope = useRef<HTMLDivElement>(null);
 
-    // The frame Wipes as stable chrome; everything inside then Cascades so that
-    // nothing arrives un-animated (ADR-0012). Desktop is static, so the Cascade
-    // is built once.
+    // The frame Wipes as stable chrome; the desktop chrome then Cascades so that
+    // nothing arrives un-animated (ADR-0012). An open app carries data-reveal-own,
+    // so this Cascade steps over it and the app runs its own entrance.
     useRevealTimeline(revealed, (tl) => {
         wipe(tl, '[data-panel-surface]');
     }, scope);
     const [time, setTime] = useState("");
     const [date, setDate] = useState("");
-    const [openApp, setOpenApp] = useState<string | null>(null);
+
+    // The OS runs apps as tabs, not as nested windows. `openTabs` is the set
+    // that is running (each is mounted and keeps its state while it is open);
+    // `activeTab` is the one on screen, or null for the desktop itself — the
+    // blank-slate folder view, reached by opening nothing or by clicking
+    // SYSTEM.OS while apps stay open behind it.
+    const [openTabs, setOpenTabs] = useState<AppId[]>([]);
+    const [activeTab, setActiveTab] = useState<AppId | null>(null);
+
     const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
     useRevealTimeline(revealed, (tl) => {
         if (panelRef.current) cascade(tl, panelRef.current, 0.15);
@@ -57,12 +74,26 @@ const Desktop = () => {
         return () => clearInterval(id);
     }, []);
 
-    const handleFolderClick = (app: string) => {
-        setOpenApp(prev => prev === app ? null : app);
+    // Opening an app runs it if it isn't already, and brings it to the front.
+    // One instance per app: a second open of something already running just
+    // focuses its tab.
+    const openApp = (id: AppId) => {
+        setOpenTabs(prev => (prev.includes(id) ? prev : [...prev, id]));
+        setActiveTab(id);
     };
 
-    // The screen. Title bar and taskbar are its fixed edges; the desktop
-    // between them is what scrolls, so a window inside never pushes the page.
+    // Closing the active tab hands focus to the neighbour that took its place
+    // (the one before it, or the last if it was the end); closing the last one
+    // drops to the desktop.
+    const closeTab = (id: AppId) => {
+        setOpenTabs(prev => {
+            const idx = prev.indexOf(id);
+            const next = prev.filter(t => t !== id);
+            setActiveTab(cur => (cur !== id ? cur : (next[Math.min(idx, next.length - 1)] ?? null)));
+            return next;
+        });
+    };
+
     return (
         <Panel
             wrapperRef={scope}
@@ -72,58 +103,84 @@ const Desktop = () => {
             frameRef={panelRef}
         >
 
-                {/* Title bar */}
-                <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                    <div className="flex items-center gap-3">
-                        <span data-window-title className="text-nier-text-dark text-body uppercase tracking-widest font-semibold">
-                            SYSTEM.OS
-                        </span>
-                        <span className="text-nier-text-dark/40 text-label uppercase tracking-widest hidden sm:block">
-                            // TERMINAL v.2B
-                        </span>
-                    </div>
+                {/* Topbar: SYSTEM.OS is the desktop/home button, then a tab for
+                    every running app. The old `// TERMINAL v.2B` legend gave way
+                    to the tab strip. */}
+                <div className="h-10 bg-nier-150 flex items-stretch flex-shrink-0 overflow-x-auto">
+                    <button
+                        onClick={() => setActiveTab(null)}
+                        className={`flex items-center px-5 flex-shrink-0 border-r border-nier-dark/15 cursor-pointer transition-colors ${
+                            activeTab === null ? "bg-nier-100 text-nier-text-dark" : "text-nier-text-dark/70 hover:bg-nier-150/60"
+                        }`}
+                    >
+                        <span data-window-title className="text-body uppercase tracking-widest font-semibold">SYSTEM.OS</span>
+                    </button>
+                    {openTabs.map(id => {
+                        const app = APPS.find(a => a.id === id)!;
+                        const active = activeTab === id;
+                        return (
+                            <div
+                                key={id}
+                                className={`flex items-center gap-2 pl-4 pr-2 flex-shrink-0 border-r border-nier-dark/15 transition-colors ${
+                                    active ? "bg-nier-100 text-nier-text-dark" : "text-nier-text-dark/60 hover:bg-nier-150/60"
+                                }`}
+                            >
+                                <button
+                                    onClick={() => setActiveTab(id)}
+                                    className="text-label uppercase tracking-widest cursor-pointer py-2"
+                                >
+                                    {app.label}
+                                </button>
+                                <button
+                                    onClick={() => closeTab(id)}
+                                    aria-label={`Close ${app.label}`}
+                                    className="text-label leading-none px-1 text-nier-text-dark/40 hover:text-nier-text-dark cursor-pointer"
+                                >✕</button>
+                            </div>
+                        );
+                    })}
                 </div>
 
-                {/* Desktop area */}
-                <div className="relative p-4 flex-1 overflow-y-auto min-h-0">
-                    {/* Icons — own stacking context, sit beneath any open window */}
-                    <div className="absolute top-4 left-4 flex gap-4 z-0">
-                        {(["backlog", "reviews", "body"] as const).map(app => (
+                {/* Content area: the desktop (folder icons) when no tab is
+                    active, otherwise the active app filling the region. Running
+                    apps stay mounted so their state survives a tab switch; only
+                    the active one is shown. */}
+                <div className="relative p-4 flex-1 min-h-0 flex flex-col overflow-hidden">
+                    {/* The blank slate — folders that launch apps. Always in the
+                        tree so it reveals with the desktop; hidden while an app
+                        is on screen. */}
+                    <div className={`absolute top-4 left-4 flex gap-4 z-0 ${activeTab === null ? "" : "hidden"}`}>
+                        {APPS.map(app => (
                             <button
-                                key={app}
-                                onClick={() => handleFolderClick(app)}
+                                key={app.id}
+                                onClick={() => openApp(app.id)}
                                 className="flex flex-col items-center gap-2 cursor-pointer group"
                             >
-                                <div className={`p-3 transition-colors ${openApp === app ? "bg-nier-dark/15" : "hover:bg-nier-150/20"}`}>
-                                    <FolderIcon selected={openApp === app} />
+                                <div className={`p-3 transition-colors ${openTabs.includes(app.id) ? "bg-nier-dark/15" : "hover:bg-nier-150/20"}`}>
+                                    <FolderIcon selected={openTabs.includes(app.id)} />
                                 </div>
                                 <span className={`text-label uppercase tracking-widest font-semibold px-1.5 py-0.5 transition-colors ${
-                                    openApp === app
+                                    openTabs.includes(app.id)
                                         ? "bg-nier-text-dark text-nier-100-lighter"
                                         : "text-nier-text-dark group-hover:bg-nier-150/40"
                                 }`}>
-                                    {app}
+                                    {app.id}
                                 </span>
                             </button>
                         ))}
                     </div>
 
-                    {/* Open window — higher stacking context, only mounted when needed */}
-                    {openApp === "backlog" && (
-                        <div className="relative z-10">
-                            <BacklogWindow onClose={() => setOpenApp(null)} />
+                    {openTabs.map(id => (
+                        <div
+                            key={id}
+                            data-reveal-own
+                            className={activeTab === id ? "flex-1 min-h-0 flex flex-col" : "hidden"}
+                        >
+                            {id === "backlog" && <BacklogWindow />}
+                            {id === "reviews" && <ReviewsWindow />}
+                            {id === "body" && <BodyWindow />}
                         </div>
-                    )}
-                    {openApp === "reviews" && (
-                        <div className="relative z-10">
-                            <ReviewsWindow onClose={() => setOpenApp(null)} />
-                        </div>
-                    )}
-                    {openApp === "body" && (
-                        <div className="relative z-10">
-                            <BodyWindow onClose={() => setOpenApp(null)} />
-                        </div>
-                    )}
+                    ))}
                 </div>
 
                 {/* Taskbar */}
