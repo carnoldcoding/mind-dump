@@ -11,15 +11,15 @@ import { partitionBodyDocs, describeEntry, docId } from "./entry";
 import type { BodyDoc, Entry } from "./entry";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { cascade, wipe } from "../../../../utils/motion";
-import { usePanelHeight } from "../../../../hooks/usePanelHeight";
 import { useRetained } from "../../../../hooks/useRetained";
 import { Panel } from "../../../../components/common/Panel";
 
 type ActiveTab = "chart" | "history";
 
-type Props = { onClose: () => void };
-
-const BodyWindow = ({ onClose }: Props) => {
+// Runs as a tab on the SYSTEM.OS desktop: the Desktop owns the frame chrome and
+// the close control, so this window carries no title bar of its own and fills
+// the content area it is given.
+const BodyWindow = () => {
     // No signal to wait on: this window only ever mounts well after boot is
     // done — the user has to open System, then click a folder icon — and
     // Desktop's conditional render gives it a fresh mount each time. The
@@ -33,7 +33,7 @@ const BodyWindow = ({ onClose }: Props) => {
     useRevealTimeline(true, (tl) => {
         wipe(tl, '[data-panel-surface]');
     }, scope);
-    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+    const panelRef = useRef<HTMLElement>(null);
 
     const [docs, setDocs]                         = useState<BodyDoc[]>([]);
     const [selectedName, setSelectedName]         = useState<string | null>(null);
@@ -135,18 +135,10 @@ const BodyWindow = ({ onClose }: Props) => {
         <>
             <Panel
                 wrapperRef={scope}
-                className="bg-nier-100 border border-nier-150"
-                style={maxHeight ? { maxHeight } : undefined}
+                wrapperClassName="h-full"
+                className="bg-nier-100 border border-nier-150 h-full"
                 frameRef={panelRef}
             >
-
-                    {/* Window title bar */}
-                    <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                        <h3 data-window-title className="text-nier-text-dark text-title uppercase tracking-wider">Body</h3>
-                        <button onClick={onClose} aria-label="Close" className="text-body px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none">
-                            ✕
-                        </button>
-                    </div>
 
                     <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 

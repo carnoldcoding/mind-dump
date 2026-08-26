@@ -6,20 +6,23 @@
 // Review reaches by being finished here.
 //
 // Laid out as a NieR menu screen rather than as two lists of titles, in the
-// same grammar as the Category shelf and the Review detail:
+// same grammar as the Category shelf and the Review detail. §3 collapsed the
+// old Started / Not Started split into one list: Status is a facet, a sort key
+// and a per-card glyph now, not a section boundary.
 //
 //   ┌ BACKLOG ──────────────────────────────────────────────┐
-//   │ [ capture ▸                                         ] │
-//   │ ▌ STARTED                    │ STATE                  │
-//   │ ▌ ┌───────────┐┌───────────┐ │ started        2       │
-//   │ ▌ │▩ SILENT   ││▩ FRIEREN  │ │ queued         1       │
-//   │ ▌ │  ✦♪  86d  ││  —   197d │ │ ─────────────────      │
-//   │ ▌ │ FINISH ✕  ││ FINISH ✕  │ │ game           2       │
-//   │ ▌ └───────────┘└───────────┘ │ □□□□□□□□□□□            │
-//   │ ▌ NOT STARTED                │      NO ERROR          │
+//   │ ＋ capture a title…      [game▾]      [ Capture ]      │
+//   │ search…  [status:all▾] [sort:status▾] [↑] [? Pick]    │
+//   │ ┌───────────┐┌───────────┐ │ STATE                    │
+//   │ │▩● SILENT  ││▩ FRIEREN  │ │ showing        3         │
+//   │ │  ✦♪  86d  ││  —   197d │ │ oldest       197d        │
+//   │ │FINISH EDIT││START EDIT │ │ □□□□□□□□□□□               │
+//   │ └───────────┘└───────────┘ │      NO ERROR            │
 //   ├───────────────────────────────────────────────────────┤
 //   │ ▌ Silent Hill — started, waiting 86 days              │
 //   └───────────────────────────────────────────────────────┘
+//
+// ● marks a started card, so it reads at a glance in the mixed list.
 //
 // A card says which Critique sections have been written and never how many of
 // four, because four is what a Category offers rather than a target it sets —
@@ -40,20 +43,12 @@ import { daysWaiting } from "../../../../utils/capturedAt";
 import { writtenSections, SECTION_GLYPH } from "../../../../utils/critique";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { cascade, domino, wipe } from "../../../../utils/motion";
-import { usePanelHeight } from "../../../../hooks/usePanelHeight";
 import { Panel } from "../../../../components/common/Panel";
 import { ReviewCover } from "../../../../components/review/ReviewCover";
 import { ReviewModal } from "../ReviewPanel/ReviewModal";
 import { Capture } from "./Capture";
-import { CategoryRail } from "./CategoryRail";
 import { UnstartedBar } from "./UnstartedBar";
-import { UnstartedRow } from "./UnstartedRow";
-import { UnstartedDetail } from "./UnstartedDetail";
-import { applyControls, byLongestWaiting, NO_CONTROLS, facetsFor, unstartedReadouts, type UnstartedControls, type UnstartedReadouts } from "./unstarted";
-
-type Props = {
-    onClose: () => void;
-};
+import { applyControls, NO_CONTROLS, facetsFor, unstartedReadouts, type UnstartedControls, type UnstartedReadouts } from "./unstarted";
 
 const TYPE_ICON: Record<string, string> = {
     game: 'game-controller-sharp',
@@ -85,15 +80,17 @@ const releaseYear = (review: Review): string | undefined =>
  */
 const Written = ({ review }: { review: Review }) => {
     const written = writtenSections(review);
+    // Nothing written draws nothing at all, rather than a dash standing in for
+    // sections that were never a target — a dash makes the same claim a
+    // fraction would (CONTEXT.md on Critique).
+    if (written.length === 0) return null;
     return (
         <span
             aria-label="Sections written"
-            title={written.length ? written.join(', ') : 'No sections written'}
+            title={written.join(', ')}
             className="text-nier-text-dark/70 tracking-widest text-label"
         >
-            {written.length
-                ? written.map(section => SECTION_GLYPH[section] ?? '▪').join('')
-                : '—'}
+            {written.map(section => SECTION_GLYPH[section] ?? '▪').join('')}
         </span>
     );
 };
@@ -107,14 +104,18 @@ const Card = ({ review, selected, onSetStatus, onRemove, onEdit, onSelect }: Car
     const waiting = daysWaiting(review._id);
     const year = releaseYear(review);
 
+    const started = review.status === 'active';
+
     return (
         <li
+            id={`backlog-card-${review.type}-${review.slug}`}
+            data-backlog-card
             onMouseEnter={() => { onSelect(review); }}
             onMouseLeave={() => setConfirming(false)}
             onFocus={() => onSelect(review)}
             className={`relative flex flex-col transition-colors duration-150 ${
                 selected ? 'bg-nier-100-lighter' : 'bg-nier-150/25'
-            }`}
+            } ${started ? 'border-l-2 border-nier-dark' : ''}`}
         >
             <div className="flex gap-3 p-2.5">
                 <div className="h-20 w-14 flex-shrink-0 overflow-hidden bg-nier-150/40">
@@ -122,8 +123,17 @@ const Card = ({ review, selected, onSetStatus, onRemove, onEdit, onSelect }: Car
                 </div>
 
                 <div className="flex flex-col min-w-0 flex-1 gap-1">
-                    <h4 className="text-body uppercase tracking-wide text-nier-text-dark truncate">
-                        {review.title}
+                    <h4 className="flex items-center gap-1.5 text-body uppercase tracking-wide text-nier-text-dark min-w-0">
+                        {/* The glyph that makes a started item legible at a
+                            glance in a mixed list (spec §3a). */}
+                        {started && (
+                            <span
+                                aria-label="Started"
+                                title="Started"
+                                className="flex-shrink-0 text-nier-dark leading-none"
+                            >●</span>
+                        )}
+                        <span className="truncate">{review.title}</span>
                     </h4>
 
                     <p className="flex items-center gap-1.5 text-eyebrow uppercase tracking-wide text-nier-text-dark/50">
@@ -214,38 +224,46 @@ const Card = ({ review, selected, onSetStatus, onRemove, onEdit, onSelect }: Car
     );
 };
 
-type SectionProps = CardActions & {
-    label: string;
+type BacklogListProps = CardActions & {
     items: Review[];
     selected: Review | undefined;
+    /** True once the collection has arrived, to tell empty-of-all from
+     *  empty-because-filtered. */
+    hasUnfinished: boolean;
 };
 
-const Section = ({ label, items, selected, ...actions }: SectionProps) => (
-    <section>
-        <h3 className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1">
-            {label}
-        </h3>
-        {items.length === 0
-            ? <p className="text-body text-nier-text-dark/40 px-2 py-3">Nothing here.</p>
-            : (
-                <ul
-                    aria-label={label}
-                    data-backlog-shelf
-                    data-reveal-own
-                    className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2"
-                >
-                    {items.map(review => (
-                        <Card
-                            key={`${review.type}-${review.slug}`}
-                            review={review}
-                            selected={selected !== undefined && keyOf(selected) === keyOf(review)}
-                            {...actions}
-                        />
-                    ))}
-                </ul>
-            )}
-    </section>
-);
+/**
+ * The one list §3 collapses Started and Not Started into. Status is a facet,
+ * a sort key and a per-card glyph now, not a section boundary — so a started
+ * item and a queued one sit in the same grid, ordered by the controls.
+ */
+const BacklogList = ({ items, selected, hasUnfinished, ...actions }: BacklogListProps) => {
+    if (items.length === 0) {
+        return (
+            <p className="text-body text-nier-text-dark/40 px-2 py-6">
+                {hasUnfinished ? 'Nothing matches those controls.' : 'Nothing on the backlog.'}
+            </p>
+        );
+    }
+
+    return (
+        <ul
+            aria-label="Backlog"
+            data-backlog-shelf
+            data-reveal-own
+            className="grid grid-cols-1 md:grid-cols-2 gap-2"
+        >
+            {items.map(review => (
+                <Card
+                    key={`${review.type}-${review.slug}`}
+                    review={review}
+                    selected={selected !== undefined && keyOf(selected) === keyOf(review)}
+                    {...actions}
+                />
+            ))}
+        </ul>
+    );
+};
 
 /** One `label ......... value` line of the state readout. */
 const Readout = ({ label, value }: { label: string; value: React.ReactNode }) => (
@@ -335,7 +353,7 @@ const captionFor = (review: Review | undefined, error: string | null, waitingOn:
         : `${review.title} — ${state}`;
 };
 
-const BacklogWindow = ({ onClose }: Props) => {
+const BacklogWindow = () => {
     const { reviews } = useReviews();
     // No signal to wait on: this window mounts well after boot, from a folder
     // icon on the Desktop. No decoded title and no card grid either, so its
@@ -354,7 +372,7 @@ const BacklogWindow = ({ onClose }: Props) => {
     useRevealTimeline(reviews.length > 0, (tl) => {
         domino(tl, '[data-backlog-shelf] > li');
     }, shelvesScope, [reviews.length > 0]);
-    const { ref: panelRef, maxHeight } = usePanelHeight<HTMLElement>();
+    const panelRef = useRef<HTMLElement>(null);
 
     // The frame Wipes as stable chrome; the window then Cascades so nothing else
     // arrives un-animated (ADR-0012). Keyed on the collection size so the chrome
@@ -376,34 +394,19 @@ const BacklogWindow = ({ onClose }: Props) => {
         [reviews],
     );
 
-    const started = useMemo(
-        () => unfinished.filter(r => r.status === 'active').sort(byLongestWaiting),
-        [unfinished],
-    );
-    // ── Not Started ──────────────────────────────────────────────────
-    // Started is not run through
-    // them: it holds two or three things and is the answer to "what
-    // am I on", which no filter should be able to hide.
+    // One list now, not two. Started and queued items sit in the same grid;
+    // the controls decide what shows and in what order, with the default
+    // (started first, then longest-waiting) keeping "what am I on" at the top
+    // without a pinned section (spec §3a).
     const [controls, setControls] = useState<UnstartedControls>(NO_CONTROLS);
-    const [pickedKey, setPickedKey] = useState<string | null>(null);
     const searchRef = useRef<HTMLInputElement>(null);
 
-    const todo = useMemo(() => unfinished.filter(r => r.status === 'todo'), [unfinished]);
-    const unstarted = useMemo(() => applyControls(todo, controls), [todo, controls]);
-    const facets = useMemo(() => facetsFor(todo, controls), [todo, controls]);
+    const listed = useMemo(() => applyControls(unfinished, controls), [unfinished, controls]);
+    const facets = useMemo(() => facetsFor(unfinished, controls), [unfinished, controls]);
     const readouts = useMemo(
-        () => unstartedReadouts(todo, unfinished, controls),
-        [todo, unfinished, controls],
+        () => unstartedReadouts(unfinished, unfinished, controls),
+        [unfinished, controls],
     );
-
-    const picked = unstarted.find(review => keyOf(review) === pickedKey);
-
-    // A pick that the controls have filtered out is no longer on screen, so
-    // holding it would leave the detail panel describing something the list
-    // does not contain.
-    useEffect(() => {
-        if (pickedKey && !picked) setPickedKey(null);
-    }, [pickedKey, picked]);
 
     const changeControls = (next: Partial<UnstartedControls>) => setControls(prev => ({ ...prev, ...next }));
 
@@ -417,44 +420,44 @@ const BacklogWindow = ({ onClose }: Props) => {
         searchRef.current?.focus();
     }, []);
 
-    /** Move the pick through what is showing, and keep it in view. */
-    const movePick = (delta: number) => {
-        if (unstarted.length === 0) return;
-        const at = unstarted.findIndex(review => keyOf(review) === pickedKey);
+    /** Move the highlight through what is showing, and keep it in view. */
+    const moveCursor = (delta: number) => {
+        if (listed.length === 0) return;
+        const at = listed.findIndex(review => keyOf(review) === selectedKey);
         const next = at === -1
-            ? unstarted[delta > 0 ? 0 : unstarted.length - 1]
-            : unstarted[Math.min(Math.max(at + delta, 0), unstarted.length - 1)];
-        setPickedKey(keyOf(next));
-        document.getElementById(`unstarted-row-${keyOf(next)}`)?.scrollIntoView({ block: 'nearest' });
+            ? listed[delta > 0 ? 0 : listed.length - 1]
+            : listed[Math.min(Math.max(at + delta, 0), listed.length - 1)];
+        setSelectedKey(keyOf(next));
+        document.getElementById(`backlog-card-${keyOf(next)}`)?.scrollIntoView({ block: 'nearest' });
     };
 
     const onListKey = (event: React.KeyboardEvent) => {
-        if (event.key === 'ArrowDown') { event.preventDefault(); movePick(1); }
-        else if (event.key === 'ArrowUp') { event.preventDefault(); movePick(-1); }
+        if (event.key === 'ArrowDown') { event.preventDefault(); moveCursor(1); }
+        else if (event.key === 'ArrowUp') { event.preventDefault(); moveCursor(-1); }
         else if (event.key === 'Escape' && controls.query) { event.preventDefault(); changeControls({ query: '' }); }
-        // Moving the pick already opens the detail, so Enter's job is to put
-        // focus in it — otherwise its Start, Edit and Remove are reachable
-        // only with a pointer.
-        else if (event.key === 'Enter' && pickedKey) {
+        // The card carries its own Start/Edit/Remove, so Enter's job is only to
+        // move focus onto the highlighted card — from there Tab reaches those
+        // actions without a pointer.
+        else if (event.key === 'Enter' && selectedKey) {
             event.preventDefault();
-            document.getElementById('unstarted-detail')?.focus();
+            document.getElementById(`backlog-card-${selectedKey}`)?.querySelector('button')?.focus();
         }
     };
 
     // Picks from what is showing rather than from the whole list, so a filter
     // is a way of narrowing what you are willing to be given.
     const pickAtRandom = () => {
-        if (unstarted.length === 0) return;
-        const chosen = unstarted[Math.floor(Math.random() * unstarted.length)];
-        setPickedKey(keyOf(chosen));
-        document.getElementById(`unstarted-row-${keyOf(chosen)}`)?.scrollIntoView({ block: 'center' });
+        if (listed.length === 0) return;
+        const chosen = listed[Math.floor(Math.random() * listed.length)];
+        setSelectedKey(keyOf(chosen));
+        document.getElementById(`backlog-card-${keyOf(chosen)}`)?.scrollIntoView({ block: 'center' });
     };
 
-    const listed = useMemo(() => [...started, ...unstarted], [started, unstarted]);
     // No fallback to the first card. Selection here means "what the pointer is
-    // on", and defaulting drew one card highlighted and described it in the
-    // caption before anything had been touched — which on a phone, where
-    // there is no pointer to move, is the only thing it would ever say.
+    // on" (or the keyboard cursor), and defaulting drew one card highlighted
+    // and described it in the caption before anything had been touched — which
+    // on a phone, where there is no pointer to move, is the only thing it would
+    // ever say.
     const selected = listed.find(review => keyOf(review) === selectedKey);
 
     const openEdit = (review: Review) => {
@@ -498,22 +501,29 @@ const BacklogWindow = ({ onClose }: Props) => {
         <>
         <Panel
             wrapperRef={scope}
-            className="bg-nier-100 border border-nier-150"
-            style={maxHeight ? { maxHeight } : undefined}
+            wrapperClassName="h-full"
+            className="bg-nier-100 border border-nier-150 h-full"
             frameRef={panelRef}
         >
-                <div className="h-10 bg-nier-150 flex items-center justify-between px-5 flex-shrink-0">
-                    <h3 data-window-title className="text-nier-text-dark text-title uppercase tracking-wider">Backlog</h3>
-                    <button
-                        onClick={onClose}
-                        aria-label="Close backlog"
-                        className="text-body px-3 py-1 border border-nier-dark rounded-sm cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter leading-none"
-                    >✕</button>
-                </div>
-
                 <div ref={shelvesScope} className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
-                    <Capture reviews={reviews} />
+                    {/* The control strip. Capture leads it as the one control
+                        that adds; search, status, sort and the facets narrow
+                        the one list below (spec §3b). */}
+                    <div className="flex flex-col gap-2">
+                        <Capture reviews={reviews} />
+                        <UnstartedBar
+                            controls={controls}
+                            categories={facets.categories}
+                            statuses={facets.statuses}
+                            genres={facets.genres}
+                            creators={facets.creators}
+                            onChange={changeControls}
+                            onRandom={pickAtRandom}
+                            searchRef={searchRef}
+                            onListKey={onListKey}
+                        />
+                    </div>
 
                     {/* The handoff. Finishing something here is where it stops
                         being the Backlog's and becomes the Reviews window's —
@@ -528,83 +538,20 @@ const BacklogWindow = ({ onClose }: Props) => {
                     {error && <p className="text-body text-red-700 px-1">{error}</p>}
 
                     <div className="relative flex gap-4 min-h-0">
-                        <div className="flex-1 min-w-0 flex flex-col gap-4">
-                            {/* Pinned. It answers "what am I on", holds two or
-                                three things, and no control may hide it. */}
-                            <Section label="Started" items={started} selected={selected} {...actions} />
-
-                            <section className="flex flex-col gap-2 min-h-0">
-                                <h3 className="bg-nier-dark text-nier-text-light text-eyebrow uppercase tracking-widest px-2 py-1 flex items-baseline justify-between">
-                                    <span>Not Started</span>
-                                    <span className="text-nier-text-light/60">{readouts.showing}</span>
-                                </h3>
-
-                                <UnstartedBar
-                                    controls={controls}
-                                    genres={facets.genres}
-                                    creators={facets.creators}
-                                    onChange={changeControls}
-                                    onRandom={pickAtRandom}
-                                    searchRef={searchRef}
-                                    onListKey={onListKey}
-                                />
-
-                                <div className="flex gap-2 min-h-0">
-                                    <CategoryRail
-                                        categories={facets.categories}
-                                        active={controls.category}
-                                        onSelect={category => changeControls({ category })}
-                                    />
-
-                                    {unstarted.length === 0 ? (
-                                        <p className="text-body text-nier-text-dark/40 px-2 py-3 flex-1">
-                                            {todo.length === 0 ? 'Nothing here.' : 'Nothing matches those controls.'}
-                                        </p>
-                                    ) : (
-                                        <ul
-                                            aria-label="Not Started"
-                                            data-backlog-shelf
-                                            data-reveal-own
-                                            // No key handler here: nothing in
-                                            // the list is focusable, so one
-                                            // would never fire. The search
-                                            // field drives the pick.
-                                            className="flex-1 min-w-0 flex flex-col divide-y divide-nier-150/30 border border-nier-150 overflow-y-auto max-h-96"
-                                        >
-                                            {unstarted.map(review => (
-                                                <UnstartedRow
-                                                    key={keyOf(review)}
-                                                    review={review}
-                                                    picked={keyOf(review) === pickedKey}
-                                                    onHover={r => setSelectedKey(r ? keyOf(r) : null)}
-                                                    onPick={r => setPickedKey(keyOf(r))}
-                                                    onStart={r => setStatus(r, 'active')}
-                                                />
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            </section>
+                        <div className="flex-1 min-w-0">
+                            <BacklogList
+                                items={listed}
+                                selected={selected}
+                                hasUnfinished={unfinished.length > 0}
+                                {...actions}
+                            />
                         </div>
 
-                        {/* One column, two jobs. The Readouts describe the
-                            queue being scanned; the detail describes the one
-                            thing stopped on. They are never both wanted. */}
-                        <div className={picked
-                            ? 'absolute inset-0 z-10 bg-nier-100-lighter md:static md:z-auto md:w-44 md:flex-shrink-0 md:bg-nier-100-lighter/40'
-                            : 'hidden md:block w-44 flex-shrink-0 bg-nier-100-lighter/40'
-                        }>
-                            {picked ? (
-                                <UnstartedDetail
-                                    review={picked}
-                                    onClose={() => setPickedKey(null)}
-                                    onStart={r => setStatus(r, 'active')}
-                                    onEdit={openEdit}
-                                    onRemove={remove}
-                                />
-                            ) : (
-                                <State readouts={readouts} error={error !== null} />
-                            )}
+                        {/* The state readout, describing the whole list as the
+                            controls have narrowed it. Desktop-only; the caption
+                            bar carries the fault for a phone. */}
+                        <div className="hidden md:block w-44 flex-shrink-0 bg-nier-100-lighter/40">
+                            <State readouts={readouts} error={error !== null} />
                         </div>
                     </div>
                 </div>
