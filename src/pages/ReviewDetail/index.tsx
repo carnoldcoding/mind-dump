@@ -361,7 +361,7 @@ const ReviewDetail = () => {
                             <span className="w-full flex-[5] bg-nier-150/50" />
                         </div>
 
-                        <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+                        <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0 min-w-0">
 
                         {/* Cover, and directly under it the two facts that are
                             about the cover — which is the arrangement the map
@@ -382,7 +382,7 @@ const ReviewDetail = () => {
                         </div>
 
                         {/* Right column */}
-                        <div className="flex-1 flex flex-col gap-3 min-h-0">
+                        <div className="flex-1 flex flex-col gap-3 min-h-0 min-w-0">
 
                             {/* Genres */}
                             <div className="flex flex-wrap gap-1.5 flex-shrink-0">
@@ -402,7 +402,7 @@ const ReviewDetail = () => {
 
                             {/* Analysis tabs */}
                             {(reviewEntries.length > 0 || mods.length > 0) && (
-                                <div className="flex flex-col flex-1 min-h-0">
+                                <div className="flex flex-col flex-1 min-h-0 min-w-0">
 
                                     {/* The menu bar. The rule sits at the
                                         height of an unselected tab and runs
@@ -439,7 +439,7 @@ const ReviewDetail = () => {
                                         version of that count here: it says how
                                         much of the critique you have seen,
                                         which nothing else on the page does. */}
-                                    <div ref={critiqueScope} data-reveal-own className="relative flex-1 min-h-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
+                                    <div ref={critiqueScope} data-reveal-own className="relative flex-1 min-h-0 min-w-0 flex flex-col border border-nier-150 bg-nier-100-lighter">
                                         <div data-critique-heading className="h-7 bg-nier-150 flex items-center justify-between px-3 flex-shrink-0">
                                             <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark">
                                                 {activeTab === 'mods'
@@ -475,22 +475,31 @@ const ReviewDetail = () => {
                                                 ))}
                                             </ul>
                                         ) : (
-                                            <div className="flex-1 overflow-y-auto p-3 min-h-0 flex flex-col gap-3">
-                                                <p data-critique-prose className="text-body leading-relaxed whitespace-pre-wrap">{activeContent}</p>
-                                                {activeTab === 'sound' && tracks.length > 0 && (
-                                                    <ul className="flex flex-col border-t border-nier-150 pt-2">
-                                                        {tracks.map((track, i) => (
-                                                            <AudioPlayer
-                                                                key={track._id}
-                                                                src={track.url}
-                                                                title={track.title}
-                                                                index={i}
-                                                            />
-                                                        ))}
-                                                    </ul>
-                                                )}
+                                            <div className="flex-1 min-h-0 min-w-0 flex flex-col">
+                                                {/* Prose scrolls on its own; the
+                                                    screenshot strip is pinned below
+                                                    as a non-shrinking row so a full
+                                                    row of thumbnails is always in
+                                                    view rather than half-clipped by
+                                                    the box edge when the critique
+                                                    runs long. */}
+                                                <div className="flex-1 overflow-y-auto p-3 min-h-0 min-w-0 flex flex-col gap-3">
+                                                    <p data-critique-prose className="text-body leading-relaxed whitespace-pre-wrap">{activeContent}</p>
+                                                    {activeTab === 'sound' && tracks.length > 0 && (
+                                                        <ul className="flex flex-col border-t border-nier-150 pt-2">
+                                                            {tracks.map((track, i) => (
+                                                                <AudioPlayer
+                                                                    key={track._id}
+                                                                    src={track.url}
+                                                                    title={track.title}
+                                                                    index={i}
+                                                                />
+                                                            ))}
+                                                        </ul>
+                                                    )}
+                                                </div>
                                                 {activeTab === 'graphics' && screenshots.length > 0 && (
-                                                    <div className="border-t border-nier-150 pt-2 flex gap-2 overflow-x-auto pb-1">
+                                                    <div className="flex-shrink-0 min-w-0 mx-3 mb-3 border-t border-nier-150 pt-2 flex gap-2 overflow-x-auto pb-1">
                                                         {screenshots.map(img => (
                                                             <button
                                                                 key={img._id}
