@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import ReviewsWindow from "./components/ReviewsWindow";
 import BodyWindow from "./components/Body";
 import BacklogWindow from "./components/Backlog";
+import MindWindow from "./components/Mind";
 import { useRevealSignal } from "../../hooks/useRevealSignal";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
 import { cascade, wipe } from "../../utils/motion";
@@ -27,11 +28,12 @@ const FolderIcon = ({ selected }: { selected: boolean }) => (
 
 // The three apps the OS runs. Order here is the order the folder icons and the
 // tab strip render in.
-type AppId = "backlog" | "reviews" | "body";
+type AppId = "backlog" | "reviews" | "body" | "mind";
 const APPS: { id: AppId; label: string }[] = [
     { id: "backlog", label: "Backlog" },
     { id: "reviews", label: "Reviews" },
     { id: "body", label: "Body" },
+    { id: "mind", label: "Mind" },
 ];
 
 const Desktop = () => {
@@ -179,6 +181,7 @@ const Desktop = () => {
                             {id === "backlog" && <BacklogWindow />}
                             {id === "reviews" && <ReviewsWindow />}
                             {id === "body" && <BodyWindow />}
+                            {id === "mind" && <MindWindow />}
                         </div>
                     ))}
                 </div>

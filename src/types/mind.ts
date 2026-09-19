@@ -1,0 +1,76 @@
+// Types for the "mind" learning feature (spec §3, §4). Loose like the rest of
+// this app's types — these name the fields the surfaces rely on and let the
+// backend's shape through, rather than claiming an accuracy src/types can't.
+
+/** One learning concept — the unified node. Progress + prose + edges. */
+export type MindQuest = {
+    _id: string; // "<domain>/<discipline>/<slug>"
+    slug: string;
+    domain: string;
+    discipline: string;
+    title: string;
+    streak: number;
+    mastered: boolean;
+    masteredAt?: string | null;
+    recallTier: number; // -1 until mastered, then 0..4
+    nextRecallDue?: string | null;
+    prestiged: boolean;
+    lore?: string | null;
+    links: string[]; // edges → other quest slugs
+    [key: string]: unknown;
+};
+
+export type MindDiscipline = {
+    _id: string; // "<domain>/<discipline>"
+    domain: string;
+    slug: string;
+    title: string;
+    logos: number;
+    questsSinceBoss: number;
+    bloodstain?: { amount: number } | null;
+    [key: string]: unknown;
+};
+
+/** One immutable fact in the event log (spec §4.2). */
+export type MindEvent = {
+    _id?: string;
+    t: string;
+    sessionId?: string | null;
+    op: string; // answer | mastered | recall | prestige | boss | startQuest | loreEdit | linkEdit | sessionStart | sessionEnd
+    domain?: string;
+    discipline?: string;
+    quest?: string;
+    correct?: boolean;
+    won?: boolean;
+    logosDelta?: number;
+    bloodstainRecovered?: number;
+    tierBefore?: number;
+    tierAfter?: number;
+    meta?: Record<string, unknown>;
+    [key: string]: unknown;
+};
+
+export type MindSession = {
+    _id: string;
+    startedAt: string;
+    endedAt?: string | null;
+    questsTouched: string[];
+    transcript: { role: "user" | "assistant" | "system"; content: string; t: string }[];
+    summary?: string | null;
+    [key: string]: unknown;
+};
+
+/** The authoritative view the backend returns after applying an action. */
+export type MindActionResult = {
+    op?: string;
+    outcome?: Record<string, unknown>;
+    result?: Record<string, unknown>;
+    quest?: Partial<MindQuest> | null;
+    discipline?: Partial<MindDiscipline> | null;
+};
+
+/** One teaching turn's response (spec §6): Claude's prose + applied results. */
+export type MindTurn = {
+    say: string;
+    results: MindActionResult[];
+};
