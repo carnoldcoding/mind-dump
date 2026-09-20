@@ -75,9 +75,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     init: async () => {
         if (get().status !== "idle") return;
         set({ status: "loading" });
+
+        // Try to resume a stored session. A stale/ended/missing id (e.g. after a
+        // collection rename dropped old sessions) must fall through to a fresh
+        // session, never error the whole init — so resume gets its own try/catch.
         const stored = readStoredId();
-        try {
-            if (stored) {
+        if (stored) {
+            try {
                 const s = await backend.getMindSession(stored);
                 if (s && !s.endedAt) {
                     // Resume: past turns render as prose (interactive cards were
@@ -90,7 +94,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
                     set({ sessionId: s._id, turns, status: "ready" });
                     return;
                 }
+            } catch {
+                storeId(null); // drop the dead id, then create a fresh session below
             }
+        }
+
+        try {
             const s = await backend.createMindSession();
             storeId(s._id);
             set({ sessionId: s._id, turns: [], status: "ready" });
