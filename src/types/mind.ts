@@ -67,10 +67,20 @@ export type MindActionResult = {
     result?: Record<string, unknown>;
     quest?: Partial<MindQuest> | null;
     discipline?: Partial<MindDiscipline> | null;
+    /** The event(s) appended by this action — carries `correct` for answer/recall. */
+    events?: MindEvent[];
 };
 
-/** One teaching turn's response (spec §6): Claude's prose + applied results. */
+/** A multiple-choice diagnostic, rendered as clickable cards (spec §17). */
+export type MindQuestion = {
+    stem: string;
+    options: { id: string; text: string }[];
+};
+
+/** One teaching turn's response (spec §6, §17): prose, an optional MC question,
+ *  and the authoritative results of any applied actions. */
 export type MindTurn = {
     say: string;
+    question?: MindQuestion | null;
     results: MindActionResult[];
 };

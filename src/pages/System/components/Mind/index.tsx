@@ -4,15 +4,14 @@ import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { cascade, wipe } from "../../../../utils/motion";
 import { Panel } from "../../../../components/common/Panel";
 import type { MindQuest } from "../../../../types/mind";
+import TeachView from "./Teach";
 
 // Runs as a tab on the SYSTEM.OS desktop (spec §10): the Desktop owns the frame
 // chrome and the close control, so this window carries no title bar of its own.
 //
-// SCAFFOLD: the four views below are real surfaces in the app's chrome, wired to
-// live data where it's cheap, but the RICH visuals — the two-lens graph/tree
-// map, the streaming teaching chat with animated result cards, and the pattern
-// charts — are the design pass to do together (spec §8–§10, design directive).
-// They are marked as placeholders, not faked.
+// Teach is built (spec §17). Map/Patterns/Sessions are real surfaces in the
+// app's chrome wired to live data, with their rich visuals (two-lens map, the
+// pattern charts, session transcripts) the next design-pass steps.
 
 type View = "teach" | "map" | "patterns" | "sessions";
 const VIEWS: { id: View; label: string }[] = [
@@ -44,7 +43,6 @@ const MindWindow = () => {
     useRevealTimeline(true, (tl) => { if (panelRef.current) cascade(tl, panelRef.current, 0.15); }, scope, [view]);
 
     const mastered = quests.filter((q) => q.mastered).length;
-    const due = quests.filter((q) => q.mastered && !q.prestiged && q.nextRecallDue && new Date(q.nextRecallDue) <= new Date());
 
     return (
         <Panel
@@ -71,37 +69,23 @@ const MindWindow = () => {
                     ))}
                 </div>
 
-                <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
-                    {error && <p className="text-label text-nier-text-dark/70">Couldn't reach the learning API.</p>}
-                    {loading && <p className="text-label text-nier-text-dark/70">Loading…</p>}
-
-                    {!loading && !error && view === "teach" && <TeachView due={due} />}
-                    {!loading && !error && view === "map" && <MapView quests={quests} disciplines={disciplines} mastered={mastered} />}
-                    {!loading && !error && view === "patterns" && <PatternsView />}
-                    {!loading && !error && view === "sessions" && <SessionsView />}
-                </div>
+                {/* Teach owns its own height + internal scroll; the other views
+                    share a scrolling padded region. */}
+                {view === "teach" ? (
+                    <div className="p-4 flex-1 min-h-0"><TeachView /></div>
+                ) : (
+                    <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
+                        {error && <p className="text-label text-nier-text-dark/70">Couldn't reach the learning API.</p>}
+                        {loading && <p className="text-label text-nier-text-dark/70">Loading…</p>}
+                        {!loading && !error && view === "map" && <MapView quests={quests} disciplines={disciplines} mastered={mastered} />}
+                        {!loading && !error && view === "patterns" && <PatternsView />}
+                        {!loading && !error && view === "sessions" && <SessionsView />}
+                    </div>
+                )}
             </div>
         </Panel>
     );
 };
-
-const TeachView = ({ due }: { due: MindQuest[] }) => (
-    <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-1">
-            <Eyebrow>Recalls due</Eyebrow>
-            <p className="text-heading text-nier-text-dark">{due.length}</p>
-            {due.length > 0 && (
-                <ul className="text-label text-nier-text-dark/70 list-none flex flex-col gap-0.5">
-                    {due.map((q) => <li key={q._id}>➤ {q.title}</li>)}
-                </ul>
-            )}
-        </div>
-        <Placeholder
-            title="Teaching conversation"
-            note="The streaming chat with Claude, its 'computing' acks and animated authoritative result cards, lands here — design pass together (spec §2, §6, design directive)."
-        />
-    </div>
-);
 
 const MapView = ({ quests, disciplines, mastered }: { quests: MindQuest[]; disciplines: { _id: string; slug: string; domain: string; logos: number }[]; mastered: number }) => {
     // A plain grouped list stands in for the two-lens map for now: it proves the
