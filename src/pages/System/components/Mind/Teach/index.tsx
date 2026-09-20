@@ -64,7 +64,7 @@ const TeachView = () => {
                         </div>
                     )}
 
-                    <Conversation turns={turns} onAnswer={submit} />
+                    <Conversation turns={turns} busy={busy} onAnswer={submit} />
 
                     {busy && <p className="text-label uppercase tracking-widest text-nier-text-dark/50 mt-3">computing…</p>}
                     {awaitingContinue && (

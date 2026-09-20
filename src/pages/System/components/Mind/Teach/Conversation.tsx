@@ -70,7 +70,8 @@ const UserTurn = ({ text }: { text: string }) => {
     );
 };
 
-const AssistantTurn = ({ turn, active, onAnswer }: { turn: Extract<Turn, { role: "assistant" }>; active: boolean; onAnswer: (t: string) => void }) => {
+const AssistantTurn = ({ turn, active, busy, onAnswer }: { turn: Extract<Turn, { role: "assistant" }>; active: boolean; busy: boolean; onAnswer: (t: string) => void }) => {
+    const clickable = active && !busy;
     const scope = useRef<HTMLDivElement>(null);
     const results = (turn.results || []).map(readResult).filter(Boolean) as { line: string; milestone: Milestone }[];
     const milestone = results.map(r => r.milestone).find(Boolean) || null;
@@ -92,10 +93,10 @@ const AssistantTurn = ({ turn, active, onAnswer }: { turn: Extract<Turn, { role:
                     {turn.question.options.map(opt => (
                         <button
                             key={opt.id}
-                            disabled={!active}
+                            disabled={!clickable}
                             onClick={() => onAnswer(`${opt.id}. ${opt.text}`)}
                             className={`text-left px-3 py-2 text-label border transition-colors ${
-                                active
+                                clickable
                                     ? "border-nier-150 text-nier-text-dark hover:bg-nier-dark hover:text-nier-text-light cursor-pointer"
                                     : "border-nier-150/50 text-nier-text-dark/40 cursor-default"
                             }`}
@@ -131,14 +132,14 @@ const AssistantTurn = ({ turn, active, onAnswer }: { turn: Extract<Turn, { role:
     );
 };
 
-const Conversation = ({ turns, onAnswer }: { turns: Turn[]; onAnswer: (t: string) => void }) => {
+const Conversation = ({ turns, busy, onAnswer }: { turns: Turn[]; busy: boolean; onAnswer: (t: string) => void }) => {
     const lastAssistantId = [...turns].reverse().find(t => t.role === "assistant")?.id;
     return (
         <div className="flex flex-col gap-4">
             {turns.map(t =>
                 t.role === "user"
                     ? <UserTurn key={t.id} text={t.text} />
-                    : <AssistantTurn key={t.id} turn={t} active={t.id === lastAssistantId} onAnswer={onAnswer} />
+                    : <AssistantTurn key={t.id} turn={t} active={t.id === lastAssistantId} busy={busy} onAnswer={onAnswer} />
             )}
         </div>
     );

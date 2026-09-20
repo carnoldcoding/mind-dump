@@ -109,8 +109,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     },
 
     send: async (text: string) => {
-        const { sessionId, turns } = get();
-        if (!sessionId || !text.trim()) return;
+        const { sessionId, turns, status } = get();
+        // Hard guard against overlapping sends: Zustand's set is synchronous, so
+        // the first call flips status to "sending" before any await and a second
+        // rapid call (double-click, Continue spam) reads it and bails — closing
+        // the race that submit()'s busy check loses to React's async re-render,
+        // which was appending turns out of order (user A, user B, answer A, …).
+        if (!sessionId || !text.trim() || status === "sending" || status === "loading") return;
         const userTurn: Turn = { id: nextId(), role: "user", text: text.trim() };
         set({ turns: [...turns, userTurn], status: "sending", pending: null });
         try {
