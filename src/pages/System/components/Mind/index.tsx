@@ -38,9 +38,17 @@ const MindWindow = () => {
     const [view, setView] = useState<View>("teach");
 
     const scope = useRef<HTMLDivElement>(null);
-    useRevealTimeline(true, (tl) => { wipe(tl, "[data-panel-surface]"); }, scope);
     const panelRef = useRef<HTMLElement>(null);
-    useRevealTimeline(true, (tl) => { if (panelRef.current) cascade(tl, panelRef.current, 0.15); }, scope, [view]);
+    const contentRef = useRef<HTMLDivElement>(null);
+    // Chrome (frame + tab strip) reveals ONCE and stays put — no [view] rebuild,
+    // so switching tabs never re-animates the strip (that was the flutter). The
+    // content region is [data-reveal-own], so this cascade steps over it.
+    useRevealTimeline(true, (tl) => { wipe(tl, "[data-panel-surface]"); }, scope);
+    useRevealTimeline(true, (tl) => { if (panelRef.current) cascade(tl, panelRef.current, 0.15); }, scope);
+    // The content owns its own entrance, rebuilt per view so the new tab's
+    // content animates in without touching the chrome. (Teach self-animates and
+    // is marked own, so this steps over it.)
+    useRevealTimeline(true, (tl) => { if (contentRef.current) cascade(tl, contentRef.current, 0); }, scope, [view]);
 
     const mastered = quests.filter((q) => q.mastered).length;
 
@@ -69,19 +77,22 @@ const MindWindow = () => {
                     ))}
                 </div>
 
-                {/* Teach owns its own height + internal scroll; the other views
-                    share a scrolling padded region. */}
-                {view === "teach" ? (
-                    <div className="p-4 flex-1 min-h-0"><TeachView /></div>
-                ) : (
-                    <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
-                        {error && <p className="text-label text-nier-text-dark/70">Couldn't reach the learning API.</p>}
-                        {loading && <p className="text-label text-nier-text-dark/70">Loading…</p>}
-                        {!loading && !error && view === "map" && <MapView quests={quests} disciplines={disciplines} mastered={mastered} />}
-                        {!loading && !error && view === "patterns" && <PatternsView />}
-                        {!loading && !error && view === "sessions" && <SessionsView />}
-                    </div>
-                )}
+                {/* Content region — its own reveal (data-reveal-own). Teach owns
+                    its height + internal scroll and self-animates; the other
+                    views share a scrolling padded region. */}
+                <div ref={contentRef} data-reveal-own className="flex-1 min-h-0 flex flex-col">
+                    {view === "teach" ? (
+                        <div data-reveal-own className="p-4 flex-1 min-h-0"><TeachView /></div>
+                    ) : (
+                        <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
+                            {error && <p className="text-label text-nier-text-dark/70">Couldn't reach the learning API.</p>}
+                            {loading && <p className="text-label text-nier-text-dark/70">Loading…</p>}
+                            {!loading && !error && view === "map" && <MapView quests={quests} disciplines={disciplines} mastered={mastered} />}
+                            {!loading && !error && view === "patterns" && <PatternsView />}
+                            {!loading && !error && view === "sessions" && <SessionsView />}
+                        </div>
+                    )}
+                </div>
             </div>
         </Panel>
     );
