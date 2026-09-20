@@ -12,7 +12,10 @@ import type { MindActionResult } from "../../../../../types/mind";
 type Milestone = { label: string; logos: number } | null;
 
 // Pull a compact, display-ready shape out of one loose action result.
-function readResult(r: MindActionResult): { line: string; milestone: Milestone } | null {
+function readResult(r: MindActionResult & { error?: string }): { line: string; milestone: Milestone } | null {
+    // An action the backend couldn't apply (a domain rule, a malformed field) —
+    // the turn still succeeded, so show a quiet note rather than a fake ✗.
+    if (r.error) return { line: `⚠ ${r.op ?? "action"} not applied (${r.error})`, milestone: null };
     const o = (r.outcome || {}) as Record<string, number | boolean>;
     const res = (r.result || {}) as Record<string, number | boolean>;
     const answerEvent = (r.events || []).find(e => e.op === "answer" || e.op === "recall");
