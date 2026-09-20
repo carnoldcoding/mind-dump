@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSessionStore } from "../../../../../store/mindSession";
+import { useSessionStore, CONTINUE_MSG } from "../../../../../store/mindSession";
 import { useMindGraph } from "../../../../../store/mind";
 import Conversation from "./Conversation";
 import Minimap from "./Minimap";
@@ -69,7 +69,7 @@ const TeachView = () => {
                     {busy && <p className="text-label uppercase tracking-widest text-nier-text-dark/50 mt-3">computing…</p>}
                     {awaitingContinue && (
                         <button
-                            onClick={() => submit("continue")}
+                            onClick={() => send(CONTINUE_MSG, { display: false })}
                             className="mt-3 px-3 py-1.5 text-label uppercase tracking-widest border border-nier-150 text-nier-text-dark hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors"
                         >
                             Continue ▸

@@ -27,6 +27,10 @@ const storeId = (id: string | null) => {
 let seq = 0;
 const nextId = () => `t${++seq}`;
 
+// The message the Continue button sends. It advances the lesson but is not shown
+// as a user bubble (spec §17), and is filtered out of a resumed transcript.
+export const CONTINUE_MSG = "Continue the lesson.";
+
 /** One rendered turn in the conversation. */
 export type Turn =
     | { id: string; role: "user"; text: string }
@@ -47,7 +51,8 @@ type SessionStore = {
     /** Set on a milestone result so the minimap can ignite; consumed by it. */
     milestone: Milestone | null;
     init: () => Promise<void>;
-    send: (text: string) => Promise<void>;
+    /** `display: false` sends the message but shows no user bubble (Continue). */
+    send: (text: string, opts?: { display?: boolean }) => Promise<void>;
     newSession: () => Promise<void>;
 };
 
@@ -87,7 +92,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
                     // Resume: past turns render as prose (interactive cards were
                     // live-only; history is text — spec §17 simplification).
                     const turns: Turn[] = (s.transcript || [])
-                        .filter(m => m.role === "user" || m.role === "assistant")
+                        .filter(m => (m.role === "user" || m.role === "assistant") && m.content !== CONTINUE_MSG)
                         .map(m => m.role === "user"
                             ? { id: nextId(), role: "user", text: m.content }
                             : { id: nextId(), role: "assistant", say: m.content, question: null, results: [] });
@@ -108,7 +113,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         }
     },
 
-    send: async (text: string) => {
+    send: async (text: string, opts?: { display?: boolean }) => {
         const { sessionId, turns, status } = get();
         // Hard guard against overlapping sends: Zustand's set is synchronous, so
         // the first call flips status to "sending" before any await and a second
@@ -116,8 +121,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         // the race that submit()'s busy check loses to React's async re-render,
         // which was appending turns out of order (user A, user B, answer A, …).
         if (!sessionId || !text.trim() || status === "sending" || status === "loading") return;
+        const show = opts?.display !== false;
         const userTurn: Turn = { id: nextId(), role: "user", text: text.trim() };
-        set({ turns: [...turns, userTurn], status: "sending", pending: null });
+        set({ turns: show ? [...turns, userTurn] : turns, status: "sending", pending: null });
         try {
             const turn = await backend.sendMindMessage(sessionId, text.trim());
             const assistantTurn: Turn = {
