@@ -58,33 +58,19 @@ function readResult(r: MindActionResult & { error?: string }): { line: string; m
     }
 }
 
-// A geometric bubble tail — a CSS triangle pointing to the sender's side. Kept
-// hard-edged to match the Nier chrome (no rounded bubbles). Colour is passed as
-// a CSS var so it tracks light/dark.
-const Tail = ({ side, color }: { side: "left" | "right"; color: string }) => (
-    <span
-        aria-hidden
-        className={`absolute bottom-2 w-0 h-0 ${side === "left" ? "-left-2" : "-right-2"}`}
-        style={side === "left"
-            ? { borderTop: "6px solid transparent", borderBottom: "6px solid transparent", borderRight: `8px solid ${color}` }
-            : { borderTop: "6px solid transparent", borderBottom: "6px solid transparent", borderLeft: `8px solid ${color}` }}
-    />
-);
-
 const UserTurn = ({ text }: { text: string }) => {
     const scope = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, tl => fade(tl, "[data-fade]"), scope);
     return (
         <div ref={scope} className="flex justify-end">
-            <div data-fade className="relative max-w-[80%] bg-nier-dark text-nier-text-light px-3 py-2 text-body">
+            <div data-fade className="max-w-[80%] bg-nier-dark text-nier-text-light px-3 py-2 text-body">
                 {text}
-                <Tail side="right" color="var(--color-nier-dark)" />
             </div>
         </div>
     );
 };
 
-const AssistantTurn = ({ turn, active, busy, onAnswer }: { turn: Extract<Turn, { role: "assistant" }>; active: boolean; busy: boolean; onAnswer: (t: string) => void }) => {
+const AssistantTurn = ({ turn, active, busy, onAnswer }: { turn: Extract<Turn, { role: "assistant" }>; active: boolean; busy: boolean; onAnswer: (optionId: string, text: string) => void }) => {
     const clickable = active && !busy;
     const scope = useRef<HTMLDivElement>(null);
     const results = (turn.results || []).map(readResult).filter(Boolean) as { line: string; milestone: Milestone }[];
@@ -99,9 +85,8 @@ const AssistantTurn = ({ turn, active, busy, onAnswer }: { turn: Extract<Turn, {
     return (
         <div ref={scope} className="flex flex-col gap-2 items-start">
             {turn.say && (
-                <div data-fade className="relative self-start max-w-[85%] bg-nier-100-lighter border border-nier-150 text-nier-text-dark px-3 py-2 text-body whitespace-pre-wrap">
+                <div data-fade className="self-start max-w-[85%] bg-nier-100-lighter border border-nier-150 text-nier-text-dark px-3 py-2 text-body whitespace-pre-wrap">
                     {turn.say}
-                    <Tail side="left" color="var(--color-nier-100-lighter)" />
                 </div>
             )}
 
@@ -113,7 +98,7 @@ const AssistantTurn = ({ turn, active, busy, onAnswer }: { turn: Extract<Turn, {
                         <button
                             key={opt.id}
                             disabled={!clickable}
-                            onClick={() => onAnswer(`${opt.id}. ${opt.text}`)}
+                            onClick={() => onAnswer(opt.id, opt.text)}
                             className={`text-left px-3 py-2 text-label border transition-colors ${
                                 clickable
                                     ? "border-nier-150 text-nier-text-dark hover:bg-nier-dark hover:text-nier-text-light cursor-pointer"
@@ -151,7 +136,7 @@ const AssistantTurn = ({ turn, active, busy, onAnswer }: { turn: Extract<Turn, {
     );
 };
 
-const Conversation = ({ turns, busy, onAnswer }: { turns: Turn[]; busy: boolean; onAnswer: (t: string) => void }) => {
+const Conversation = ({ turns, busy, onAnswer }: { turns: Turn[]; busy: boolean; onAnswer: (optionId: string, text: string) => void }) => {
     const lastAssistantId = [...turns].reverse().find(t => t.role === "assistant")?.id;
     return (
         <div className="flex flex-col gap-4">

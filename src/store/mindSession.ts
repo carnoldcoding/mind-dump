@@ -10,7 +10,7 @@
 import { create } from "zustand";
 import { backend } from "../api/backend";
 import { invalidateMind } from "./mind";
-import type { MindActionResult, MindQuestion } from "../types/mind";
+import type { MindActionResult, MindQuestion, MindTurn } from "../types/mind";
 
 const LS_KEY = "mind.sessionId";
 
@@ -50,9 +50,13 @@ type SessionStore = {
     pending: MindQuestion | null;
     /** Set on a milestone result so the minimap can ignite; consumed by it. */
     milestone: Milestone | null;
+    /** Why the last turn failed, for the view to show. Cleared on the next send. */
+    error: string | null;
     init: () => Promise<void>;
     /** `display: false` sends the message but shows no user bubble (Continue). */
     send: (text: string, opts?: { display?: boolean }) => Promise<void>;
+    /** Answer the pending MC question by option id; `text` is the bubble shown. */
+    answer: (optionId: string, text: string) => Promise<void>;
     newSession: () => Promise<void>;
 };
 
@@ -70,12 +74,33 @@ function milestoneFrom(results: MindActionResult[]): Milestone | null {
     return null;
 }
 
-export const useSessionStore = create<SessionStore>((set, get) => ({
+export const useSessionStore = create<SessionStore>((set, get) => {
+    // Append a returned teaching turn to the conversation: the assistant bubble,
+    // the next pending question (if any), and a milestone to ignite the minimap.
+    // Shared by `send` (free text) and `answer` (graded MC click).
+    const applyTurn = (turn: MindTurn) => {
+        const assistantTurn: Turn = {
+            id: nextId(), role: "assistant",
+            say: turn.say, question: turn.question ?? null, results: turn.results || [],
+        };
+        const ms = milestoneFrom(turn.results || []);
+        set(s => ({
+            turns: [...s.turns, assistantTurn],
+            status: "ready",
+            pending: turn.question ?? null,
+            ...(ms ? { milestone: ms } : {}),
+        }));
+        // Any applied action may have changed the graph — refresh minimap/Map.
+        if ((turn.results || []).length) invalidateMind();
+    };
+
+    return {
     sessionId: null,
     turns: [],
     status: "idle",
     pending: null,
     milestone: null,
+    error: null,
 
     init: async () => {
         if (get().status !== "idle") return;
@@ -108,8 +133,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
             const s = await backend.createMindSession();
             storeId(s._id);
             set({ sessionId: s._id, turns: [], status: "ready" });
-        } catch {
-            set({ status: "error" });
+        } catch (e) {
+            set({ status: "error", error: (e as Error)?.message ?? "Couldn't reach the teaching API." });
         }
     },
 
@@ -123,24 +148,24 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         if (!sessionId || !text.trim() || status === "sending" || status === "loading") return;
         const show = opts?.display !== false;
         const userTurn: Turn = { id: nextId(), role: "user", text: text.trim() };
-        set({ turns: show ? [...turns, userTurn] : turns, status: "sending", pending: null });
+        set({ turns: show ? [...turns, userTurn] : turns, status: "sending", pending: null, error: null });
         try {
-            const turn = await backend.sendMindMessage(sessionId, text.trim());
-            const assistantTurn: Turn = {
-                id: nextId(), role: "assistant",
-                say: turn.say, question: turn.question ?? null, results: turn.results || [],
-            };
-            const ms = milestoneFrom(turn.results || []);
-            set(s => ({
-                turns: [...s.turns, assistantTurn],
-                status: "ready",
-                pending: turn.question ?? null,
-                ...(ms ? { milestone: ms } : {}),
-            }));
-            // Any applied action may have changed the graph — refresh minimap/Map.
-            if ((turn.results || []).length) invalidateMind();
-        } catch {
-            set({ status: "error" });
+            applyTurn(await backend.sendMindMessage(sessionId, text.trim()));
+        } catch (e) {
+            set({ status: "error", error: (e as Error)?.message ?? "Request failed" });
+        }
+    },
+
+    answer: async (optionId: string, text: string) => {
+        const { sessionId, turns, status } = get();
+        // Same overlapping-submit guard as send (see there).
+        if (!sessionId || status === "sending" || status === "loading") return;
+        const userTurn: Turn = { id: nextId(), role: "user", text };
+        set({ turns: [...turns, userTurn], status: "sending", pending: null, error: null });
+        try {
+            applyTurn(await backend.answerMindQuestion(sessionId, optionId));
+        } catch (e) {
+            set({ status: "error", error: (e as Error)?.message ?? "Request failed" });
         }
     },
 
@@ -151,11 +176,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
             const s = await backend.createMindSession();
             storeId(s._id);
             set({ sessionId: s._id, turns: [], status: "ready", pending: null, milestone: null });
-        } catch {
-            set({ status: "error" });
+        } catch (e) {
+            set({ status: "error", error: (e as Error)?.message ?? "Couldn't reach the teaching API." });
         }
     },
-}));
+    };
+});
 
 /** Consume the current milestone (so it fires once). */
 export const clearMilestone = () => useSessionStore.setState({ milestone: null });

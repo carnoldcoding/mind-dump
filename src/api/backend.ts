@@ -44,7 +44,13 @@ async function request<T>(
     if (rest.body && !finalHeaders["Content-Type"]) finalHeaders["Content-Type"] = "application/json";
 
     const res = await fetch(buildUrl(path, params, base), { ...rest, headers: finalHeaders });
-    if (!res.ok) throw new Error(`${rest.method ?? "GET"} ${path} failed (${res.status})`);
+    if (!res.ok) {
+        // Include the backend's own message/error when it sent one, so callers can
+        // show why a request failed instead of a bare status.
+        let detail = "";
+        try { const body = await res.json(); detail = body?.message || body?.error || ""; } catch { /* non-JSON body */ }
+        throw new Error(`${rest.method ?? "GET"} ${path} failed (${res.status})${detail ? `: ${detail}` : ""}`);
+    }
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
 }
@@ -135,6 +141,14 @@ export const backend = {
             ...gated,
             method: "POST",
             body: JSON.stringify({ userMessage }),
+        }),
+    // Answer the pending MC question. The backend grades the click and records
+    // the answer; the response is a normal teaching turn built on the result.
+    answerMindQuestion: (id: string, optionId: string) =>
+        request<MindTurn>(`/api/mind/sessions/${id}/answer`, {
+            ...gated,
+            method: "POST",
+            body: JSON.stringify({ optionId }),
         }),
     endMindSession: (id: string, summary?: string) =>
         request<void>(`/api/mind/sessions/${id}/end`, { ...gated, method: "POST", body: JSON.stringify({ summary }) }),
