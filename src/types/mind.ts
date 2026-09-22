@@ -10,6 +10,8 @@ export type MindQuest = {
     discipline: string;
     title: string;
     streak: number;
+    /** True once the quest has had a recorded answer (vs. an untouched seed). */
+    started?: boolean;
     mastered: boolean;
     masteredAt?: string | null;
     recallTier: number; // -1 until mastered, then 0..4
