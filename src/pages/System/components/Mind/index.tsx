@@ -3,35 +3,20 @@ import { useMindGraph } from "../../../../store/mind";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { cascade, wipe } from "../../../../utils/motion";
 import { Panel } from "../../../../components/common/Panel";
-import type { MindQuest } from "../../../../types/mind";
 import TeachView from "./Teach";
+import MapView from "./Map";
 
 // Runs as a tab on the SYSTEM.OS desktop (spec §10): the Desktop owns the frame
 // chrome and the close control, so this window carries no title bar of its own.
 //
-// Teach is built (spec §17). Map/Patterns/Sessions are real surfaces in the
-// app's chrome wired to live data, with their rich visuals (two-lens map, the
-// pattern charts, session transcripts) the next design-pass steps.
+// Teach (spec §17) and Map (spec §8) are built. Patterns and Sessions are
+// deferred — they'll be added back as tabs when their design pass happens.
 
-type View = "teach" | "map" | "patterns" | "sessions";
+type View = "teach" | "map";
 const VIEWS: { id: View; label: string }[] = [
     { id: "teach", label: "Teach" },
     { id: "map", label: "Map" },
-    { id: "patterns", label: "Patterns" },
-    { id: "sessions", label: "Sessions" },
 ];
-
-const Eyebrow = ({ children }: { children: React.ReactNode }) => (
-    <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/60">{children}</span>
-);
-
-// A view still being designed — honest about it, in-chrome, not a fake mockup.
-const Placeholder = ({ title, note }: { title: string; note: string }) => (
-    <div className="flex flex-col gap-2 p-4 border border-nier-150 bg-nier-100-lighter">
-        <Eyebrow>{title}</Eyebrow>
-        <p className="text-label text-nier-text-dark/70">{note}</p>
-    </div>
-);
 
 const MindWindow = () => {
     const { quests, disciplines, loading, error } = useMindGraph();
@@ -84,12 +69,12 @@ const MindWindow = () => {
                     {view === "teach" ? (
                         <div data-reveal-own className="p-4 flex-1 min-h-0"><TeachView /></div>
                     ) : (
-                        <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
-                            {error && <p className="text-label text-nier-text-dark/70">Couldn't reach the learning API.</p>}
-                            {loading && <p className="text-label text-nier-text-dark/70">Loading…</p>}
-                            {!loading && !error && view === "map" && <MapView quests={quests} disciplines={disciplines} mastered={mastered} />}
-                            {!loading && !error && view === "patterns" && <PatternsView />}
-                            {!loading && !error && view === "sessions" && <SessionsView />}
+                        // The Map owns the full content box (the graph pans; it must not
+                        // sit inside a scrolling region).
+                        <div className="p-4 flex-1 min-h-0">
+                            {error ? <p className="text-label text-nier-text-dark/70">Couldn't reach the learning API.</p>
+                                : loading ? <p className="text-label text-nier-text-dark/70">Loading…</p>
+                                    : <MapView quests={quests} disciplines={disciplines} mastered={mastered} />}
                         </div>
                     )}
                 </div>
@@ -97,65 +82,5 @@ const MindWindow = () => {
         </Panel>
     );
 };
-
-const MapView = ({ quests, disciplines, mastered }: { quests: MindQuest[]; disciplines: { _id: string; slug: string; domain: string; logos: number }[]; mastered: number }) => {
-    // A plain grouped list stands in for the two-lens map for now: it proves the
-    // data flows and reads in-chrome. The tree/graph lenses (spec §8) are the
-    // design pass.
-    const byDiscipline = new Map<string, MindQuest[]>();
-    for (const q of quests) {
-        const key = `${q.domain}/${q.discipline}`;
-        (byDiscipline.get(key) ?? byDiscipline.set(key, []).get(key)!).push(q);
-    }
-    return (
-        <div className="flex flex-col gap-4">
-            <div className="flex gap-6">
-                <div className="flex flex-col"><Eyebrow>Quests</Eyebrow><span className="text-heading text-nier-text-dark">{quests.length}</span></div>
-                <div className="flex flex-col"><Eyebrow>Mastered</Eyebrow><span className="text-heading text-nier-text-dark">{mastered}</span></div>
-                <div className="flex flex-col"><Eyebrow>Disciplines</Eyebrow><span className="text-heading text-nier-text-dark">{disciplines.length}</span></div>
-            </div>
-            <Placeholder
-                title="Map — tree & graph lenses"
-                note="Toggleable Domain→Discipline→Quest tree and the [[wikilink]] knowledge graph render here, colored by mastery/recall state (spec §8). Grouped list below stands in until then."
-            />
-            <div className="flex flex-col gap-3">
-                {[...byDiscipline.entries()].map(([key, qs]) => (
-                    <div key={key} className="flex flex-col gap-1">
-                        <Eyebrow>{key}</Eyebrow>
-                        <div className="flex flex-wrap gap-1.5">
-                            {qs.map((q) => (
-                                <span
-                                    key={q._id}
-                                    title={q.title}
-                                    className={`text-eyebrow px-1.5 py-0.5 border ${
-                                        q.prestiged ? "border-nier-dark bg-nier-dark text-nier-text-light"
-                                            : q.mastered ? "border-nier-dark text-nier-text-dark"
-                                                : "border-nier-150 text-nier-text-dark/60"
-                                    }`}
-                                >
-                                    {q.slug}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-const PatternsView = () => (
-    <Placeholder
-        title="Patterns"
-        note="Charts over the event log — activity heatmap, mastery-over-time, recall accuracy, per-discipline levels, Logos timeline (spec §9) — drawn in the dataviz/chrome grammar. Design pass together."
-    />
-);
-
-const SessionsView = () => (
-    <Placeholder
-        title="Sessions"
-        note="Past and resumable teaching sessions with their transcripts (spec §4.3). Wired once sessions exist against the dev DB."
-    />
-);
 
 export default MindWindow;
