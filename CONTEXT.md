@@ -88,6 +88,32 @@ A single dated record of a set that was actually performed against a Movement �
 **"Workout"**:
 Not a modeled entity — no session groups multiple Movements together. Used informally in UI copy/component names ("Log Workout" button, "Workout Frequency" grid) to mean "logging a set against a Movement."
 
+### Mind (learning)
+
+The fourth System area, `mind` — a port of the Grimoire learning tracker and its Claude-driven teaching session onto the web. Private, inside System, gated by **Trusted device** like the rest. Full design in `~/specs/mind-dump-mind-port.md`. Keeps Grimoire's Reality-Playing-Game (RPG) vocabulary; the one rename below resolves the collision with **Review**.
+
+**Quest**:
+One learning concept — the unified node the whole feature is built on. Carries optional progress (a Mastery streak and Recall schedule), optional prose (its **Lore**), and edges to other Quests. A concept with prose but no progress is an *un-started* Quest, not a second kind of thing.
+_Avoid_: Concept, card, topic, objective — "Quest" is canonical even for un-started nodes.
+
+**Recall**:
+The spaced-repetition schedule a Quest enters on Mastery — due at 1, 3, 7, 14, 30 days, one pass/fail question each. This is Grimoire's "Review Ladder", renamed here because **Review** already means a game/movie/book in this app. A fail demotes one tier; a pass at the last tier Prestiges the Quest.
+_Avoid_: Review, review ladder, spaced repetition, SRS — inside mind-dump "review" is always the game/movie/book kind.
+
+**Lore**:
+The prose knowledge written for a Quest — what a concept is, the mental model, the diagnostic questions. The `[[slug]]` cross-links between Lore entries are stored as a Quest's edges and drive the map's graph lens.
+_Avoid_: Notes, docs, article.
+
+**Mastery / Logos / Level / Boss Phase / Bloodstain / Prestige**:
+Ported unchanged from Grimoire (see `CONTEXT.md` history there / the spec). Mastery = 3 correct in a row (+100 Logos, once). Logos is the currency; Level derives from it. A Boss Phase is a free-text teach-back that unlocks every 3 masteries in a Discipline. A lost Boss leaves a recoverable Bloodstain. Prestige is the terminal, cosmetic state past the last Recall.
+
+**Session** (mind):
+One teaching sitting with Claude — start/end, full transcript, the Events it produced, resumable while open. Distinct from anything in Reviews/Body; the term is local to `mind`.
+
+**Event** (mind):
+One immutable, timestamped fact in the learning history (an answer, a Recall, a Boss attempt, a Mastery, a Logos change). The append-only `events` log is the source the current-state projection and every pattern chart are built from.
+_Avoid_: Entry — an Entry is a Body set; a learning fact is an Event.
+
 ### Journal
 
 Planned third area (alongside Reviews and Body) for free-form entries. The frontend is currently just a placeholder page, hidden from primary navigation — but the backend already has a full CRUD API for it (`/api/soul`, `Soul Data` collection), unauthenticated until [ADR-0001](./docs/adr/0001-tailnet-gated-system-access.md) lands.

@@ -3,6 +3,7 @@
 // instead of being rebuilt at each call site.
 import config from "../config";
 import type { AudioTrack } from "../types";
+import type { MindQuest, MindDiscipline, MindEvent, MindSession, MindTurn } from "../types/mind";
 
 type Params = Record<string, string | undefined>;
 
@@ -43,7 +44,13 @@ async function request<T>(
     if (rest.body && !finalHeaders["Content-Type"]) finalHeaders["Content-Type"] = "application/json";
 
     const res = await fetch(buildUrl(path, params, base), { ...rest, headers: finalHeaders });
-    if (!res.ok) throw new Error(`${rest.method ?? "GET"} ${path} failed (${res.status})`);
+    if (!res.ok) {
+        // Include the backend's own message/error when it sent one, so callers can
+        // show why a request failed instead of a bare status.
+        let detail = "";
+        try { const body = await res.json(); detail = body?.message || body?.error || ""; } catch { /* non-JSON body */ }
+        throw new Error(`${rest.method ?? "GET"} ${path} failed (${res.status})${detail ? `: ${detail}` : ""}`);
+    }
     if (res.status === 204) return undefined as T;
     return res.json() as Promise<T>;
 }
@@ -117,4 +124,32 @@ export const backend = {
     // can't go through fetch-based `request`). Both callers (audio/image
     // upload) are gated routes.
     uploadUrl: (path: string) => buildUrl(path, undefined, config.trustedApiUri),
+
+    // ── Mind (learning) ───────────────────────────────────────────────
+    // All gated: the learning feature is private (System-only), and the
+    // teaching turn spends against the Anthropic API. See spec §2.
+    getMindGraph: () =>
+        request<{ quests: MindQuest[]; disciplines: MindDiscipline[] }>("/api/mind/graph", gated),
+    getMindDue: () => request<MindQuest[]>("/api/mind/due", gated),
+    getMindEvents: (params?: { since?: string; until?: string; quest?: string }) =>
+        request<MindEvent[]>("/api/mind/events", { ...gated, params }),
+    createMindSession: (payload: Record<string, unknown> = {}) =>
+        request<MindSession>("/api/mind/sessions", { ...gated, method: "POST", body: JSON.stringify(payload) }),
+    getMindSession: (id: string) => request<MindSession>(`/api/mind/sessions/${id}`, gated),
+    sendMindMessage: (id: string, userMessage: string) =>
+        request<MindTurn>(`/api/mind/sessions/${id}/messages`, {
+            ...gated,
+            method: "POST",
+            body: JSON.stringify({ userMessage }),
+        }),
+    // Answer the pending MC question. The backend grades the click and records
+    // the answer; the response is a normal teaching turn built on the result.
+    answerMindQuestion: (id: string, optionId: string) =>
+        request<MindTurn>(`/api/mind/sessions/${id}/answer`, {
+            ...gated,
+            method: "POST",
+            body: JSON.stringify({ optionId }),
+        }),
+    endMindSession: (id: string, summary?: string) =>
+        request<void>(`/api/mind/sessions/${id}/end`, { ...gated, method: "POST", body: JSON.stringify({ summary }) }),
 };
