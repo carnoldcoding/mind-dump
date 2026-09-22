@@ -1,0 +1,187 @@
+// The active teaching session: the running conversation, plus resume/new. A
+// session lives server-side (transcript, events); this holds the client view of
+// the current one and remembers its id in localStorage so a reload resumes it
+// (spec §17 — auto-resume, with New session).
+//
+// Distinct from the mind graph store (store/mind.ts): that's the whole map;
+// this is one conversation. After a turn with state changes, this invalidates
+// the graph store so the minimap and Map reflect the new state.
+
+import { create } from "zustand";
+import { backend } from "../api/backend";
+import { invalidateMind } from "./mind";
+import type { MindActionResult, MindQuestion, MindTurn } from "../types/mind";
+
+const LS_KEY = "mind.sessionId";
+
+const readStoredId = (): string | null => {
+    try { return localStorage.getItem(LS_KEY); } catch { return null; }
+};
+const storeId = (id: string | null) => {
+    try {
+        if (id) localStorage.setItem(LS_KEY, id);
+        else localStorage.removeItem(LS_KEY);
+    } catch { /* private mode */ }
+};
+
+let seq = 0;
+const nextId = () => `t${++seq}`;
+
+// The message the Continue button sends. It advances the lesson but is not shown
+// as a user bubble (spec §17), and is filtered out of a resumed transcript.
+export const CONTINUE_MSG = "Continue the lesson.";
+
+/** One rendered turn in the conversation. */
+export type Turn =
+    | { id: string; role: "user"; text: string }
+    | { id: string; role: "assistant"; say: string; question: MindQuestion | null; results: MindActionResult[] };
+
+/** A milestone the minimap should react to (node ignite). Carries a timestamp
+ *  so repeated milestones on the same quest still retrigger the animation. */
+export type Milestone = { quest?: string; discipline?: string; kind: "mastered" | "boss" | "prestige"; at: number };
+
+type Status = "idle" | "loading" | "ready" | "sending" | "error";
+
+type SessionStore = {
+    sessionId: string | null;
+    turns: Turn[];
+    status: Status;
+    /** The last MC question awaiting an answer, or null. */
+    pending: MindQuestion | null;
+    /** Set on a milestone result so the minimap can ignite; consumed by it. */
+    milestone: Milestone | null;
+    /** Why the last turn failed, for the view to show. Cleared on the next send. */
+    error: string | null;
+    init: () => Promise<void>;
+    /** `display: false` sends the message but shows no user bubble (Continue). */
+    send: (text: string, opts?: { display?: boolean }) => Promise<void>;
+    /** Answer the pending MC question by option id; `text` is the bubble shown. */
+    answer: (optionId: string, text: string) => Promise<void>;
+    newSession: () => Promise<void>;
+};
+
+// Turn a milestone out of a result, if any (mastery, boss win, prestige).
+function milestoneFrom(results: MindActionResult[]): Milestone | null {
+    for (const r of results) {
+        const o = (r.outcome || {}) as Record<string, unknown>;
+        const res = (r.result || {}) as Record<string, unknown>;
+        const q = (r.quest?.slug as string) || undefined;
+        const disc = (r.discipline?.slug as string) || undefined;
+        if (r.op === "recordAnswer" && o.mastered && (o.logosAwarded as number) > 0) return { quest: q, discipline: disc, kind: "mastered", at: Date.now() };
+        if (r.op === "attemptBoss" && res.win) return { discipline: disc, kind: "boss", at: Date.now() };
+        if (r.op === "recordRecall" && o.prestiged) return { quest: q, discipline: disc, kind: "prestige", at: Date.now() };
+    }
+    return null;
+}
+
+export const useSessionStore = create<SessionStore>((set, get) => {
+    // Append a returned teaching turn to the conversation: the assistant bubble,
+    // the next pending question (if any), and a milestone to ignite the minimap.
+    // Shared by `send` (free text) and `answer` (graded MC click).
+    const applyTurn = (turn: MindTurn) => {
+        const assistantTurn: Turn = {
+            id: nextId(), role: "assistant",
+            say: turn.say, question: turn.question ?? null, results: turn.results || [],
+        };
+        const ms = milestoneFrom(turn.results || []);
+        set(s => ({
+            turns: [...s.turns, assistantTurn],
+            status: "ready",
+            pending: turn.question ?? null,
+            ...(ms ? { milestone: ms } : {}),
+        }));
+        // Any applied action may have changed the graph — refresh minimap/Map.
+        if ((turn.results || []).length) invalidateMind();
+    };
+
+    return {
+    sessionId: null,
+    turns: [],
+    status: "idle",
+    pending: null,
+    milestone: null,
+    error: null,
+
+    init: async () => {
+        if (get().status !== "idle") return;
+        set({ status: "loading" });
+
+        // Try to resume a stored session. A stale/ended/missing id (e.g. after a
+        // collection rename dropped old sessions) must fall through to a fresh
+        // session, never error the whole init — so resume gets its own try/catch.
+        const stored = readStoredId();
+        if (stored) {
+            try {
+                const s = await backend.getMindSession(stored);
+                if (s && !s.endedAt) {
+                    // Resume: past turns render as prose (interactive cards were
+                    // live-only; history is text — spec §17 simplification).
+                    const turns: Turn[] = (s.transcript || [])
+                        .filter(m => (m.role === "user" || m.role === "assistant") && m.content !== CONTINUE_MSG)
+                        .map(m => m.role === "user"
+                            ? { id: nextId(), role: "user", text: m.content }
+                            : { id: nextId(), role: "assistant", say: m.content, question: null, results: [] });
+                    set({ sessionId: s._id, turns, status: "ready" });
+                    return;
+                }
+            } catch {
+                storeId(null); // drop the dead id, then create a fresh session below
+            }
+        }
+
+        try {
+            const s = await backend.createMindSession();
+            storeId(s._id);
+            set({ sessionId: s._id, turns: [], status: "ready" });
+        } catch (e) {
+            set({ status: "error", error: (e as Error)?.message ?? "Couldn't reach the teaching API." });
+        }
+    },
+
+    send: async (text: string, opts?: { display?: boolean }) => {
+        const { sessionId, turns, status } = get();
+        // Hard guard against overlapping sends: Zustand's set is synchronous, so
+        // the first call flips status to "sending" before any await and a second
+        // rapid call (double-click, Continue spam) reads it and bails — closing
+        // the race that submit()'s busy check loses to React's async re-render,
+        // which was appending turns out of order (user A, user B, answer A, …).
+        if (!sessionId || !text.trim() || status === "sending" || status === "loading") return;
+        const show = opts?.display !== false;
+        const userTurn: Turn = { id: nextId(), role: "user", text: text.trim() };
+        set({ turns: show ? [...turns, userTurn] : turns, status: "sending", pending: null, error: null });
+        try {
+            applyTurn(await backend.sendMindMessage(sessionId, text.trim()));
+        } catch (e) {
+            set({ status: "error", error: (e as Error)?.message ?? "Request failed" });
+        }
+    },
+
+    answer: async (optionId: string, text: string) => {
+        const { sessionId, turns, status } = get();
+        // Same overlapping-submit guard as send (see there).
+        if (!sessionId || status === "sending" || status === "loading") return;
+        const userTurn: Turn = { id: nextId(), role: "user", text };
+        set({ turns: [...turns, userTurn], status: "sending", pending: null, error: null });
+        try {
+            applyTurn(await backend.answerMindQuestion(sessionId, optionId));
+        } catch (e) {
+            set({ status: "error", error: (e as Error)?.message ?? "Request failed" });
+        }
+    },
+
+    newSession: async () => {
+        const { sessionId } = get();
+        try {
+            if (sessionId) await backend.endMindSession(sessionId);
+            const s = await backend.createMindSession();
+            storeId(s._id);
+            set({ sessionId: s._id, turns: [], status: "ready", pending: null, milestone: null });
+        } catch (e) {
+            set({ status: "error", error: (e as Error)?.message ?? "Couldn't reach the teaching API." });
+        }
+    },
+    };
+});
+
+/** Consume the current milestone (so it fires once). */
+export const clearMilestone = () => useSessionStore.setState({ milestone: null });
