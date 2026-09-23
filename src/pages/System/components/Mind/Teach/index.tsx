@@ -93,6 +93,14 @@ const TeachView = () => {
 
                 {/* composer */}
                 <div className="flex items-stretch gap-2 pt-3 border-t border-nier-150 flex-shrink-0">
+                    {/* Mobile-only new-session control: the minimap column (which
+                        holds the desktop "+ New session" button) is hidden below md. */}
+                    <button
+                        onClick={() => newSession()}
+                        disabled={busy}
+                        aria-label="New session"
+                        className="md:hidden px-3 text-title border border-nier-150 text-nier-text-dark hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors disabled:opacity-35 disabled:cursor-default"
+                    >+</button>
                     <input
                         value={draft}
                         onChange={e => setDraft(e.target.value)}

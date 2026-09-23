@@ -42,11 +42,11 @@ const FacetSelect = ({ label, value, options, onChange }: {
         <select
             value={value ?? ''}
             onChange={event => onChange(event.target.value || null)}
-            className={`${field} cursor-pointer max-w-36`}
+            className={`${field} cursor-pointer max-w-36 capitalize`}
         >
-            <option value="">all</option>
+            <option value="" className="capitalize">all</option>
             {options.map(option => (
-                <option key={option.value} value={option.value ?? ''}>
+                <option key={option.value} value={option.value ?? ''} className="capitalize">
                     {option.value} ({option.count})
                 </option>
             ))}
@@ -74,28 +74,31 @@ export const UnstartedBar = ({
         statuses.find(s => s.value === value)?.count ?? 0;
 
     return (
-        <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-                <input
-                    ref={searchRef}
-                    type="search"
-                    value={controls.query}
-                    placeholder="Search titles"
-                    aria-label="Search the backlog by title"
-                    onChange={event => onChange({ query: event.target.value })}
-                    onKeyDown={onListKey}
-                    className={`${field} flex-1 min-w-40`}
-                />
+        <div className="flex flex-col gap-2">
+            {/* Block 1 — search, on its own row. It drives the list: Down/Up
+                move the pick through the cards, Enter opens one. */}
+            <input
+                ref={searchRef}
+                type="search"
+                value={controls.query}
+                placeholder="Search"
+                aria-label="Search the backlog by title"
+                onChange={event => onChange({ query: event.target.value })}
+                onKeyDown={onListKey}
+                className={`${field} w-full`}
+            />
 
+            {/* Block 2 — the filters that narrow the one list. */}
+            <div className="flex items-center gap-3 flex-wrap">
                 <label className="flex items-center gap-1.5">
                     <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">Status</span>
                     <select
                         value={controls.status}
                         onChange={event => onChange({ status: event.target.value as StatusFilter })}
-                        className={`${field} cursor-pointer`}
+                        className={`${field} cursor-pointer capitalize`}
                     >
                         {(['all', 'active', 'todo'] as StatusFilter[]).map(value => (
-                            <option key={value} value={value}>
+                            <option key={value} value={value} className="capitalize">
                                 {STATUS_LABELS[value]} ({countFor(value)})
                             </option>
                         ))}
@@ -107,38 +110,14 @@ export const UnstartedBar = ({
                     <select
                         value={controls.sort}
                         onChange={event => onChange({ sort: event.target.value as SortKey })}
-                        className={`${field} cursor-pointer`}
+                        className={`${field} cursor-pointer capitalize`}
                     >
                         {SORTS.map(option => (
-                            <option key={option.key} value={option.key}>{option.label}</option>
+                            <option key={option.key} value={option.key} className="capitalize">{option.label}</option>
                         ))}
                     </select>
                 </label>
 
-                <button
-                    type="button"
-                    onClick={() => onChange({ ascending: !controls.ascending })}
-                    aria-label={`Sort by ${sort.label}, ${controls.ascending ? sort.direction : 'reversed'}`}
-                    title={controls.ascending ? sort.direction : 'reversed'}
-                    className="text-label px-2 h-7 border border-nier-150 cursor-pointer hover:bg-nier-150/40 transition-colors duration-150"
-                >
-                    {controls.ascending ? '↑' : '↓'}
-                </button>
-
-                {/* The control a list of hundreds actually needs. It picks
-                    from whatever is showing and only picks — nothing is
-                    started or changed by it. */}
-                <button
-                    type="button"
-                    onClick={onRandom}
-                    title="Pick one at random from what is showing"
-                    className="text-eyebrow uppercase tracking-widest px-2 h-7 border border-nier-dark cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors duration-150"
-                >
-                    ? Pick
-                </button>
-            </div>
-
-            <div className="flex items-center gap-3 flex-wrap">
                 <FacetSelect
                     label="Category"
                     value={controls.category}
@@ -157,6 +136,31 @@ export const UnstartedBar = ({
                     options={creators}
                     onChange={creator => onChange({ creator })}
                 />
+
+                {/* The direction toggle and the random pick share this row but
+                    sit at its right end (ml-auto), apart from the narrowing
+                    selects: both are visually distinct and act on the ordering
+                    or the selection rather than on what shows. */}
+                <div className="ml-auto flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => onChange({ ascending: !controls.ascending })}
+                        aria-label={`Sort by ${sort.label}, ${controls.ascending ? sort.direction : 'reversed'}`}
+                        title={controls.ascending ? sort.direction : 'reversed'}
+                        className="text-label px-2 h-7 border border-nier-150 cursor-pointer hover:bg-nier-150/40 transition-colors duration-150"
+                    >
+                        {controls.ascending ? '↑' : '↓'}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={onRandom}
+                        title="Pick one at random from what is showing"
+                        className="text-eyebrow uppercase tracking-widest px-2 h-7 border border-nier-dark cursor-pointer hover:bg-nier-text-dark hover:text-nier-100-lighter transition-colors duration-150"
+                    >
+                        ? Pick
+                    </button>
+                </div>
             </div>
         </div>
     );

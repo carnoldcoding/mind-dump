@@ -28,12 +28,12 @@ describe('the dates a Status change stamps', () => {
         expect(datesForTransition(undefined, 'done')).toEqual({ date_completed: todayIso() });
     });
 
-    // Un-starting is a correction, not an event. It must not erase a date
-    // either: this returns only what to write, and writing nothing leaves
-    // whatever is already on the record.
-    it('stamps nothing when un-starting', () => {
-        expect(datesForTransition('active', 'todo')).toEqual({});
-        expect(datesForTransition('done', 'todo')).toEqual({});
+    // Un-starting clears the start date: an unstarted item must not carry one,
+    // or "Started 30d" keeps counting work that was dropped. An empty string is
+    // the written clear (the backend $sets it), not an absence.
+    it('clears the start date when un-starting', () => {
+        expect(datesForTransition('active', 'todo')).toEqual({ date_started: '' });
+        expect(datesForTransition('done', 'todo')).toEqual({ date_started: '' });
     });
 
     // Picking a finished Review back up is a new run, not an undo — a second

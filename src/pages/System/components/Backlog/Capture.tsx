@@ -15,7 +15,7 @@
 // fight them. The Search prompt is a raw input for the same reason, and the
 // two now behave identically.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { backend, type MetadataCandidate } from "../../../../api/backend";
 import { invalidateReviews, type Review } from "../../../../store/reviews";
 import { generateSlug } from "../../../../utils/slug";
@@ -40,12 +40,21 @@ type LookupState =
 type Props = {
     /** Every Review, so anything already captured can be named before writing. */
     reviews: Review[];
+    /** Whether the collapsible search/filter region is revealed below the row. */
+    expanded: boolean;
+    /** Toggles the region open/closed from the funnel button in the row. */
+    onToggleExpand: () => void;
+    /** Any narrowing filter is set, so the toggle marks itself even while
+        collapsed — a hidden-but-active filter would otherwise be invisible. */
+    filtersActive: boolean;
+    /** The search/filter controls, rendered inside this section when expanded. */
+    children?: ReactNode;
 };
 
 const optionId = (candidate: MetadataCandidate, index: number) =>
     `capture-match-${candidate.sourceId ?? index}`;
 
-export const Capture = ({ reviews }: Props) => {
+export const Capture = ({ reviews, expanded, onToggleExpand, filtersActive, children }: Props) => {
     const [title, setTitle] = useState('');
     const [type, setType] = useState('game');
     const [lookup, setLookup] = useState<LookupState>({ status: 'idle' });
@@ -221,12 +230,9 @@ export const Capture = ({ reviews }: Props) => {
     return (
         // The leading control of the strip, not a panel floating above it: no
         // shadow, no title bar, sharing the border grammar of the filters below
-        // (spec §3b). A ＋ marks it as the one control that adds rather than
-        // narrows.
+        // (spec §3b).
         <section aria-label="Capture" className="relative bg-nier-100-lighter border border-nier-150">
             <div className="p-2 flex flex-col sm:flex-row gap-2 sm:items-center">
-                <span aria-hidden="true" className="hidden sm:flex items-center justify-center w-6 h-9 flex-shrink-0 bg-nier-dark text-nier-text-light text-body leading-none">＋</span>
-
                 <div className="flex-1 min-w-40 border border-nier-150 h-9 flex items-center px-3 bg-nier-100-lighter focus-within:border-nier-dark">
                     <input
                         type="text"
@@ -249,14 +255,71 @@ export const Capture = ({ reviews }: Props) => {
                         value={type}
                         options={CATEGORY_OPTIONS}
                         onChange={setType}
+                        heightClass="h-9"
+                        hideLabel
                     />
                 </div>
-                <div className="sm:w-28 h-9">
+                {/* No fixed width: the button is content-width, so a fixed box
+                    would leave dead space before the funnel and break the row's
+                    uniform gap. */}
+                <div className="h-9">
                     <Button
                         label={saving ? 'Saving…' : 'Capture'}
                         type="primary"
                         handleClick={() => write()}
                     />
+                </div>
+                {/* Reveals the search/filter region below. Active state matches
+                    the Capture button (dark fill, light glyph); the dot marks a
+                    filter set while the region is collapsed, so a hidden
+                    narrowing isn't silently in force. The colour class sits on
+                    the icon itself because a base rule colours every ion-icon
+                    and would otherwise win over the inherited text colour. */}
+                <button
+                    type="button"
+                    onClick={onToggleExpand}
+                    aria-label={expanded ? 'Hide filters' : 'Show filters'}
+                    aria-expanded={expanded}
+                    className={`relative flex items-center justify-center w-9 h-9 flex-shrink-0 border cursor-pointer transition-colors ${
+                        expanded
+                            ? 'bg-nier-dark border-nier-dark'
+                            : 'border-nier-150 hover:bg-nier-150/40'
+                    }`}
+                >
+                    <ion-icon
+                        name="funnel-outline"
+                        style={{ color: expanded ? 'var(--color-nier-text-light)' : 'var(--color-nier-text-dark)' }}
+                    ></ion-icon>
+                    {filtersActive && (
+                        <span
+                            aria-hidden="true"
+                            className={`absolute top-1 right-1 w-1.5 h-1.5 ${
+                                expanded ? 'bg-nier-text-light' : 'bg-nier-dark'
+                            }`}
+                        />
+                    )}
+                </button>
+            </div>
+
+            {/* The search/filter controls, revealed in place so the box grows
+                to hold them. State-flip disclosure, so it is a CSS transition
+                (motion.md "Response"), not a timeline: the outer grid slides
+                its row from 0fr to 1fr while the content fades and settles.
+                Kept mounted (not conditionally rendered) so the transition
+                runs both ways, and made inert while collapsed so the hidden
+                controls stay out of tab order. Honours OS reduced-motion. */}
+            <div
+                className="grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none"
+                style={{ gridTemplateRows: expanded ? '1fr' : '0fr' }}
+            >
+                <div className="overflow-hidden" inert={!expanded}>
+                    <div
+                        className={`border-t border-nier-150 p-2 flex flex-col gap-2 transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none ${
+                            expanded ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-1'
+                        }`}
+                    >
+                        {children}
+                    </div>
                 </div>
             </div>
 

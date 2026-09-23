@@ -5,9 +5,15 @@ interface SelectFieldProps {
   options: string[];
   value?: string;
   onChange: (value: string) => void;
+  /** Height utility for the control. Defaults to the form height (h-12);
+      compact strips (e.g. Backlog Capture) pass a shorter one to line up. */
+  heightClass?: string;
+  /** Suppress the floating label. Compact strips (e.g. Backlog Capture) where
+      the control's meaning is already clear from context set this. */
+  hideLabel?: boolean;
 }
 
-export const SelectField = ({ label, options, value, onChange }: SelectFieldProps) => {
+export const SelectField = ({ label, options, value, onChange, heightClass = "h-12", hideLabel = false }: SelectFieldProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSelect = (option: string) => {
@@ -20,7 +26,7 @@ export const SelectField = ({ label, options, value, onChange }: SelectFieldProp
       tabIndex={0}
       onBlur={() => setTimeout(() => setIsOpen(false), 150)}
       onClick={() => setIsOpen(o => !o)}
-      className="border border-nier-150 flex h-12 relative w-full cursor-pointer select-none"
+      className={`border border-nier-150 flex ${heightClass} relative w-full cursor-pointer select-none`}
     >
       {/* Current value */}
       <div className="w-full p-2 px-4 flex items-center">
@@ -28,13 +34,15 @@ export const SelectField = ({ label, options, value, onChange }: SelectFieldProp
       </div>
 
       {/* Floating label */}
-      <label className={`absolute pointer-events-none transition-all text-gray-500 ${
-        value
-          ? 'top-[-10px] left-2 text-body bg-nier-100-lighter px-1'
-          : 'top-3 left-4'
-      }`}>
-        {label}
-      </label>
+      {!hideLabel && (
+        <label className={`absolute pointer-events-none transition-all text-gray-500 ${
+          value
+            ? 'top-[-10px] left-2 text-body bg-nier-100-lighter px-1'
+            : 'top-3 left-4'
+        }`}>
+          {label}
+        </label>
+      )}
 
       {/* Caret */}
       <div className="absolute right-3 top-0 h-full flex items-center pointer-events-none">

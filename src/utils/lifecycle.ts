@@ -25,8 +25,13 @@ export function datesForTransition(from: string | undefined, to: string): Transi
     if (to === 'active') return { date_started: todayIso() };
     if (to === 'done') return { date_completed: todayIso() };
 
-    // Going back to `todo` is not an event worth a date. Returning nothing
-    // also leaves whatever is already recorded alone — this says what to
-    // write, and writing nothing is not the same as clearing.
-    return {};
+    // Going back to `todo` (Unstart) clears the start date. An unstarted item
+    // must not carry one: "Started 30d" counts any `date_started` inside the
+    // window, so a stale date would keep counting work that was dropped, and a
+    // later restart would be measured against a start that no longer happened.
+    // An empty string is a written value — the backend $sets the payload — so
+    // this is the clear, distinct from returning {} (which leaves the stale
+    // date in place). Callers that guard on truthiness must treat the key's
+    // presence, not its truth, as "write this".
+    return { date_started: '' };
 }
