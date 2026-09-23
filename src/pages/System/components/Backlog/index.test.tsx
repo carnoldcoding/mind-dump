@@ -52,10 +52,16 @@ const captureButton = () => screen.getByRole("button", { name: "Capture" });
 // the filter strip's Category facet, which carries the same word.
 const captureRegion = () => within(screen.getByRole("region", { name: "Capture" }));
 
+// The search/filter controls live inside the Capture box, collapsed until the
+// funnel toggle reveals them — so any test touching search, status, sort or a
+// facet opens them first.
+const openFilters = () =>
+    fireEvent.click(screen.getByRole("button", { name: "Show filters" }));
+
 /**
  * The card for a title. §3 collapsed Started and Not Started into one list of
- * rich cards, and every action — Start, Finish, Edit, Remove — lives on the
- * card itself, so there is nothing to select first.
+ * rich cards, and every action — the Queued/Started status toggle, Edit, and
+ * Remove — lives on the card itself, so there is nothing to select first.
  */
 const cardFor = (title: string) => screen.getByText(title).closest("li") as HTMLElement;
 
@@ -111,14 +117,12 @@ describe("capture", () => {
         await showFolder([]);
 
         // SelectField opens on click and commits on mousedown, so that the
-        // choice lands before the container's blur closes the list.
-        //
-        // Scoped to the Capture region: the filter strip has a Category facet
-        // carrying the same word, so "Category" and "book" are each on screen
-        // more than once. This test is about the capture select, and says so.
-        const categoryField = captureRegion().getByText("Category").closest("div") as HTMLElement;
-        fireEvent.click(captureRegion().getByText("Category"));
-        fireEvent.mouseDown(within(categoryField).getByText("book"));
+        // choice lands before the container's blur closes the list. The capture
+        // select carries no label now (hideLabel), so it is opened by its
+        // displayed value; the filter strip's Category facet is collapsed inside
+        // Capture and not rendered, so "book" is unambiguous in the region.
+        fireEvent.click(captureRegion().getByText("game"));
+        fireEvent.mouseDown(captureRegion().getByText("book"));
         capture("Project Hail Mary");
 
         await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
@@ -481,100 +485,33 @@ describe("when the lookup cannot help", () => {
 });
 
 describe("grooming", () => {
-    it("starts something that was queued", async () => {
-        await showFolder([review("Nioh 3", { status: "todo" })]);
-
-        fireEvent.click(screen.getByText("Start"));
-
-        await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
-        expect(mocked.saveReview.mock.calls[0][0]).toMatchObject({
-            slug: "nioh-3",
-            status: "active",
-        });
-        expect(mocked.saveReview.mock.calls[0][1]).toBe(true);
-    });
-
-    it("finishes something that was started, stamping today", async () => {
+    // Every action moved into the editor: start/unstart/finish is its Status
+    // field, delete is its type-the-slug confirm. The card carries no controls
+    // of its own now — it is a display that opens the editor.
+    it("carries no action controls on the card", async () => {
         await showFolder([review("Nioh 3", { status: "active" })]);
 
-        fireEvent.click(screen.getByText("Finish"));
-
-        await waitFor(() => expect(mocked.saveReview).toHaveBeenCalled());
-        expect(mocked.saveReview.mock.calls[0][0]).toMatchObject({
-            status: "done",
-            date_completed: "2026-08-01",
-        });
+        const card = within(cardFor("Nioh 3"));
+        expect(card.queryByLabelText("Start Nioh 3")).toBeNull();
+        expect(card.queryByLabelText("Return Nioh 3 to queued")).toBeNull();
+        expect(card.queryByLabelText("Edit Nioh 3")).toBeNull();
+        expect(card.queryByLabelText("Remove Nioh 3")).toBeNull();
     });
 
-    // Story 19: the handoff to the Reviews window is a real seam, so it is
-    // said out loud rather than automated.
-    it("points at the Reviews folder once something is finished", async () => {
-        await showFolder([review("Nioh 3", { status: "active" })]);
-
-        fireEvent.click(screen.getByText("Finish"));
-
-        expect(await screen.findByText(/write it up in the reviews folder/i)).toBeDefined();
-    });
-
-    it("removes something gone off, on the second press", async () => {
+    it("opens the editor when a card is clicked", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
 
-        fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
-        fireEvent.click(screen.getByLabelText("Confirm removing Nioh 3"));
+        fireEvent.click(screen.getByLabelText("Open Nioh 3"));
 
-        await waitFor(() => expect(mocked.deleteReview).toHaveBeenCalledWith("nioh-3"));
+        expect(await screen.findByDisplayValue("Nioh 3")).toBeDefined();
     });
 
-    // A Review deleted here is gone — there is no undo, and one could not be
-    // built: restoring would write a new record with a new id, and the id is
-    // where the capture date comes from.
-    it("does not remove on the first press", async () => {
+    it("opens the editor on Enter", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
 
-        fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
+        fireEvent.keyDown(screen.getByLabelText("Open Nioh 3"), { key: "Enter" });
 
-        expect(mocked.deleteReview).not.toHaveBeenCalled();
-        expect(screen.getByLabelText("Confirm removing Nioh 3")).toBeDefined();
-    });
-
-    it("goes back to safe when the pointer leaves without confirming", async () => {
-        await showFolder([review("Nioh 3", { status: "todo" })]);
-
-        fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
-        // The disarm handler is on the card, so leaving the card is what cancels.
-        fireEvent.mouseLeave(cardFor("Nioh 3"));
-
-        expect(screen.getByLabelText("Remove Nioh 3")).toBeDefined();
-        expect(mocked.deleteReview).not.toHaveBeenCalled();
-    });
-
-    // Leaving with the pointer is a mouse gesture, and this folder is used
-    // one-handed on a phone. Without a control of its own, an armed card on
-    // touch stays armed with the confirm as the biggest target in the row.
-    it("can be disarmed without a pointer", async () => {
-        await showFolder([review("Nioh 3", { status: "todo" })]);
-
-        fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
-        fireEvent.click(screen.getByLabelText("Keep Nioh 3"));
-
-        expect(screen.getByLabelText("Remove Nioh 3")).toBeDefined();
-        expect(mocked.deleteReview).not.toHaveBeenCalled();
-    });
-
-    // Arming is per card, so arming one and pressing Remove on another must
-    // not delete the second on a single press.
-    it("arms each card on its own, not the whole list", async () => {
-        await showFolder([
-            review("Nioh 3", { status: "todo" }),
-            review("Doom", { status: "todo" }),
-        ]);
-
-        fireEvent.click(screen.getByLabelText("Remove Nioh 3"));
-        expect(screen.getByLabelText("Confirm removing Nioh 3")).toBeDefined();
-
-        // Doom is untouched — its own Remove is still the safe first press.
-        expect(screen.getByLabelText("Remove Doom")).toBeDefined();
-        expect(screen.queryByLabelText("Confirm removing Doom")).toBeNull();
+        expect(await screen.findByDisplayValue("Nioh 3")).toBeDefined();
     });
 });
 
@@ -676,6 +613,7 @@ describe("the Backlog's state column", () => {
             review("C", { status: "todo" }),
         ]);
 
+        openFilters();
         fireEvent.change(screen.getByLabelText("Status"), { target: { value: "active" } });
 
         expect(stat("Showing")).toBe("Showing1");
@@ -700,11 +638,13 @@ describe("the Backlog's state column", () => {
             .toBeDefined();
     });
 
-    it("says so in the diagnostic when a write fails", async () => {
-        await showFolder([review("A", { status: "todo" })]);
-        mocked.saveReview.mockRejectedValueOnce(new Error("offline"));
-
-        fireEvent.click(screen.getByText("Start"));
+    // Writes moved into the editor, so the one fault this surface can still see
+    // is a collection that never loads. The diagnostic tracks that now.
+    it("says so in the diagnostic when the collection fails to load", async () => {
+        mocked.getReviews.mockRejectedValue(new Error("offline"));
+        render(<BacklogWindow />);
+        await waitFor(() => expect(mocked.getReviews).toHaveBeenCalled());
+        await act(async () => {});
 
         const column = within(screen.getByLabelText("Backlog state"));
         await waitFor(() => expect(column.getByText(/^error$/i)).toBeDefined());
@@ -731,6 +671,7 @@ describe("the Backlog's state column", () => {
             review("B", { type: "cinema", status: "active" }),
         ]);
 
+        openFilters();
         const options = within(screen.getByLabelText("Category")).getAllByRole("option");
         const text = options.map(o => o.textContent);
 
@@ -742,28 +683,13 @@ describe("the Backlog's state column", () => {
 });
 
 describe("grooming, continued", () => {
-    it("offers Start on queued items and Finish on started ones, not the other way round", async () => {
-        await showFolder([
-            review("Queued Thing", { status: "todo" }),
-            review("Started Thing", { status: "active" }),
-        ]);
-
-        // One list, so the distinction is per card rather than per section.
-        const queued = within(cardFor("Queued Thing"));
-        const started = within(cardFor("Started Thing"));
-
-        expect(queued.getByText("Start")).toBeDefined();
-        expect(queued.queryByText("Finish")).toBeNull();
-        expect(started.getByText("Finish")).toBeDefined();
-        expect(started.queryByText("Start")).toBeNull();
-    });
-
     // Story 16: the Reviews window shows finished work only now, so if the
-    // heavier fields aren't reachable here they aren't reachable anywhere.
+    // heavier fields aren't reachable here they aren't reachable anywhere. The
+    // whole card opens the editor — there is no separate Edit control.
     it("opens the full editor on a queued Review", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
 
-        fireEvent.click(screen.getByLabelText("Edit Nioh 3"));
+        fireEvent.click(screen.getByLabelText("Open Nioh 3"));
 
         // The editor loads the Review it was handed.
         expect(await screen.findByDisplayValue("Nioh 3")).toBeDefined();
@@ -772,7 +698,7 @@ describe("grooming, continued", () => {
     it("opens the full editor on a started Review too", async () => {
         await showFolder([review("Frieren", { status: "active" })]);
 
-        fireEvent.click(screen.getByLabelText("Edit Frieren"));
+        fireEvent.click(screen.getByLabelText("Open Frieren"));
 
         expect(await screen.findByDisplayValue("Frieren")).toBeDefined();
     });
@@ -793,14 +719,16 @@ describe("the unified list", () => {
     const OLD_ID = "6955b900a1b2c3d4e5f60718";      // captured 2026-01-01
     const RECENT_ID = "6a63fc80a1b2c3d4e5f60718";   // captured 2026-07-25
 
-    it("marks a started card with a glyph and leaves a queued one unmarked", async () => {
+    it("shows the status as text on each card", async () => {
         await showFolder([
             review("Frieren", { status: "active" }),
             review("Nioh 3", { status: "todo" }),
         ]);
 
-        expect(within(cardFor("Frieren")).getByLabelText("Started")).toBeDefined();
-        expect(within(cardFor("Nioh 3")).queryByLabelText("Started")).toBeNull();
+        // Status is shown, not controlled: a started card reads "Started", a
+        // queued one "Queued". (The started border is a separate scan cue.)
+        expect(within(cardFor("Frieren")).getByText("Started")).toBeDefined();
+        expect(within(cardFor("Nioh 3")).getByText("Queued")).toBeDefined();
     });
 
     it("leads with what is started, even when a queued item has waited longer", async () => {
