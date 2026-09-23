@@ -298,16 +298,19 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         }
 
         // A Status change stamps a date. The rule lives in one place because
-        // the Backlog's Start and Finish controls apply it too, and it used to
-        // be written out at both.
+        // the Backlog's status control applies it too, and it used to be
+        // written out at both.
         if (field === 'status') {
             const stamped = datesForTransition(previousStatus, value);
             setReview(prev => ({
                 ...prev,
                 status: value,
                 // The editor's state is camelCase; the record is snake_case.
-                ...(stamped.date_started ? { dateStarted: stamped.date_started } : {}),
-                ...(stamped.date_completed ? { dateCompleted: stamped.date_completed } : {}),
+                // Keyed on the field's PRESENCE, not its truth: un-starting
+                // returns date_started: '' to clear it, and a truthiness guard
+                // would silently drop that empty-string clear.
+                ...('date_started' in stamped ? { dateStarted: stamped.date_started } : {}),
+                ...('date_completed' in stamped ? { dateCompleted: stamped.date_completed } : {}),
             }));
             return;
         }

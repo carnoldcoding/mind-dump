@@ -13,11 +13,11 @@
 //   ┌ BACKLOG ──────────────────────────────────────────────┐
 //   │ ＋ capture a title…      [game▾]      [ Capture ]      │
 //   │ search…  [status:all▾] [sort:status▾] [↑] [? Pick]    │
-//   │ ┌───────────┐┌───────────┐ │ STATE                    │
-//   │ │▩● SILENT  ││▩ FRIEREN  │ │ showing        3         │
-//   │ │  ✦♪  86d  ││  —   197d │ │ oldest       197d        │
-//   │ │FINISH EDIT││START EDIT │ │ □□□□□□□□□□□               │
-//   │ └───────────┘└───────────┘ │      NO ERROR            │
+//   │ ┌────────────────┐┌────────────────┐ │ STATE           │
+//   │ │▩● SILENT       ││▩ FRIEREN       │ │ showing    3    │
+//   │ │  ✦♪  86d       ││  —   197d      │ │ oldest   197d   │
+//   │ │[qd|STARTED]Ed✕ ││[QUEUED|st]Ed✕  │ │ □□□□□□□□□□□      │
+//   │ └────────────────┘└────────────────┘ │      NO ERROR   │
 //   ├───────────────────────────────────────────────────────┤
 //   │ ▌ Silent Hill — started, waiting 86 days              │
 //   └───────────────────────────────────────────────────────┘
@@ -30,15 +30,12 @@
 // the uniformity that shape exists to avoid.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { backend } from "../../../../api/backend";
 import {
     useReviews,
     invalidateReviews,
     isUnfinished,
     type Review,
-    type ReviewStatus,
 } from "../../../../store/reviews";
-import { datesForTransition } from "../../../../utils/lifecycle";
 import { daysWaiting } from "../../../../utils/capturedAt";
 import { writtenSections, SECTION_GLYPH } from "../../../../utils/critique";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
@@ -60,8 +57,6 @@ const TYPE_ICON: Record<string, string> = {
 // component type on every render, so React threw away and rebuilt every card on
 // each keystroke in the capture field.
 type CardActions = {
-    onSetStatus: (review: Review, status: ReviewStatus) => void;
-    onRemove: (review: Review) => void;
     onEdit: (review: Review) => void;
     onSelect: (review: Review) => void;
 };
@@ -78,7 +73,7 @@ const releaseYear = (review: Review): string | undefined =>
  * makes and equally untrue: a game with nothing worth saying about story is
  * finished without a story section.
  */
-const Written = ({ review }: { review: Review }) => {
+const Written = ({ review, tone = 'dark' }: { review: Review; tone?: 'dark' | 'light' }) => {
     const written = writtenSections(review);
     // Nothing written draws nothing at all, rather than a dash standing in for
     // sections that were never a target — a dash makes the same claim a
@@ -88,7 +83,9 @@ const Written = ({ review }: { review: Review }) => {
         <span
             aria-label="Sections written"
             title={written.join(', ')}
-            className="text-nier-text-dark/70 tracking-widest text-label"
+            className={`tracking-widest text-label ${
+                tone === 'light' ? 'text-nier-text-light/80' : 'text-nier-text-dark/70'
+            }`}
         >
             {written.map(section => SECTION_GLYPH[section] ?? '▪').join('')}
         </span>
@@ -97,128 +94,86 @@ const Written = ({ review }: { review: Review }) => {
 
 type CardProps = CardActions & { review: Review; selected: boolean };
 
-const Card = ({ review, selected, onSetStatus, onRemove, onEdit, onSelect }: CardProps) => {
-    // Per card rather than one flag in the parent: a single "confirming" bit
-    // would arm every card in the grid at once.
-    const [confirming, setConfirming] = useState(false);
+const Card = ({ review, selected, onEdit, onSelect }: CardProps) => {
     const waiting = daysWaiting(review._id);
     const year = releaseYear(review);
 
     const started = review.status === 'active';
+    // The card carries no controls now — every action lives in the editor, and
+    // the whole card opens it. Status is shown, not changed, here.
+    const statusLabel = started ? 'Started' : 'Queued';
 
     return (
         <li
             id={`backlog-card-${review.type}-${review.slug}`}
             data-backlog-card
+            role="button"
+            tabIndex={0}
+            aria-label={`Open ${review.title}`}
+            onClick={() => onEdit(review)}
+            onKeyDown={event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onEdit(review);
+                }
+            }}
             onMouseEnter={() => { onSelect(review); }}
-            onMouseLeave={() => setConfirming(false)}
             onFocus={() => onSelect(review)}
-            className={`relative flex flex-col transition-colors duration-150 ${
-                selected ? 'bg-nier-100-lighter' : 'bg-nier-150/25'
-            } ${started ? 'border-l-2 border-nier-dark' : ''}`}
+            className={`nier-card group relative flex flex-col overflow-hidden cursor-pointer min-h-36 transition-shadow duration-150 ${
+                selected ? 'ring-2 ring-inset ring-nier-text-light/70' : ''
+            }`}
         >
-            <div className="flex gap-3 p-2.5">
-                <div className="h-20 w-14 flex-shrink-0 overflow-hidden bg-nier-150/40">
-                    <ReviewCover imagePath={review.image_path} fill />
-                </div>
+            {/* The cover is the card — a poster, not a thumbnail. A missing one
+                falls back to the khaki hatch, which reads as part of the set. */}
+            <div aria-hidden="true" className="absolute inset-0">
+                <ReviewCover imagePath={review.image_path} fill />
+            </div>
+            {/* Scrim: heaviest at the foot where the title sits, so it stays
+                legible over any art, fading to almost nothing at the top. */}
+            <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-gradient-to-t from-nier-dark/95 via-nier-dark/50 to-nier-dark/5"
+            />
 
-                <div className="flex flex-col min-w-0 flex-1 gap-1">
-                    <h4 className="flex items-center gap-1.5 text-body uppercase tracking-wide text-nier-text-dark min-w-0">
-                        {/* The glyph that makes a started item legible at a
-                            glance in a mixed list (spec §3a). */}
-                        {started && (
-                            <span
-                                aria-label="Started"
-                                title="Started"
-                                className="flex-shrink-0 text-nier-dark leading-none"
-                            >●</span>
-                        )}
-                        <span className="truncate">{review.title}</span>
-                    </h4>
+            {/* Status as a corner tab: filled dark for started (reads first in a
+                scan), a light chip for queued. The one per-card difference —
+                every frame is otherwise identical. */}
+            <span
+                className={`absolute top-0 right-0 z-10 px-2 py-0.5 text-eyebrow uppercase tracking-widest leading-none ${
+                    started ? 'bg-nier-dark text-nier-text-light' : 'bg-nier-100-lighter/85 text-nier-text-dark'
+                }`}
+            >{statusLabel}</span>
 
-                    <p className="flex items-center gap-1.5 text-eyebrow uppercase tracking-wide text-nier-text-dark/50">
+            {/* Title and meta pinned to the foot, over the scrim, in light ink. */}
+            <div className="relative z-10 mt-auto flex flex-col gap-1 p-2.5">
+                <h4 className="text-heading uppercase tracking-wide text-nier-text-light leading-tight">
+                    <span className="line-clamp-2">{review.title}</span>
+                </h4>
+
+                <div className="flex items-center justify-between gap-2">
+                    <p className="flex items-center gap-1.5 text-eyebrow uppercase tracking-wide text-nier-text-light/70 min-w-0">
                         <ion-icon
                             name={TYPE_ICON[review.type] ?? 'document-sharp'}
-                            style={{ flexShrink: 0, fontSize: '11px' }}
+                            style={{ flexShrink: 0, fontSize: '11px', color: 'var(--color-nier-text-light)' }}
                         ></ion-icon>
-                        {review.type}
-                        {year && <span aria-hidden="true">·</span>}
-                        {year}
+                        <span className="truncate">
+                            {review.type}
+                            {year && <span aria-hidden="true"> · </span>}
+                            {year}
+                        </span>
                     </p>
 
-                    {review.genres && review.genres.length > 0 && (
-                        <p className="text-eyebrow uppercase tracking-wide text-nier-text-dark/40 truncate">
-                            {review.genres.slice(0, 2).join(' · ')}
-                        </p>
-                    )}
-
-                    <div className="mt-auto flex items-baseline justify-between gap-2 pt-1">
-                        <Written review={review} />
-                        {/* Absent rather than zero where the id carries no
-                            date: an unreadable id means we don't know, which
-                            is not the same as captured today. */}
+                    <span className="flex items-center gap-2 flex-shrink-0">
+                        <Written review={review} tone="light" />
+                        {/* Absent rather than zero where the id carries no date:
+                            an unreadable id means we don't know, not today. */}
                         {waiting !== undefined && (
-                            <span className="text-eyebrow uppercase tracking-wide text-nier-text-dark/40 whitespace-nowrap">
+                            <span className="text-eyebrow uppercase tracking-wide text-nier-text-light/60 whitespace-nowrap">
                                 waiting {waiting}d
                             </span>
                         )}
-                    </div>
+                    </span>
                 </div>
-            </div>
-
-            <div className="flex items-stretch gap-px border-t border-nier-150/50">
-                {review.status === 'todo' && (
-                    <button
-                        onClick={() => onSetStatus(review, 'active')}
-                        className="flex-1 text-eyebrow uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
-                    >Start</button>
-                )}
-                {review.status === 'active' && (
-                    <button
-                        onClick={() => onSetStatus(review, 'done')}
-                        className="flex-1 text-eyebrow uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
-                    >Finish</button>
-                )}
-                {/* Story 16: capture staying minimal must not mean detail is
-                    impossible. Unfinished Reviews are editable here and nowhere
-                    else, since the Reviews window now shows finished work only. */}
-                <button
-                    onClick={() => onEdit(review)}
-                    aria-label={`Edit ${review.title}`}
-                    className="flex-1 text-eyebrow uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
-                >Edit</button>
-
-                {/* Two presses, because this is the one control here that
-                    cannot be taken back. An undo could not be built either:
-                    restoring would write a new record with a new id, and the
-                    id is where the capture date comes from.
-
-                    Armed, it offers both answers rather than only the
-                    dangerous one. Moving the pointer away also cancels, but
-                    that is a mouse gesture and this folder is used one-handed
-                    on a phone — without a control of its own, an armed card on
-                    touch would stay armed with the confirm as the biggest
-                    target in the row. */}
-                {confirming ? (
-                    <>
-                        <button
-                            onClick={() => setConfirming(false)}
-                            aria-label={`Keep ${review.title}`}
-                            className="flex-1 text-eyebrow uppercase tracking-widest py-1.5 bg-nier-150/50 hover:bg-nier-150 cursor-pointer transition-colors duration-150"
-                        >Keep</button>
-                        <button
-                            onClick={() => { setConfirming(false); onRemove(review); }}
-                            aria-label={`Confirm removing ${review.title}`}
-                            className="flex-1 text-eyebrow uppercase tracking-widest py-1.5 bg-nier-dark text-nier-text-light cursor-pointer"
-                        >Delete?</button>
-                    </>
-                ) : (
-                    <button
-                        onClick={() => setConfirming(true)}
-                        aria-label={`Remove ${review.title}`}
-                        className="w-9 text-label leading-none py-1.5 bg-nier-150/50 hover:bg-nier-dark hover:text-nier-text-light cursor-pointer transition-colors duration-150"
-                    >✕</button>
-                )}
             </div>
         </li>
     );
@@ -337,8 +292,8 @@ const keyOf = (review: Review) => `${review.type}-${review.slug}`;
  * What the caption bar says — about the selection, or about the folder when
  * there is no selection, which on a touch device is always.
  */
-const captionFor = (review: Review | undefined, error: string | null, waitingOn: Review[]): string => {
-    if (error) return error;
+const captionFor = (review: Review | undefined, hasError: boolean, waitingOn: Review[]): string => {
+    if (hasError) return "Couldn't load the backlog.";
     if (!review) {
         if (waitingOn.length === 0) return "Nothing on the backlog.";
         const oldest = daysWaiting(waitingOn[0]._id);
@@ -354,7 +309,7 @@ const captionFor = (review: Review | undefined, error: string | null, waitingOn:
 };
 
 const BacklogWindow = () => {
-    const { reviews } = useReviews();
+    const { reviews, error: fetchError } = useReviews();
     // No signal to wait on: this window mounts well after boot, from a folder
     // icon on the Desktop. No decoded title and no card grid either, so its
     // whole entrance is the frame arriving with its chrome a beat behind.
@@ -381,8 +336,6 @@ const BacklogWindow = () => {
         if (panelRef.current) cascade(tl, panelRef.current, 0.15);
     }, scope, [reviews.length]);
 
-    const [error, setError] = useState<string | null>(null);
-    const [justFinished, setJustFinished] = useState<string | null>(null);
     const [editing, setEditing] = useState<Review | null>(null);
     const [editorOpen, setEditorOpen] = useState(false);
     // Two Categories can hold the same slug — a game and a film of it — and
@@ -400,6 +353,14 @@ const BacklogWindow = () => {
     // without a pinned section (spec §3a).
     const [controls, setControls] = useState<UnstartedControls>(NO_CONTROLS);
     const searchRef = useRef<HTMLInputElement>(null);
+    // The search/filter region lives inside the Capture box, collapsed until
+    // the funnel toggle reveals it.
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    // Any narrowing filter set — so the collapsed toggle can mark itself. Sort
+    // and direction are ordering, not narrowing, so they don't count here.
+    const filtersActive =
+        controls.query !== '' || controls.status !== 'all' ||
+        controls.category !== null || controls.genre !== null || controls.creator !== null;
 
     const listed = useMemo(() => applyControls(unfinished, controls), [unfinished, controls]);
     const facets = useMemo(() => facetsFor(unfinished, controls), [unfinished, controls]);
@@ -410,15 +371,12 @@ const BacklogWindow = () => {
 
     const changeControls = (next: Partial<UnstartedControls>) => setControls(prev => ({ ...prev, ...next }));
 
-    // Typing is the fastest way into a list of hundreds, so the window opens
-    // ready for it. Once only: refocusing whenever the collection changed
-    // would pull the caret back mid-edit somewhere else.
-    const focused = useRef(false);
+    // The search box lives in the collapsible region, so it isn't in the DOM
+    // until the region opens. Focus it the moment it does, so revealing the
+    // filters lands the caret ready to type — the fastest way into a long list.
     useEffect(() => {
-        if (focused.current) return;
-        focused.current = true;
-        searchRef.current?.focus();
-    }, []);
+        if (filtersOpen) searchRef.current?.focus();
+    }, [filtersOpen]);
 
     /** Move the highlight through what is showing, and keep it in view. */
     const moveCursor = (delta: number) => {
@@ -438,9 +396,11 @@ const BacklogWindow = () => {
         // The card carries its own Start/Edit/Remove, so Enter's job is only to
         // move focus onto the highlighted card — from there Tab reaches those
         // actions without a pointer.
-        else if (event.key === 'Enter' && selectedKey) {
+        // The card has no controls of its own now — Enter opens the editor,
+        // which is where every action lives.
+        else if (event.key === 'Enter' && selected) {
             event.preventDefault();
-            document.getElementById(`backlog-card-${selectedKey}`)?.querySelector('button')?.focus();
+            openEdit(selected);
         }
     };
 
@@ -465,34 +425,7 @@ const BacklogWindow = () => {
         setEditorOpen(true);
     };
 
-    const setStatus = async (review: Review, status: ReviewStatus) => {
-        setError(null);
-        try {
-            await backend.saveReview({
-                ...review,
-                status,
-                ...datesForTransition(review.status, status),
-            }, true);
-            if (status === 'done') setJustFinished(review.title);
-            invalidateReviews();
-        } catch {
-            setError('Network error');
-        }
-    };
-
-    const remove = async (review: Review) => {
-        setError(null);
-        try {
-            await backend.deleteReview(review.slug);
-            invalidateReviews();
-        } catch {
-            setError('Network error');
-        }
-    };
-
     const actions = {
-        onSetStatus: setStatus,
-        onRemove: remove,
         onEdit: openEdit,
         onSelect: (review: Review) => setSelectedKey(keyOf(review)),
     };
@@ -508,10 +441,14 @@ const BacklogWindow = () => {
                 <div ref={shelvesScope} className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
 
                     {/* The control strip. Capture leads it as the one control
-                        that adds; search, status, sort and the facets narrow
-                        the one list below (spec §3b). */}
-                    <div className="flex flex-col gap-2">
-                        <Capture reviews={reviews} />
+                        that adds; the search/filters that narrow the one list
+                        live inside it, revealed by its funnel toggle (spec §3b). */}
+                    <Capture
+                        reviews={reviews}
+                        expanded={filtersOpen}
+                        onToggleExpand={() => setFiltersOpen(open => !open)}
+                        filtersActive={filtersActive}
+                    >
                         <UnstartedBar
                             controls={controls}
                             categories={facets.categories}
@@ -523,19 +460,7 @@ const BacklogWindow = () => {
                             searchRef={searchRef}
                             onListKey={onListKey}
                         />
-                    </div>
-
-                    {/* The handoff. Finishing something here is where it stops
-                        being the Backlog's and becomes the Reviews window's —
-                        a real seam, so it says so rather than pretending
-                        otherwise (story 19). */}
-                    {justFinished && (
-                        <p className="text-body text-nier-text-dark/70 px-1">
-                            Finished {justFinished}. Write it up in the Reviews folder.
-                        </p>
-                    )}
-
-                    {error && <p className="text-body text-red-700 px-1">{error}</p>}
+                    </Capture>
 
                     <div className="relative flex gap-4 min-h-0">
                         <div className="flex-1 min-w-0">
@@ -551,7 +476,7 @@ const BacklogWindow = () => {
                             controls have narrowed it. Desktop-only; the caption
                             bar carries the fault for a phone. */}
                         <div className="hidden md:block w-44 flex-shrink-0 bg-nier-100-lighter/40">
-                            <State readouts={readouts} error={error !== null} />
+                            <State readouts={readouts} error={fetchError} />
                         </div>
                     </div>
                 </div>
@@ -563,7 +488,7 @@ const BacklogWindow = () => {
                     <span data-hairline aria-hidden="true" className="absolute top-0 left-0 w-full h-px bg-nier-150 origin-left" />
                     <span aria-hidden="true" className="w-1 h-5 bg-nier-dark flex-shrink-0" />
                     <p className="text-label uppercase tracking-wide truncate text-nier-text-dark/70">
-                        {captionFor(selected, error, listed)}
+                        {captionFor(selected, fetchError, listed)}
                     </p>
                 </div>
         </Panel>
