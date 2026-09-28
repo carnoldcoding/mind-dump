@@ -319,7 +319,7 @@ const ReviewDetail = () => {
                 key={slug}
                 wrapperRef={scope}
                 wrapperClassName="mt-0 lg:mt-5"
-                className="bg-nier-100 md:h-[34rem]"
+                className="bg-nier-100 md:h-[42rem]"
                 style={maxHeight ? { maxHeight } : undefined}
                 frameRef={panelRef}
             >
