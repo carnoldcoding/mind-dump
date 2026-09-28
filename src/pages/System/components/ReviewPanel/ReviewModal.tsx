@@ -122,33 +122,57 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     // useScrollLock), so the ad-hoc body-overflow toggle that used to live
     // here is gone — it locked the body, which no longer scrolls anyway.
 
+    /**
+     * Whether the reader has changed anything since this open. Autosave waits
+     * for it: filling the form is itself a change to `review`, and autosave
+     * used to answer it by writing back whatever the form was filled with.
+     * That form is filled from the collection, which is fetched once per page
+     * session — so a tab opened before the Review was edited on another device
+     * wrote the old copy over the new one, a few seconds after merely opening.
+     */
+    const edited = useRef(false);
+
+    // The editor's state is camelCase; the record is snake_case.
+    const fillFrom = (record: NonNullable<Arguments['editingReview']>) => {
+        setReview({
+            title:         record.title         || '',
+            slug:          record.slug          || '',
+            description:   record.description   || '',
+            // The control is a native <input type="date">, which only
+            // understands ISO and renders blank for anything else — so a
+            // US-format release date showed as empty and silently cleared
+            // itself on the next save. Stored release dates are a mix of
+            // both formats; converting on the way in means editing one
+            // leaves it canonical.
+            releaseDate:   toIsoDate(record.release_date || '') || '',
+            dateStarted:   record.date_started   || '',
+            dateCompleted: record.date_completed || '',
+            creator:       record.creator || record.developers?.[0] || record.director || record.author || '',
+            genres:        record.genres        || [],
+            review:        record.review        || {} as any,
+            rating:        record.rating        || 0,
+            imagePath:     record.image_path    || '',
+            status:        record.status        || '',
+        });
+        setType(record.type || 'game');
+        setMods(record.mods ?? []);
+    };
+
     // ── Load / reset when modal opens or editing target changes ─────
     useEffect(() => {
         if (!isOpen) return;
+        edited.current = false;
+        let current = true;
 
         if (editingReview) {
-            setReview({
-                title:         editingReview.title         || '',
-                slug:          editingReview.slug          || '',
-                description:   editingReview.description   || '',
-                // The control is a native <input type="date">, which only
-                // understands ISO and renders blank for anything else — so a
-                // US-format release date showed as empty and silently cleared
-                // itself on the next save. Stored release dates are a mix of
-                // both formats; converting on the way in means editing one
-                // leaves it canonical.
-                releaseDate:   toIsoDate(editingReview.release_date || '') || '',
-                dateStarted:   editingReview.date_started   || '',
-                dateCompleted: editingReview.date_completed || '',
-                creator:       editingReview.creator || editingReview.developers?.[0] || editingReview.director || editingReview.author || '',
-                genres:        editingReview.genres        || [],
-                review:        editingReview.review        || {} as any,
-                rating:        editingReview.rating        || 0,
-                imagePath:     editingReview.image_path    || '',
-                status:        editingReview.status        || '',
-            });
-            setType(editingReview.type || 'game');
-            setMods(editingReview.mods ?? []);
+            // The collection's copy shows at once; the stored record replaces
+            // it when it lands, unless the reader has already started typing.
+            fillFrom(editingReview);
+            backend.getReviews({ slug: editingReview.slug })
+                .then(found => {
+                    if (current && found?.[0] && !edited.current) fillFrom(found[0]);
+                })
+                .catch(() => { /* keep the collection's copy */ });
             setSlugManual(true);     // existing slug — don't auto-override
             fetchTracks(editingReview._id);
             fetchImages(editingReview._id);
@@ -172,6 +196,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
         setChosenTab(DEFAULT_TAB);
         setFocusedField(null);
         setSaveStatus('idle');
+        return () => { current = false; };
     }, [editingReview, isOpen]);
 
     const genreOptions = type === 'game' ? gameGenres : type === 'cinema' ? movieGenres : bookGenres;
@@ -183,7 +208,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
     // ── Autosave: 2.5s after last change ────────────────────────────
     useEffect(() => {
-        if (!isOpen || !review.title?.trim() || !review.slug?.trim()) return;
+        if (!isOpen || !edited.current || !review.title?.trim() || !review.slug?.trim()) return;
 
         setSaveStatus('unsaved');
 
@@ -281,6 +306,7 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
 
     // ── Field handlers ───────────────────────────────────────────────
     const handleFieldChange = (field: string, value: any) => {
+        edited.current = true;
         const previousStatus = review.status;
 
         if (sectionsFor(type).includes(field)) {
@@ -319,12 +345,14 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
     };
 
     const handleSlugChange = (value: string) => {
+        edited.current = true;
         setSlugManual(true);
         setReview(prev => ({ ...prev, slug: value }));
     };
 
     const handleTypeChange = (newType: string) => {
         const t = newType as 'game' | 'cinema' | 'book';
+        edited.current = true;
         setType(t);
         const reviewDefaults: Record<'game' | 'cinema' | 'book', any> = {
             game:   { story: '', gameplay: '', graphics: '', sound: '' },
