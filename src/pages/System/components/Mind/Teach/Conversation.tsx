@@ -2,61 +2,12 @@ import { useRef } from "react";
 import { useRevealTimeline } from "../../../../../hooks/useRevealTimeline";
 import { fade, growth, decode } from "../../../../../utils/motion";
 import type { Turn } from "../../../../../store/mindSession";
-import type { MindActionResult } from "../../../../../types/mind";
+import { readResult, type Milestone } from "./readResult";
 
 // The teaching conversation (spec §17): prose, clickable MC cards, and the
 // tiered result — compact per answer, escalating to a Decode banner + Growth
 // Logos bar on Mastery/Boss/Prestige. Entrances use the app's motion primitives;
 // hover/selection is CSS.
-
-type Milestone = { label: string; logos: number } | null;
-
-// Pull a compact, display-ready shape out of one loose action result.
-function readResult(r: MindActionResult & { error?: string }): { line: string; milestone: Milestone } | null {
-    // An action the backend couldn't apply (a domain rule, a malformed field) —
-    // the turn still succeeded, so show a quiet note rather than a fake ✗.
-    if (r.error) return { line: `⚠ ${r.op ?? "action"} not applied (${r.error})`, milestone: null };
-    const o = (r.outcome || {}) as Record<string, number | boolean>;
-    const res = (r.result || {}) as Record<string, number | boolean>;
-    const answerEvent = (r.events || []).find(e => e.op === "answer" || e.op === "recall");
-    const correct = answerEvent?.correct;
-
-    switch (r.op) {
-        case "recordAnswer": {
-            const streak = Number(o.streak ?? 0);
-            const dots = `${"●".repeat(streak)}${"○".repeat(Math.max(0, 3 - streak))}`;
-            const mark = correct ? "✓" : "✗";
-            const line = `${mark}  streak ${dots}`;
-            const milestone = o.logosAwarded && Number(o.logosAwarded) > 0
-                ? { label: "MASTERED", logos: Number(o.logosAwarded) }
-                : null;
-            return { line, milestone };
-        }
-        case "recordRecall": {
-            const mark = correct ? "✓" : "✗";
-            const tier = Number(o.tierAfter ?? 0);
-            const line = `${mark}  recall · tier ${tier}`;
-            const milestone = o.prestiged ? { label: "PRESTIGE", logos: 0 } : null;
-            return { line, milestone };
-        }
-        case "attemptBoss": {
-            const win = !!res.win;
-            const delta = Number(res.logosDelta ?? 0);
-            return {
-                line: `boss · ${delta >= 0 ? "+" : ""}${delta} Λ`,
-                milestone: { label: win ? "BOSS DEFEATED" : "BOSS LOST", logos: delta },
-            };
-        }
-        case "startQuest":
-            return { line: `▸ started: ${r.quest?.title ?? r.quest?.slug ?? ""}`, milestone: null };
-        case "upsertLore":
-            return { line: "▸ lore updated", milestone: null };
-        case "linkQuests":
-            return { line: "▸ links added", milestone: null };
-        default:
-            return null;
-    }
-}
 
 const UserTurn = ({ text }: { text: string }) => {
     const scope = useRef<HTMLDivElement>(null);
@@ -73,7 +24,7 @@ const UserTurn = ({ text }: { text: string }) => {
 const AssistantTurn = ({ turn, active, busy, onAnswer }: { turn: Extract<Turn, { role: "assistant" }>; active: boolean; busy: boolean; onAnswer: (optionId: string, text: string) => void }) => {
     const clickable = active && !busy;
     const scope = useRef<HTMLDivElement>(null);
-    const results = (turn.results || []).map(readResult).filter(Boolean) as { line: string; milestone: Milestone }[];
+    const results = (turn.results || []).map(r => readResult(r)).filter(Boolean) as { line: string; milestone: Milestone }[];
     const milestone = results.map(r => r.milestone).find(Boolean) || null;
 
     useRevealTimeline(true, tl => {
