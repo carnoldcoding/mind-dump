@@ -71,6 +71,11 @@ export type MindActionResult = {
     discipline?: Partial<MindDiscipline> | null;
     /** The event(s) appended by this action — carries `correct` for answer/recall. */
     events?: MindEvent[];
+    /** On a graded click: what the backend counted it as, read from the quest's state. */
+    kind?: "mastery" | "recall" | "practice";
+    /** On a graded click: whether the answer was right. The only place a practice
+     *  result says so, since practice appends no event. */
+    correct?: boolean;
 };
 
 /** A multiple-choice diagnostic, rendered as clickable cards (spec §17). */
