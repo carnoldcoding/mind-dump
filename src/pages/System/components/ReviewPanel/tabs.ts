@@ -152,7 +152,10 @@ const FIELD_HINTS: Record<string, string> = {
     releaseDate: 'Records when the work was released.',
     rating: 'Assigns a final score. Ten point scale.',
     status: "Sets the work's current standing.",
-    genres: 'Applies descriptive tags drawn from this Category.',
+    genres: 'Applies Genres drawn from this Category.',
+    perspectives: 'Records the view the game is played from.',
+    playModes: 'Records how the game is played, and with whom.',
+    tags: 'Applies descriptive tags beyond genre.',
     imagePath: 'Points to the cover art.',
     description: 'Records a summary shown before the Critique.',
 };

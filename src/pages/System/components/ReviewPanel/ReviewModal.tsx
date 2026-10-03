@@ -13,7 +13,8 @@ import { transformKeysToSnakeCase } from "../../../../utils/helpers"
 import { datesForTransition } from "../../../../utils/lifecycle"
 import { generateSlug } from "../../../../utils/slug"
 import { toIsoDate } from "./migration"
-import { gameGenres, movieGenres, bookGenres } from "../../../../utils/genres"
+import { gameGenres, gameGenreKinds, movieGenres, bookGenres, type GameGenreKind } from "../../../../utils/genres"
+import { genresOfKind, withGenresOfKind } from "../../../../utils/genreKinds"
 import { useRetained } from "../../../../hooks/useRetained"
 import ModModal from "./ModModal"
 import type { Mod } from "./ModModal"
@@ -26,6 +27,14 @@ import { FieldRow } from "./FieldRow"
 import { DEFAULT_TAB, hintFor, resolveTab, tabsFor, type TabId } from "./tabs"
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline"
 import { cascade, domino } from "../../../../utils/motion"
+
+/** A game's Genres, one field per kind, in the order the editor shows them. */
+const GAME_GENRE_FIELDS: { kind: GameGenreKind; hintKey: string; label: string }[] = [
+    { kind: 'genre', hintKey: 'genres', label: 'Genre' },
+    { kind: 'perspective', hintKey: 'perspectives', label: 'Perspective' },
+    { kind: 'playMode', hintKey: 'playModes', label: 'Play mode' },
+    { kind: 'tag', hintKey: 'tags', label: 'Tags' },
+];
 
 interface BaseReview<TType extends string, TReview> {
     title: string;
@@ -589,14 +598,27 @@ export const ReviewModal = ({ isOpen, setIsOpen, onReviewAdded, editingReview }:
                                 />
                             </FieldRow>
 
-                            <FieldRow field="genres" onFocusField={setFocusedField}>
-                                <MutliSelectField
-                                    label="Genres"
-                                    options={genreOptions}
-                                    value={review.genres || []}
-                                    onChange={(v) => handleFieldChange('genres', v)}
-                                />
-                            </FieldRow>
+                            {type === 'game' ? GAME_GENRE_FIELDS.map(({ kind, hintKey, label }) => (
+                                // One field per kind, all writing the one
+                                // genres list — the split only eases authoring.
+                                <FieldRow key={kind} field={hintKey} onFocusField={setFocusedField}>
+                                    <MutliSelectField
+                                        label={label}
+                                        options={gameGenreKinds[kind]}
+                                        value={genresOfKind(review.genres || [], kind)}
+                                        onChange={(v) => handleFieldChange('genres', withGenresOfKind(review.genres || [], kind, v))}
+                                    />
+                                </FieldRow>
+                            )) : (
+                                <FieldRow field="genres" onFocusField={setFocusedField}>
+                                    <MutliSelectField
+                                        label="Genres"
+                                        options={genreOptions}
+                                        value={review.genres || []}
+                                        onChange={(v) => handleFieldChange('genres', v)}
+                                    />
+                                </FieldRow>
+                            )}
 
                             <FieldRow field="imagePath" onFocusField={setFocusedField}>
                                 <ImageTextField
