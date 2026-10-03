@@ -60,6 +60,8 @@ A game modification attached to a game Review — a name, optional author, URL, 
 
 **Genre, Developer, Platform, Director, Author**:
 Descriptive metadata on a Review. Games have developers + platforms; cinema has a director; books have an author. Genres apply to all three but are drawn from different lists per category.
+A Genre is any descriptor worth filtering a shelf by, not only a genre in the strict sense. A game Genre is one of four kinds: a **Genre** proper (rpg, metroidvania), a **Perspective** (first-person, top-down), a **Play mode** (co-op, turn-based), or a **Tag** (indie, open-world). The kinds are kept deliberately distinct when a Review is authored, but a Review carries them all in the one Genre list rather than in separate fields, and a shelf filters by them as one list. "Genre" therefore names both the whole list and one kind within it; where the difference matters, say "Genre kind" for the latter. Cinema and book Genres are all of the one kind.
+A Review can carry several Genres, so a compound of two existing Genres is not a Genre of its own: an action-adventure game is tagged action and adventure. The list stays at the level of broad genres rather than fine sub-genres.
 
 ### System (admin area)
 
