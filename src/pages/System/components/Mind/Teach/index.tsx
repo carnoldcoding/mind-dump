@@ -46,8 +46,8 @@ const TeachView = () => {
     const openerOptions: { key: string; label: string; onSelect: () => void }[] = [];
     if (dueCount > 0) openerOptions.push({ key: "recalls", label: `Recalls due (${dueCount})`, onSelect: () => send("Let's do my due recalls — start with the first one.") });
     if (openCount > 0) openerOptions.push({ key: "continue", label: "Continue a topic in progress", onSelect: () => send("Let's continue one of my in-progress quests — pick the one closest to mastery and ask the next diagnostic.") });
-    openerOptions.push({ key: "pick", label: "Pick a new topic for me", onSelect: () => send("Start a BRAND-NEW topic I have not begun — choose a quest with zero progress (not one already in a streak) and teach it from scratch. Do NOT continue an in-progress quest.") });
-    openerOptions.push({ key: "choose", label: "Start a new topic", onSelect: () => send("I'd like to start a new topic — ask me what I want to learn, then teach it from scratch. Only networking, DevOps, and sysadmin topics are in scope; if I name something outside those, tell me and suggest a related in-scope topic instead.", { display: false }) });
+    openerOptions.push({ key: "pick", label: "Pick a new topic for me", onSelect: () => send("Start a BRAND-NEW topic I have not begun — choose a quest with zero progress (not one already in a streak) and teach it from scratch. Do NOT continue an in-progress quest. Prefer a domain I've spent the least time in, so I learn across subjects.") });
+    openerOptions.push({ key: "choose", label: "Start a new topic", onSelect: () => send("I'd like to start a new topic — ask me what I want to learn, then teach it from scratch. Any subject is in scope.", { display: false }) });
 
     const busy = status === "sending" || status === "loading";
     const lastTurn = turns[turns.length - 1];
