@@ -1,5 +1,5 @@
 /**
- * A game's Genres come in four kinds (see CONTEXT.md), kept apart so the
+ * A game's Genres come in three kinds (see CONTEXT.md), kept apart so the
  * Review editor can offer each in its own field. They are still stored, and
  * filtered, as the one list.
  */
@@ -18,10 +18,12 @@ const gameGenresProper = [
     "hack-and-slash",
     "horror",
     "immersive-sim",
+    "indie",
     "jrpg",
     "life-sim",
     "management",
     "metroidvania",
+    "open-world",
     "platformer",
     "point-and-click",
     "puzzle",
@@ -38,10 +40,12 @@ const gameGenresProper = [
     "souls-like",
     "sports",
     "stealth",
+    "story-rich",
     "strategy",
     "survival",
     "tactics",
     "tower-defense",
+    "turn-based",
     "visual-novel",
     "walking-simulator",
 ];
@@ -55,31 +59,26 @@ const gamePerspectives = [
     "vr",
 ];
 
+// Who the game is played with, and nothing else. How it plays — turn-based,
+// real-time-strategy — is a Genre. Online co-op is multiplayer.
 const gamePlayModes = [
-    "co-op",
-    "mmo",
+    "single-player",
     "multiplayer",
-    "party",
+    "couch-co-op",
     "pvp",
-    "turn-based",
-];
-
-const gameTags = [
-    "indie",
-    "open-world",
-    "story-rich",
+    "mmo",
+    "party",
 ];
 
 export const gameGenreKinds = {
     genre: gameGenresProper,
     perspective: gamePerspectives,
     playMode: gamePlayModes,
-    tag: gameTags,
 };
 
 export type GameGenreKind = keyof typeof gameGenreKinds;
 
-export const gameGenres = [...gameGenresProper, ...gamePerspectives, ...gamePlayModes, ...gameTags];
+export const gameGenres = [...gameGenresProper, ...gamePerspectives, ...gamePlayModes];
 
 export const movieGenres = [
     "action",

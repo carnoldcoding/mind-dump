@@ -154,8 +154,7 @@ const FIELD_HINTS: Record<string, string> = {
     status: "Sets the work's current standing.",
     genres: 'Applies Genres drawn from this Category.',
     perspectives: 'Records the view the game is played from.',
-    playModes: 'Records how the game is played, and with whom.',
-    tags: 'Applies descriptive tags beyond genre.',
+    playModes: 'Records who the game is played with: alone, online, or on the couch.',
     imagePath: 'Points to the cover art.',
     description: 'Records a summary shown before the Critique.',
 };
