@@ -33,7 +33,6 @@ const GAME_GENRE_FIELDS: { kind: GameGenreKind; hintKey: string; label: string }
     { kind: 'genre', hintKey: 'genres', label: 'Genre' },
     { kind: 'perspective', hintKey: 'perspectives', label: 'Perspective' },
     { kind: 'playMode', hintKey: 'playModes', label: 'Play mode' },
-    { kind: 'tag', hintKey: 'tags', label: 'Tags' },
 ];
 
 interface BaseReview<TType extends string, TReview> {
