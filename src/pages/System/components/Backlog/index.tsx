@@ -361,7 +361,7 @@ const BacklogWindow = () => {
     // doesn't count. Sort and direction are ordering, not narrowing.
     const filtersActive =
         controls.query !== NO_CONTROLS.query || controls.status !== NO_CONTROLS.status ||
-        controls.category !== null || controls.genre !== null || controls.creator !== null;
+        controls.category !== null || controls.genres.length > 0 || controls.creator !== null;
 
     const listed = useMemo(() => applyControls(unfinished, controls), [unfinished, controls]);
     const facets = useMemo(() => facetsFor(unfinished, controls), [unfinished, controls]);

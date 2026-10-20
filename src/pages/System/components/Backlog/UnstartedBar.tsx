@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import type { Facet, UnstartedControls, SortKey, StatusFilter } from './unstarted';
 
 type UnstartedBarProps = {
@@ -53,6 +54,96 @@ const FacetSelect = ({ label, value, options, onChange }: {
         </select>
     </label>
 );
+
+/**
+ * Genres as a checklist, because several combine: each one ticked narrows the
+ * list further, the same as the Category shelves' genre panel. Drawn as a
+ * field of the strip that opens a list beneath it, since a native multiple
+ * select is a scrolling box that would not sit in the row.
+ */
+const GenreChecklist = ({ chosen, options, onChange }: {
+    chosen: string[];
+    options: Facet[];
+    onChange: (genres: string[]) => void;
+}) => {
+    const [open, setOpen] = useState(false);
+    const root = useRef<HTMLDivElement>(null);
+
+    // A press anywhere outside closes it, the way a native select does.
+    useEffect(() => {
+        if (!open) return;
+        const close = (event: MouseEvent) => {
+            if (!root.current?.contains(event.target as Node)) setOpen(false);
+        };
+        document.addEventListener('mousedown', close);
+        return () => document.removeEventListener('mousedown', close);
+    }, [open]);
+
+    const summary = chosen.length === 0 ? 'all' : chosen.length === 1 ? chosen[0] : `${chosen.length} genres`;
+    const toggle = (genre: string) =>
+        onChange(chosen.includes(genre) ? chosen.filter(g => g !== genre) : [...chosen, genre]);
+
+    return (
+        <div
+            ref={root}
+            className="relative flex items-center gap-1.5"
+            onKeyDown={event => {
+                if (event.key === 'Escape' && open) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setOpen(false);
+                }
+            }}
+        >
+            <span aria-hidden="true" className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">Genre</span>
+            <button
+                type="button"
+                aria-label={`Genre, ${summary}`}
+                aria-expanded={open}
+                onClick={() => setOpen(o => !o)}
+                className={`${field} cursor-pointer max-w-36 truncate capitalize flex items-center gap-1.5`}
+            >
+                <span className="truncate">{summary}</span>
+                <span aria-hidden="true" className="text-nier-text-dark/50">▾</span>
+            </button>
+
+            {open && (
+                <div
+                    role="group"
+                    aria-label="Genres"
+                    className="absolute left-0 top-full mt-1 z-20 min-w-44 max-h-64 overflow-y-auto bg-nier-100-lighter border border-nier-150 py-1"
+                >
+                    <button
+                        type="button"
+                        aria-label="Clear genres"
+                        onClick={() => onChange([])}
+                        disabled={chosen.length === 0}
+                        className="w-full text-left text-eyebrow uppercase tracking-widest px-2 py-1 cursor-pointer hover:bg-nier-150/40 disabled:opacity-40 disabled:cursor-default"
+                    >
+                        clear
+                    </button>
+                    {options.map(option => {
+                        const genre = option.value ?? '';
+                        return (
+                            <label
+                                key={genre}
+                                className="flex items-center gap-2 text-label px-2 py-1 cursor-pointer capitalize hover:bg-nier-150/40"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={chosen.includes(genre)}
+                                    onChange={() => toggle(genre)}
+                                    className="accent-nier-dark cursor-pointer"
+                                />
+                                {genre} ({option.count})
+                            </label>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
 
 /**
  * Search, status, sort and the facet filters, in one strip above the list.
@@ -124,11 +215,10 @@ export const UnstartedBar = ({
                     options={categories.filter(c => c.value !== null)}
                     onChange={category => onChange({ category })}
                 />
-                <FacetSelect
-                    label="Genre"
-                    value={controls.genre}
+                <GenreChecklist
+                    chosen={controls.genres}
                     options={genres}
-                    onChange={genre => onChange({ genre })}
+                    onChange={genres => onChange({ genres })}
                 />
                 <FacetSelect
                     label="Creator"

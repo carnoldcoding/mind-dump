@@ -107,8 +107,17 @@ describe('filtering', () => {
     });
 
     it('narrows to a genre', () => {
-        expect(applyControls(items, controls({ genre: 'action' })).map(r => r.title))
+        expect(applyControls(items, controls({ genres: ['action'] })).map(r => r.title))
             .toEqual(['Nioh', 'Nioh 2']);
+    });
+
+    // The same rule as the Category shelves' genre filter: each Genre chosen
+    // narrows further, rather than widening to whatever matches any of them.
+    it('keeps only what carries every chosen genre', () => {
+        expect(applyControls(items, controls({ genres: ['action', 'rpg'] })).map(r => r.title))
+            .toEqual(['Nioh']);
+        expect(applyControls(items, controls({ genres: ['rpg', 'thriller'] })))
+            .toEqual([]);
     });
 
     it('narrows to a creator', () => {
@@ -119,9 +128,9 @@ describe('filtering', () => {
     // Every control is an AND. Two filters that each match something but share
     // nothing must come back empty rather than falling back to either.
     it('applies every control together', () => {
-        expect(applyControls(items, controls({ category: 'game', genre: 'rpg' })).map(r => r.title))
+        expect(applyControls(items, controls({ category: 'game', genres: ['rpg'] })).map(r => r.title))
             .toEqual(['Nioh']);
-        expect(applyControls(items, controls({ category: 'game', genre: 'fantasy' })))
+        expect(applyControls(items, controls({ category: 'game', genres: ['fantasy'] })))
             .toEqual([]);
     });
 
@@ -283,6 +292,20 @@ describe('what the controls can offer', () => {
             .toEqual([{ value: 'thriller', count: 1 }]);
     });
 
+    // Each count is what adding that Genre would leave, the same as the
+    // Category shelves' genre panel.
+    it('counts each genre against the genres already chosen', () => {
+        expect(facetsFor(items, { ...ALL, genres: ['action'] }).genres)
+            .toEqual([{ value: 'action', count: 2 }, { value: 'rpg', count: 1 }]);
+    });
+
+    // A chosen Genre the other controls have since emptied must stay on offer,
+    // or there would be no way to un-choose it.
+    it('keeps a chosen genre on offer at zero', () => {
+        expect(facetsFor(items, { ...ALL, category: 'cinema', genres: ['rpg'] }).genres)
+            .toContainEqual({ value: 'rpg', count: 0 });
+    });
+
     it('offers only creators present in the current Category', () => {
         expect(facetsFor(items, { ...ALL, category: 'game' }).creators)
             .toEqual([{ value: 'Team NINJA', count: 2 }]);
@@ -291,7 +314,7 @@ describe('what the controls can offer', () => {
     // The rail counts must not answer to the rail's own choice, or picking
     // GAMES would make every other Category read zero.
     it('counts Categories against the other controls, not the Category', () => {
-        const withGenre = facetsFor(items, { ...ALL, category: 'game', genre: 'action' });
+        const withGenre = facetsFor(items, { ...ALL, category: 'game', genres: ['action'] });
 
         expect(withGenre.categories.find(c => c.value === 'game')?.count).toBe(2);
         expect(withGenre.categories.find(c => c.value === 'cinema')?.count).toBe(0);

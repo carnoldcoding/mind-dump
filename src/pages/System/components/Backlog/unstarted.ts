@@ -22,7 +22,8 @@ export type UnstartedControls = {
     category: string | null;
     /** Which Status to show — 'all' hides nothing. */
     status: StatusFilter;
-    genre: string | null;
+    /** Genres a row must all carry — empty for no narrowing. */
+    genres: string[];
     creator: string | null;
     sort: SortKey;
     /** True for the default direction of the chosen key. */
@@ -35,7 +36,7 @@ export const NO_CONTROLS: UnstartedControls = {
     // Started only: Queued holds things merely of interest, which is most of
     // the list and not what the window is opened to see.
     status: 'active',
-    genre: null,
+    genres: [],
     creator: null,
     sort: 'waiting',
     ascending: true,
@@ -57,7 +58,10 @@ export function applyControls(items: Review[], controls: UnstartedControls): Rev
 
     if (controls.status !== 'all') result = result.filter(r => r.status === controls.status);
     if (controls.category) result = result.filter(r => r.type === controls.category);
-    if (controls.genre) result = result.filter(r => (r.genres ?? []).includes(controls.genre!));
+    // Every chosen Genre, the same rule as the Category shelves' filter.
+    if (controls.genres.length) {
+        result = result.filter(r => controls.genres.every(genre => (r.genres ?? []).includes(genre)));
+    }
     if (controls.creator) result = result.filter(r => r.creator === controls.creator);
     if (controls.query) result = rankByTitle(result, controls.query);
 
@@ -147,15 +151,15 @@ export function facetsFor(items: Review[], controls: UnstartedControls): Facets 
     // Each control's own counts must not answer to its own choice. Resetting a
     // control to its un-narrowed value ('' for query, 'all' for status, null
     // for the rest) is what "count against the *other* controls" means.
-    const without = (key: keyof UnstartedControls) =>
+    const without = (key: 'category' | 'status') =>
         applyControls(items, {
             ...controls,
-            [key]: key === 'query' ? '' : key === 'status' ? 'all' : null,
+            [key]: key === 'status' ? 'all' : null,
         });
 
     const forCategories = without('category');
     const forStatuses = without('status');
-    const inCategory = applyControls(items, { ...controls, genre: null, creator: null });
+    const inCategory = applyControls(items, { ...controls, genres: [], creator: null });
 
     const tally = (rows: Review[], read: (r: Review) => string[]) => {
         const counts = new Map<string, number>();
@@ -181,9 +185,18 @@ export function facetsFor(items: Review[], controls: UnstartedControls): Facets 
             { value: 'active', count: forStatuses.filter(r => r.status === 'active').length },
             { value: 'todo', count: forStatuses.filter(r => r.status === 'todo').length },
         ],
-        genres: tally(inCategory, r => r.genres ?? []),
+        // Genres are the exception to counting against the other controls:
+        // they combine, so each is counted against what is showing — what
+        // adding it would leave, as on the Category shelves. A chosen Genre
+        // stays on offer at zero so it can be un-chosen.
+        genres: withChosen(tally(applyControls(items, controls), r => r.genres ?? []), controls.genres),
         creators: tally(inCategory, r => (r.creator ? [r.creator] : [])),
     };
+}
+
+function withChosen(offered: Facet[], chosen: string[]): Facet[] {
+    const missing = chosen.filter(genre => !offered.some(facet => facet.value === genre));
+    return [...offered, ...missing.map(value => ({ value, count: 0 }))];
 }
 
 /** What the Readout column reports about what is currently showing. */

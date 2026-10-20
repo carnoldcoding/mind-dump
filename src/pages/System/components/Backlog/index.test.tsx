@@ -691,6 +691,62 @@ describe("the Backlog's state column", () => {
     });
 });
 
+describe("narrowing by several genres", () => {
+    const shelf = () => [
+        review("Nioh", { genres: ["action", "rpg"] }),
+        review("Doom", { genres: ["action", "shooter"] }),
+        review("Persona", { genres: ["rpg"] }),
+    ];
+    const chooseGenre = (label: RegExp) => fireEvent.click(screen.getByRole("checkbox", { name: label }));
+
+    it("keeps only what carries every genre chosen", async () => {
+        await showFolder(shelf());
+        openFilters();
+        fireEvent.click(screen.getByRole("button", { name: /^Genre/ }));
+
+        chooseGenre(/^action/);
+        chooseGenre(/^rpg/);
+
+        expect(screen.getByText("Nioh")).toBeDefined();
+        expect(screen.queryByText("Doom")).toBeNull();
+        expect(screen.queryByText("Persona")).toBeNull();
+    });
+
+    it("says how many each genre would leave", async () => {
+        await showFolder(shelf());
+        openFilters();
+        fireEvent.click(screen.getByRole("button", { name: /^Genre/ }));
+
+        chooseGenre(/^action/);
+
+        expect(screen.getByRole("checkbox", { name: "rpg (1)" })).toBeDefined();
+        expect(screen.getByRole("checkbox", { name: "shooter (1)" })).toBeDefined();
+    });
+
+    it("clears every chosen genre at once", async () => {
+        await showFolder(shelf());
+        openFilters();
+        fireEvent.click(screen.getByRole("button", { name: /^Genre/ }));
+        chooseGenre(/^action/);
+        chooseGenre(/^rpg/);
+
+        fireEvent.click(screen.getByRole("button", { name: "Clear genres" }));
+
+        expect(screen.getByText("Persona")).toBeDefined();
+        expect(screen.getByText("Doom")).toBeDefined();
+    });
+
+    it("closes on Escape", async () => {
+        await showFolder(shelf());
+        openFilters();
+        fireEvent.click(screen.getByRole("button", { name: /^Genre/ }));
+
+        fireEvent.keyDown(screen.getByRole("checkbox", { name: /^action/ }), { key: "Escape" });
+
+        expect(screen.queryByRole("checkbox", { name: /^action/ })).toBeNull();
+    });
+});
+
 describe("grooming, continued", () => {
     // Story 16: the Reviews window shows finished work only now, so if the
     // heavier fields aren't reachable here they aren't reachable anywhere. The
