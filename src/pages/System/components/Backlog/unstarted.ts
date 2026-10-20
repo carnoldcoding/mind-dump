@@ -32,12 +32,12 @@ export type UnstartedControls = {
 export const NO_CONTROLS: UnstartedControls = {
     query: '',
     category: null,
-    status: 'all',
+    // Started only: Queued holds things merely of interest, which is most of
+    // the list and not what the window is opened to see.
+    status: 'active',
     genre: null,
     creator: null,
-    // Started first, then longest-waiting — so "what am I on" is answerable
-    // from the top of one mixed list, without a pinned section (spec §3a).
-    sort: 'status',
+    sort: 'waiting',
     ascending: true,
 };
 
@@ -66,9 +66,9 @@ export function applyControls(items: Review[], controls: UnstartedControls): Rev
     // an explicit instruction, and silently ignoring it while typing was a bug.
     const ordered = [...result];
     // With the default key and a query, the search's own ranking stands — a
-    // prefix above a substring is the point of typing. Picking any explicit
-    // sort key (waiting, title, release) overrides it.
-    const rankingStands = controls.sort === 'status' && controls.query !== '';
+    // prefix above a substring is the point of typing. Picking any other
+    // sort key overrides it.
+    const rankingStands = controls.sort === NO_CONTROLS.sort && controls.query !== '';
 
     if (!rankingStands) ordered.sort(comparatorFor(controls.sort));
     if (!controls.ascending) ordered.reverse();
@@ -83,9 +83,8 @@ export function applyControls(items: Review[], controls: UnstartedControls): Rev
  */
 function comparatorFor(sort: SortKey): (a: Review, b: Review) => number {
     if (sort === 'status') {
-        // Started (active) ahead of queued (todo), longest-waiting within each.
-        // The default order, and what keeps "what am I on" at the top of a list
-        // that no longer pins Started as its own section.
+        // Started (active) ahead of queued (todo), longest-waiting within each,
+        // so "what am I on" leads a list showing both.
         const rank = (r: Review) => (r.status === 'active' ? 0 : 1);
         return (a, b) => rank(a) - rank(b) || byLongestWaiting(a, b);
     }

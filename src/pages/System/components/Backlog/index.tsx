@@ -356,10 +356,11 @@ const BacklogWindow = () => {
     // The search/filter region lives inside the Capture box, collapsed until
     // the funnel toggle reveals it.
     const [filtersOpen, setFiltersOpen] = useState(false);
-    // Any narrowing filter set — so the collapsed toggle can mark itself. Sort
-    // and direction are ordering, not narrowing, so they don't count here.
+    // Any narrowing filter moved off its default — so the collapsed toggle can
+    // mark itself. The default Started view is not something you set, so it
+    // doesn't count. Sort and direction are ordering, not narrowing.
     const filtersActive =
-        controls.query !== '' || controls.status !== 'all' ||
+        controls.query !== NO_CONTROLS.query || controls.status !== NO_CONTROLS.status ||
         controls.category !== null || controls.genre !== null || controls.creator !== null;
 
     const listed = useMemo(() => applyControls(unfinished, controls), [unfinished, controls]);

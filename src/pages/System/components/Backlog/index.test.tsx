@@ -29,7 +29,8 @@ const mocked = vi.mocked(backend);
 
 const review = (title: string, over: Partial<ReviewRecord> = {}) =>
     makeReview(title, {
-        status: "todo",
+        // Started, because that is what the window opens on.
+        status: "active",
         rating: 0,
         date_completed: "",
         ...over,
@@ -57,6 +58,13 @@ const captureRegion = () => within(screen.getByRole("region", { name: "Capture" 
 // facet opens them first.
 const openFilters = () =>
     fireEvent.click(screen.getByRole("button", { name: "Show filters" }));
+
+// The window opens on Started only, so a test that needs a queued card on
+// screen widens the status facet first.
+const showEveryStatus = () => {
+    openFilters();
+    fireEvent.change(screen.getByLabelText("Status"), { target: { value: "all" } });
+};
 
 /**
  * The card for a title. §3 collapsed Started and Not Started into one list of
@@ -499,7 +507,7 @@ describe("grooming", () => {
     });
 
     it("opens the editor when a card is clicked", async () => {
-        await showFolder([review("Nioh 3", { status: "todo" })]);
+        await showFolder([review("Nioh 3", { status: "active" })]);
 
         fireEvent.click(screen.getByLabelText("Open Nioh 3"));
 
@@ -507,7 +515,7 @@ describe("grooming", () => {
     });
 
     it("opens the editor on Enter", async () => {
-        await showFolder([review("Nioh 3", { status: "todo" })]);
+        await showFolder([review("Nioh 3", { status: "active" })]);
 
         fireEvent.keyDown(screen.getByLabelText("Open Nioh 3"), { key: "Enter" });
 
@@ -570,8 +578,8 @@ describe("what a card says about a Review", () => {
 
     it("leads with whatever has waited longest", async () => {
         await showFolder([
-            review("Recent", { _id: RECENT_ID, status: "todo" }),
-            review("Ancient", { _id: OLD_ID, status: "todo" }),
+            review("Recent", { _id: RECENT_ID }),
+            review("Ancient", { _id: OLD_ID }),
         ]);
 
         const position = screen.getByText("Ancient")
@@ -599,26 +607,26 @@ describe("the Backlog's state column", () => {
             review("C", { status: "todo" }),
         ]);
 
-        // One list now: the default view holds every unfinished item, started
-        // and queued alike, so Showing counts all three.
-        expect(stat("Showing")).toBe("Showing3");
+        // The window opens on Started, so Showing counts the one started item
+        // and the readout agrees with the list.
+        expect(stat("Showing")).toBe("Showing1");
+        expect(screen.getByText("A")).toBeDefined();
+        expect(screen.queryByText("B")).toBeNull();
     });
 
-    // Status is a facet on the strip now, not a section boundary. Narrowing to
-    // Started must leave only the active item, and the readout must agree.
-    it("narrows to Started when the status facet asks for it", async () => {
+    // Status is a facet on the strip, not a section boundary. Widening to all
+    // brings the queued items back, and the readout must agree.
+    it("widens to every Status when the status facet asks for it", async () => {
         await showFolder([
             review("A", { status: "active" }),
             review("B", { status: "todo" }),
             review("C", { status: "todo" }),
         ]);
 
-        openFilters();
-        fireEvent.change(screen.getByLabelText("Status"), { target: { value: "active" } });
+        showEveryStatus();
 
-        expect(stat("Showing")).toBe("Showing1");
-        expect(screen.getByText("A")).toBeDefined();
-        expect(screen.queryByText("B")).toBeNull();
+        expect(stat("Showing")).toBe("Showing3");
+        expect(screen.getByText("B")).toBeDefined();
     });
 
     it("does not repeat the rail's per-Category counts", async () => {
@@ -655,6 +663,7 @@ describe("the Backlog's state column", () => {
     // animating in and nothing failed.
     it("keeps the cards as direct children of the shelf, for the entrance", async () => {
         await showFolder([review("A", { status: "todo" }), review("B", { status: "active" })]);
+        showEveryStatus();
 
         const shelf = screen.getByRole("list", { name: "Backlog" });
 
@@ -667,7 +676,7 @@ describe("the Backlog's state column", () => {
     // carrying the count choosing it would leave — including an empty one.
     it("offers each Category on the strip, counted", async () => {
         await showFolder([
-            review("A", { type: "game", status: "todo" }),
+            review("A", { type: "game", status: "active" }),
             review("B", { type: "cinema", status: "active" }),
         ]);
 
@@ -688,6 +697,7 @@ describe("grooming, continued", () => {
     // whole card opens the editor — there is no separate Edit control.
     it("opens the full editor on a queued Review", async () => {
         await showFolder([review("Nioh 3", { status: "todo" })]);
+        showEveryStatus();
 
         fireEvent.click(screen.getByLabelText("Open Nioh 3"));
 
@@ -709,12 +719,14 @@ describe("grooming, continued", () => {
             review("Doom", { status: "done", date_completed: "2026-05-18" }),
         ]);
 
+        showEveryStatus();
+
         expect(screen.queryByText("Doom")).toBeNull();
     });
 });
 
-// §3: Started and Not Started are one list now, told apart by a glyph and
-// ordered started-first by default.
+// §3: Started and Not Started are one list, told apart by a glyph. The window
+// opens on Started; the status facet brings Queued in alongside.
 describe("the unified list", () => {
     const OLD_ID = "6955b900a1b2c3d4e5f60718";      // captured 2026-01-01
     const RECENT_ID = "6a63fc80a1b2c3d4e5f60718";   // captured 2026-07-25
@@ -724,6 +736,7 @@ describe("the unified list", () => {
             review("Frieren", { status: "active" }),
             review("Nioh 3", { status: "todo" }),
         ]);
+        showEveryStatus();
 
         // Status is shown, not controlled: a started card reads "Started", a
         // queued one "Queued". (The started border is a separate scan cue.)
@@ -731,13 +744,37 @@ describe("the unified list", () => {
         expect(within(cardFor("Nioh 3")).getByText("Queued")).toBeDefined();
     });
 
-    it("leads with what is started, even when a queued item has waited longer", async () => {
+    it("opens on what is started, holding back what is only queued", async () => {
         await showFolder([
             review("Ancient Queue", { _id: OLD_ID, status: "todo" }),
             review("Fresh Start", { _id: RECENT_ID, status: "active" }),
         ]);
 
-        // Started first despite the queued item being older — the default sort.
+        expect(screen.getByText("Fresh Start")).toBeDefined();
+        expect(screen.queryByText("Ancient Queue")).toBeNull();
+    });
+
+    // The default view is not a filter someone set, so the funnel's mark stays
+    // off until a control is moved away from it.
+    it("marks the funnel only once a control leaves its default", async () => {
+        await showFolder([review("Fresh Start")]);
+        const funnel = () => screen.getByRole("button", { name: /filters$/ });
+
+        expect(funnel().querySelector("span")).toBeNull();
+
+        showEveryStatus();
+
+        expect(funnel().querySelector("span")).not.toBeNull();
+    });
+
+    it("leads with what is started when sorted by Status, even when a queued item has waited longer", async () => {
+        await showFolder([
+            review("Ancient Queue", { _id: OLD_ID, status: "todo" }),
+            review("Fresh Start", { _id: RECENT_ID, status: "active" }),
+        ]);
+        showEveryStatus();
+        fireEvent.change(screen.getByLabelText("Sort"), { target: { value: "status" } });
+
         const position = screen.getByText("Fresh Start")
             .compareDocumentPosition(screen.getByText("Ancient Queue"));
         expect(Boolean(position & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
