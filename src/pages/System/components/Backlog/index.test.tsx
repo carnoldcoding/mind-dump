@@ -736,6 +736,27 @@ describe("narrowing by several genres", () => {
         expect(screen.getByText("Doom")).toBeDefined();
     });
 
+    it("dims a genre that would leave nothing, so it cannot be chosen", async () => {
+        await showFolder(shelf());
+        openFilters();
+        fireEvent.click(screen.getByRole("button", { name: /^Genre/ }));
+
+        chooseGenre(/^shooter/);
+
+        expect((screen.getByRole("checkbox", { name: "rpg (0)" }) as HTMLInputElement).disabled).toBe(true);
+        expect((screen.getByRole("checkbox", { name: "shooter (1)" }) as HTMLInputElement).disabled).toBe(false);
+    });
+
+    it("closes on Escape wherever focus is", async () => {
+        await showFolder(shelf());
+        openFilters();
+        fireEvent.click(screen.getByRole("button", { name: /^Genre/ }));
+
+        fireEvent.keyDown(document.body, { key: "Escape" });
+
+        expect(screen.queryByRole("checkbox", { name: /^action/ })).toBeNull();
+    });
+
     it("closes on Escape", async () => {
         await showFolder(shelf());
         openFilters();

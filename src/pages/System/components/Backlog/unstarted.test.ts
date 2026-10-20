@@ -292,11 +292,16 @@ describe('what the controls can offer', () => {
             .toEqual([{ value: 'thriller', count: 1 }]);
     });
 
-    // Each count is what adding that Genre would leave, the same as the
-    // Category shelves' genre panel.
-    it('counts each genre against the genres already chosen', () => {
-        expect(facetsFor(items, { ...ALL, genres: ['action'] }).genres)
-            .toEqual([{ value: 'action', count: 2 }, { value: 'rpg', count: 1 }]);
+    // The same as the Category shelves' genre panel: the rows are every Genre
+    // present in the Category and hold still as Genres are ticked, while each
+    // count is what adding that Genre would leave — zero included.
+    it('counts each genre against the genres already chosen, keeping every row', () => {
+        expect(facetsFor(items, { ...ALL, genres: ['rpg'] }).genres)
+            .toEqual([
+                { value: 'action', count: 1 },
+                { value: 'rpg', count: 1 },
+                { value: 'thriller', count: 0 },
+            ]);
     });
 
     // A chosen Genre the other controls have since emptied must stay on offer,

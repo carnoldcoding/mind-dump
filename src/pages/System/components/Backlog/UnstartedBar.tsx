@@ -69,14 +69,23 @@ const GenreChecklist = ({ chosen, options, onChange }: {
     const [open, setOpen] = useState(false);
     const root = useRef<HTMLDivElement>(null);
 
-    // A press anywhere outside closes it, the way a native select does.
+    // A press anywhere outside closes it, the way a native select does, and so
+    // does Escape wherever focus has gone. Escape inside is handled on the root,
+    // so it doesn't also reach the search box and clear the query.
     useEffect(() => {
         if (!open) return;
         const close = (event: MouseEvent) => {
             if (!root.current?.contains(event.target as Node)) setOpen(false);
         };
+        const escape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setOpen(false);
+        };
         document.addEventListener('mousedown', close);
-        return () => document.removeEventListener('mousedown', close);
+        document.addEventListener('keydown', escape);
+        return () => {
+            document.removeEventListener('mousedown', close);
+            document.removeEventListener('keydown', escape);
+        };
     }, [open]);
 
     const summary = chosen.length === 0 ? 'all' : chosen.length === 1 ? chosen[0] : `${chosen.length} genres`;
@@ -118,22 +127,29 @@ const GenreChecklist = ({ chosen, options, onChange }: {
                         aria-label="Clear genres"
                         onClick={() => onChange([])}
                         disabled={chosen.length === 0}
-                        className="w-full text-left text-eyebrow uppercase tracking-widest px-2 py-1 cursor-pointer hover:bg-nier-150/40 disabled:opacity-40 disabled:cursor-default"
+                        className="w-full text-left text-eyebrow uppercase tracking-widest px-2 py-1 cursor-pointer hover:bg-nier-150/40 transition-colors duration-150 disabled:opacity-35 disabled:cursor-default disabled:hover:bg-transparent"
                     >
                         clear
                     </button>
                     {options.map(option => {
                         const genre = option.value ?? '';
+                        // A row that would leave nothing is dimmed and inert,
+                        // as on the Category shelves, unless it is ticked —
+                        // unticking is how you get out of it.
+                        const dead = option.count === 0 && !chosen.includes(genre);
                         return (
                             <label
                                 key={genre}
-                                className="flex items-center gap-2 text-label px-2 py-1 cursor-pointer capitalize hover:bg-nier-150/40"
+                                className={`flex items-center gap-2 text-label px-2 py-1 capitalize transition-colors duration-150 ${
+                                    dead ? 'opacity-35 cursor-default' : 'cursor-pointer hover:bg-nier-150/40'
+                                }`}
                             >
                                 <input
                                     type="checkbox"
                                     checked={chosen.includes(genre)}
+                                    disabled={dead}
                                     onChange={() => toggle(genre)}
-                                    className="accent-nier-dark cursor-pointer"
+                                    className={`accent-nier-dark ${dead ? 'cursor-default' : 'cursor-pointer'}`}
                                 />
                                 {genre} ({option.count})
                             </label>

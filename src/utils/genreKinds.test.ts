@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { genresOfKind, withGenresOfKind } from './genreKinds';
+import { gameGenreKinds } from './genres';
+
+// Tags were Genres under another name, so there is no Tag kind.
+it('has three kinds of game Genre', () => {
+    expect(Object.keys(gameGenreKinds).sort()).toEqual(['genre', 'perspective', 'playMode']);
+});
 
 describe('genresOfKind', () => {
     const stored = ['rpg', 'first-person', 'couch-co-op', 'indie', 'top-down'];

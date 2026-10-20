@@ -142,15 +142,16 @@ export type Facets = {
  * games and report them all as zero, so the rail would go blank the moment it
  * was used.
  *
- * Genres and creators offer only what is actually present, because an option
- * that returns nothing is a dead end. Categories are the exception: all of
- * them are always listed, including empty ones, so the rail keeps its shape —
- * the same rule the editor's section bar follows, in docs/chrome.md.
+ * Creators offer only what is actually present, because an option that
+ * returns nothing is a dead end. Categories are the exception: all of them are
+ * always listed, including empty ones, so the rail keeps its shape — the same
+ * rule the editor's section bar follows, in docs/chrome.md. Genres follow the
+ * Category shelves' genre panel instead: see below.
  */
 export function facetsFor(items: Review[], controls: UnstartedControls): Facets {
     // Each control's own counts must not answer to its own choice. Resetting a
-    // control to its un-narrowed value ('' for query, 'all' for status, null
-    // for the rest) is what "count against the *other* controls" means.
+    // control to its un-narrowed value ('all' for status, null for Category)
+    // is what "count against the *other* controls" means.
     const without = (key: 'category' | 'status') =>
         applyControls(items, {
             ...controls,
@@ -185,18 +186,21 @@ export function facetsFor(items: Review[], controls: UnstartedControls): Facets 
             { value: 'active', count: forStatuses.filter(r => r.status === 'active').length },
             { value: 'todo', count: forStatuses.filter(r => r.status === 'todo').length },
         ],
-        // Genres are the exception to counting against the other controls:
-        // they combine, so each is counted against what is showing — what
-        // adding it would leave, as on the Category shelves. A chosen Genre
-        // stays on offer at zero so it can be un-chosen.
-        genres: withChosen(tally(applyControls(items, controls), r => r.genres ?? []), controls.genres),
+        // As on the Category shelves' genre panel: the rows are every Genre
+        // present in the Category, A to Z, so they hold still as Genres are
+        // ticked; each count is against what is showing — what adding that
+        // Genre would leave — and may be zero. A chosen Genre the Category
+        // doesn't hold stays on offer so it can be un-chosen.
+        genres: genreFacets(inCategory, applyControls(items, controls), controls.genres),
         creators: tally(inCategory, r => (r.creator ? [r.creator] : [])),
     };
 }
 
-function withChosen(offered: Facet[], chosen: string[]): Facet[] {
-    const missing = chosen.filter(genre => !offered.some(facet => facet.value === genre));
-    return [...offered, ...missing.map(value => ({ value, count: 0 }))];
+function genreFacets(inCategory: Review[], showing: Review[], chosen: string[]): Facet[] {
+    const present = new Set([...inCategory.flatMap(r => r.genres ?? []), ...chosen].filter(Boolean));
+    return [...present]
+        .sort((a, b) => a.localeCompare(b))
+        .map(value => ({ value, count: showing.filter(r => (r.genres ?? []).includes(value)).length }));
 }
 
 /** What the Readout column reports about what is currently showing. */
