@@ -14,7 +14,42 @@ const review = (over: Partial<Record<string, unknown>> = {}) => ({
     ...over,
 }) as never;
 
-const controls = (over: Partial<UnstartedControls> = {}): UnstartedControls => ({ ...NO_CONTROLS, ...over });
+// The window opens on Started only. Most of what follows is about the other
+// controls, so it starts from every Status and narrows from there.
+const ALL: UnstartedControls = { ...NO_CONTROLS, status: 'all' };
+const controls = (over: Partial<UnstartedControls> = {}): UnstartedControls => ({ ...ALL, ...over });
+
+// The Backlog tracks things merely of interest as well as things under way,
+// so it opens on what is under way: Started, longest waiting first.
+describe('what the Backlog opens on', () => {
+    const idAt = (iso: string) =>
+        Math.floor(new Date(iso).getTime() / 1000).toString(16).padStart(8, '0') + '0'.repeat(16);
+
+    const mixed = [
+        review({ title: 'Queued-old', status: 'todo', _id: idAt('2026-01-01') }),
+        review({ title: 'Started-new', status: 'active', _id: idAt('2026-07-01') }),
+        review({ title: 'Started-old', status: 'active', _id: idAt('2026-02-01') }),
+    ];
+
+    it('shows only Started, longest waiting first', () => {
+        expect(applyControls(mixed, NO_CONTROLS).map(r => r.title))
+            .toEqual(['Started-old', 'Started-new']);
+    });
+
+    // Typing still ranks a prefix above a substring, even though that order
+    // disagrees with how long each has waited.
+    it('lets a search rank what it matched', () => {
+        const searched = applyControls(
+            [
+                review({ title: 'Demon Souls', status: 'active', _id: idAt('2026-01-01') }),
+                review({ title: 'Souls of Iron', status: 'active', _id: idAt('2026-06-01') }),
+            ],
+            { ...NO_CONTROLS, query: 'souls' },
+        );
+
+        expect(searched.map(r => r.title)).toEqual(['Souls of Iron', 'Demon Souls']);
+    });
+});
 
 // The Backlog bug (item 11): the category rail read GAMES 1 while the Not
 // Started list showed no game, with the rail on ALL. The rail count and the
@@ -24,7 +59,7 @@ const controls = (over: Partial<UnstartedControls> = {}): UnstartedControls => (
 describe('rail count and list agree on ALL', () => {
     const CATS = ['game', 'cinema', 'book'];
     const railCountFor = (items: never[], type: string) => {
-        const facet = facetsFor(items, NO_CONTROLS).categories.find(c => c.value === type);
+        const facet = facetsFor(items, ALL).categories.find(c => c.value === type);
         return facet?.count ?? 0;
     };
 
@@ -72,8 +107,17 @@ describe('filtering', () => {
     });
 
     it('narrows to a genre', () => {
-        expect(applyControls(items, controls({ genre: 'action' })).map(r => r.title))
+        expect(applyControls(items, controls({ genres: ['action'] })).map(r => r.title))
             .toEqual(['Nioh', 'Nioh 2']);
+    });
+
+    // The same rule as the Category shelves' genre filter: each Genre chosen
+    // narrows further, rather than widening to whatever matches any of them.
+    it('keeps only what carries every chosen genre', () => {
+        expect(applyControls(items, controls({ genres: ['action', 'rpg'] })).map(r => r.title))
+            .toEqual(['Nioh']);
+        expect(applyControls(items, controls({ genres: ['rpg', 'thriller'] })))
+            .toEqual([]);
     });
 
     it('narrows to a creator', () => {
@@ -84,9 +128,9 @@ describe('filtering', () => {
     // Every control is an AND. Two filters that each match something but share
     // nothing must come back empty rather than falling back to either.
     it('applies every control together', () => {
-        expect(applyControls(items, controls({ category: 'game', genre: 'rpg' })).map(r => r.title))
+        expect(applyControls(items, controls({ category: 'game', genres: ['rpg'] })).map(r => r.title))
             .toEqual(['Nioh']);
-        expect(applyControls(items, controls({ category: 'game', genre: 'fantasy' })))
+        expect(applyControls(items, controls({ category: 'game', genres: ['fantasy'] })))
             .toEqual([]);
     });
 
@@ -108,7 +152,7 @@ describe('filtering', () => {
 });
 
 // §3 folded Started and Not Started into one list, so Status is a filter, a
-// sort key and — by default — what orders the list.
+// sort key, not a section boundary.
 describe('status as a facet and a sort key', () => {
     const idAt = (iso: string) =>
         Math.floor(new Date(iso).getTime() / 1000).toString(16).padStart(8, '0') + '0'.repeat(16);
@@ -119,7 +163,7 @@ describe('status as a facet and a sort key', () => {
         review({ title: 'Queued-new', status: 'todo', _id: idAt('2026-06-01') }),
     ];
 
-    it('shows both Statuses by default', () => {
+    it('shows both Statuses on all', () => {
         expect(applyControls(mixed, controls()).map(r => r.title))
             .toContain('Started-new');
         expect(applyControls(mixed, controls()).map(r => r.title))
@@ -133,10 +177,10 @@ describe('status as a facet and a sort key', () => {
             .toEqual(['Queued-new', 'Queued-old']);
     });
 
-    // The default order: started first even though a queued item has waited
-    // longer, so "what am I on" stays at the top of one mixed list.
-    it('puts started ahead of a longer-waiting queued item by default', () => {
-        expect(applyControls(mixed, controls()).map(r => r.title))
+    // Sorting by Status puts started first even though a queued item has
+    // waited longer, so "what am I on" stays at the top of a mixed list.
+    it('puts started ahead of a longer-waiting queued item', () => {
+        expect(applyControls(mixed, controls({ sort: 'status' })).map(r => r.title))
             .toEqual(['Started-new', 'Queued-old', 'Queued-new']);
     });
 
@@ -147,7 +191,7 @@ describe('status as a facet and a sort key', () => {
     });
 
     it('counts All, Started and Queued against the other controls', () => {
-        const s = facetsFor(mixed, NO_CONTROLS).statuses;
+        const s = facetsFor(mixed, ALL).statuses;
         expect(s.find(f => f.value === 'all')?.count).toBe(3);
         expect(s.find(f => f.value === 'active')?.count).toBe(1);
         expect(s.find(f => f.value === 'todo')?.count).toBe(2);
@@ -156,7 +200,7 @@ describe('status as a facet and a sort key', () => {
     // The status count answers to the other controls, not to itself — so the
     // control still shows every Status while one is selected.
     it('does not zero the other Statuses when one is chosen', () => {
-        const s = facetsFor(mixed, { ...NO_CONTROLS, status: 'active' }).statuses;
+        const s = facetsFor(mixed, { ...ALL, status: 'active' }).statuses;
         expect(s.find(f => f.value === 'todo')?.count).toBe(2);
     });
 });
@@ -222,7 +266,7 @@ describe('what the controls can offer', () => {
     ];
 
     it('counts each Category for the rail', () => {
-        expect(facetsFor(items, NO_CONTROLS).categories)
+        expect(facetsFor(items, ALL).categories)
             .toEqual([
                 { value: null, count: 3 },
                 { value: 'game', count: 2 },
@@ -235,28 +279,47 @@ describe('what the controls can offer', () => {
     // A Category with nothing in it still holds its slot in the rail, dimmed,
     // the same rule the editor's section bar follows — see docs/chrome.md.
     it('keeps a Category with nothing in it', () => {
-        expect(facetsFor(items, NO_CONTROLS).categories.map(c => c.value))
+        expect(facetsFor(items, ALL).categories.map(c => c.value))
             .toContain('book');
-        expect(facetsFor(items, NO_CONTROLS).categories.find(c => c.value === 'book')?.count)
+        expect(facetsFor(items, ALL).categories.find(c => c.value === 'book')?.count)
             .toBe(0);
     });
 
     // Offering a genre that returns nothing is offering a dead end. The
     // options come from what the other controls have already left.
     it('offers only genres present in the current Category', () => {
-        expect(facetsFor(items, { ...NO_CONTROLS, category: 'cinema' }).genres)
+        expect(facetsFor(items, { ...ALL, category: 'cinema' }).genres)
             .toEqual([{ value: 'thriller', count: 1 }]);
     });
 
+    // The same as the Category shelves' genre panel: the rows are every Genre
+    // present in the Category and hold still as Genres are ticked, while each
+    // count is what adding that Genre would leave — zero included.
+    it('counts each genre against the genres already chosen, keeping every row', () => {
+        expect(facetsFor(items, { ...ALL, genres: ['rpg'] }).genres)
+            .toEqual([
+                { value: 'action', count: 1 },
+                { value: 'rpg', count: 1 },
+                { value: 'thriller', count: 0 },
+            ]);
+    });
+
+    // A chosen Genre the other controls have since emptied must stay on offer,
+    // or there would be no way to un-choose it.
+    it('keeps a chosen genre on offer at zero', () => {
+        expect(facetsFor(items, { ...ALL, category: 'cinema', genres: ['rpg'] }).genres)
+            .toContainEqual({ value: 'rpg', count: 0 });
+    });
+
     it('offers only creators present in the current Category', () => {
-        expect(facetsFor(items, { ...NO_CONTROLS, category: 'game' }).creators)
+        expect(facetsFor(items, { ...ALL, category: 'game' }).creators)
             .toEqual([{ value: 'Team NINJA', count: 2 }]);
     });
 
     // The rail counts must not answer to the rail's own choice, or picking
     // GAMES would make every other Category read zero.
     it('counts Categories against the other controls, not the Category', () => {
-        const withGenre = facetsFor(items, { ...NO_CONTROLS, category: 'game', genre: 'action' });
+        const withGenre = facetsFor(items, { ...ALL, category: 'game', genres: ['action'] });
 
         expect(withGenre.categories.find(c => c.value === 'game')?.count).toBe(2);
         expect(withGenre.categories.find(c => c.value === 'cinema')?.count).toBe(0);
@@ -274,7 +337,7 @@ describe('what the Readout column says', () => {
             review({ type: 'cinema', _id: idAt('2026-08-01') }),
         ];
 
-        expect(unstartedReadouts(items, items, { ...NO_CONTROLS, category: 'game' }, NOW).showing).toBe(1);
+        expect(unstartedReadouts(items, items, { ...ALL, category: 'game' }, NOW).showing).toBe(1);
     });
 
     it('reports the longest wait and the middle one', () => {
@@ -283,7 +346,7 @@ describe('what the Readout column says', () => {
             review({ _id: idAt('2026-07-29') }),   // 10d
             review({ _id: idAt('2026-05-10') }),   // 90d
         ];
-        const out = unstartedReadouts(items, items, NO_CONTROLS, NOW);
+        const out = unstartedReadouts(items, items, ALL, NOW);
 
         expect(out.oldest).toBe(90);
         expect(out.medianWait).toBe(10);
@@ -298,7 +361,7 @@ describe('what the Readout column says', () => {
             review({ _id: idAt('2026-01-01') }),
         ];
 
-        expect(unstartedReadouts(items, items, NO_CONTROLS, NOW).added30).toBe(2);
+        expect(unstartedReadouts(items, items, ALL, NOW).added30).toBe(2);
     });
 
     // Counted across everything unfinished, not across the unstarted. A
@@ -312,19 +375,19 @@ describe('what the Readout column says', () => {
             review({ _id: idAt('2026-01-01'), status: 'active', date_started: '2026-02-01' }),
         ];
 
-        expect(unstartedReadouts(unstarted, unfinished, NO_CONTROLS, NOW).started30).toBe(1);
+        expect(unstartedReadouts(unstarted, unfinished, ALL, NOW).started30).toBe(1);
     });
 
     it('would report zero if it counted only the unstarted', () => {
         const unstarted = [review({ _id: idAt('2026-01-01'), status: 'todo' })];
 
-        expect(unstartedReadouts(unstarted, unstarted, NO_CONTROLS, NOW).started30).toBe(0);
+        expect(unstartedReadouts(unstarted, unstarted, ALL, NOW).started30).toBe(0);
     });
 
     // An empty list is a real state, reached by filtering. Nothing may read
     // NaN or Infinity on screen.
     it('answers an empty list without arithmetic on nothing', () => {
-        expect(unstartedReadouts([], [], NO_CONTROLS, NOW))
+        expect(unstartedReadouts([], [], ALL, NOW))
             .toEqual({ showing: 0, oldest: null, medianWait: null, added30: 0, started30: 0 });
     });
 
@@ -332,7 +395,7 @@ describe('what the Readout column says', () => {
     // must not be counted as waiting zero days.
     it('ignores rows whose id carries no capture time', () => {
         const items = [review({ _id: 'id-Nioh' }), review({ _id: idAt('2026-05-10') })];
-        const out = unstartedReadouts(items, items, NO_CONTROLS, NOW);
+        const out = unstartedReadouts(items, items, ALL, NOW);
 
         expect(out.showing).toBe(2);
         expect(out.oldest).toBe(90);

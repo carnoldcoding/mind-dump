@@ -22,7 +22,8 @@ export type UnstartedControls = {
     category: string | null;
     /** Which Status to show — 'all' hides nothing. */
     status: StatusFilter;
-    genre: string | null;
+    /** Genres a row must all carry — empty for no narrowing. */
+    genres: string[];
     creator: string | null;
     sort: SortKey;
     /** True for the default direction of the chosen key. */
@@ -32,12 +33,12 @@ export type UnstartedControls = {
 export const NO_CONTROLS: UnstartedControls = {
     query: '',
     category: null,
-    status: 'all',
-    genre: null,
+    // Started only: Queued holds things merely of interest, which is most of
+    // the list and not what the window is opened to see.
+    status: 'active',
+    genres: [],
     creator: null,
-    // Started first, then longest-waiting — so "what am I on" is answerable
-    // from the top of one mixed list, without a pinned section (spec §3a).
-    sort: 'status',
+    sort: 'waiting',
     ascending: true,
 };
 
@@ -57,7 +58,10 @@ export function applyControls(items: Review[], controls: UnstartedControls): Rev
 
     if (controls.status !== 'all') result = result.filter(r => r.status === controls.status);
     if (controls.category) result = result.filter(r => r.type === controls.category);
-    if (controls.genre) result = result.filter(r => (r.genres ?? []).includes(controls.genre!));
+    // Every chosen Genre, the same rule as the Category shelves' filter.
+    if (controls.genres.length) {
+        result = result.filter(r => controls.genres.every(genre => (r.genres ?? []).includes(genre)));
+    }
     if (controls.creator) result = result.filter(r => r.creator === controls.creator);
     if (controls.query) result = rankByTitle(result, controls.query);
 
@@ -66,9 +70,9 @@ export function applyControls(items: Review[], controls: UnstartedControls): Rev
     // an explicit instruction, and silently ignoring it while typing was a bug.
     const ordered = [...result];
     // With the default key and a query, the search's own ranking stands — a
-    // prefix above a substring is the point of typing. Picking any explicit
-    // sort key (waiting, title, release) overrides it.
-    const rankingStands = controls.sort === 'status' && controls.query !== '';
+    // prefix above a substring is the point of typing. Picking any other
+    // sort key overrides it.
+    const rankingStands = controls.sort === NO_CONTROLS.sort && controls.query !== '';
 
     if (!rankingStands) ordered.sort(comparatorFor(controls.sort));
     if (!controls.ascending) ordered.reverse();
@@ -83,9 +87,8 @@ export function applyControls(items: Review[], controls: UnstartedControls): Rev
  */
 function comparatorFor(sort: SortKey): (a: Review, b: Review) => number {
     if (sort === 'status') {
-        // Started (active) ahead of queued (todo), longest-waiting within each.
-        // The default order, and what keeps "what am I on" at the top of a list
-        // that no longer pins Started as its own section.
+        // Started (active) ahead of queued (todo), longest-waiting within each,
+        // so "what am I on" leads a list showing both.
         const rank = (r: Review) => (r.status === 'active' ? 0 : 1);
         return (a, b) => rank(a) - rank(b) || byLongestWaiting(a, b);
     }
@@ -139,24 +142,25 @@ export type Facets = {
  * games and report them all as zero, so the rail would go blank the moment it
  * was used.
  *
- * Genres and creators offer only what is actually present, because an option
- * that returns nothing is a dead end. Categories are the exception: all of
- * them are always listed, including empty ones, so the rail keeps its shape —
- * the same rule the editor's section bar follows, in docs/chrome.md.
+ * Creators offer only what is actually present, because an option that
+ * returns nothing is a dead end. Categories are the exception: all of them are
+ * always listed, including empty ones, so the rail keeps its shape — the same
+ * rule the editor's section bar follows, in docs/chrome.md. Genres follow the
+ * Category shelves' genre panel instead: see below.
  */
 export function facetsFor(items: Review[], controls: UnstartedControls): Facets {
     // Each control's own counts must not answer to its own choice. Resetting a
-    // control to its un-narrowed value ('' for query, 'all' for status, null
-    // for the rest) is what "count against the *other* controls" means.
-    const without = (key: keyof UnstartedControls) =>
+    // control to its un-narrowed value ('all' for status, null for Category)
+    // is what "count against the *other* controls" means.
+    const without = (key: 'category' | 'status') =>
         applyControls(items, {
             ...controls,
-            [key]: key === 'query' ? '' : key === 'status' ? 'all' : null,
+            [key]: key === 'status' ? 'all' : null,
         });
 
     const forCategories = without('category');
     const forStatuses = without('status');
-    const inCategory = applyControls(items, { ...controls, genre: null, creator: null });
+    const inCategory = applyControls(items, { ...controls, genres: [], creator: null });
 
     const tally = (rows: Review[], read: (r: Review) => string[]) => {
         const counts = new Map<string, number>();
@@ -182,9 +186,21 @@ export function facetsFor(items: Review[], controls: UnstartedControls): Facets 
             { value: 'active', count: forStatuses.filter(r => r.status === 'active').length },
             { value: 'todo', count: forStatuses.filter(r => r.status === 'todo').length },
         ],
-        genres: tally(inCategory, r => r.genres ?? []),
+        // As on the Category shelves' genre panel: the rows are every Genre
+        // present in the Category, A to Z, so they hold still as Genres are
+        // ticked; each count is against what is showing — what adding that
+        // Genre would leave — and may be zero. A chosen Genre the Category
+        // doesn't hold stays on offer so it can be un-chosen.
+        genres: genreFacets(inCategory, applyControls(items, controls), controls.genres),
         creators: tally(inCategory, r => (r.creator ? [r.creator] : [])),
     };
+}
+
+function genreFacets(inCategory: Review[], showing: Review[], chosen: string[]): Facet[] {
+    const present = new Set([...inCategory.flatMap(r => r.genres ?? []), ...chosen].filter(Boolean));
+    return [...present]
+        .sort((a, b) => a.localeCompare(b))
+        .map(value => ({ value, count: showing.filter(r => (r.genres ?? []).includes(value)).length }));
 }
 
 /** What the Readout column reports about what is currently showing. */
