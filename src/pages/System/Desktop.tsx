@@ -3,6 +3,7 @@ import ReviewsWindow from "./components/ReviewsWindow";
 import BodyWindow from "./components/Body";
 import BacklogWindow from "./components/Backlog";
 import MindWindow from "./components/Mind";
+import FinancesWindow from "./components/Finances";
 import { useRevealSignal } from "../../hooks/useRevealSignal";
 import { useRevealTimeline } from "../../hooks/useRevealTimeline";
 import { cascade, wipe } from "../../utils/motion";
@@ -26,14 +27,15 @@ const FolderIcon = ({ selected }: { selected: boolean }) => (
     </svg>
 );
 
-// The three apps the OS runs. Order here is the order the folder icons and the
+// The apps the OS runs. Order here is the order the folder icons and the
 // tab strip render in.
-type AppId = "backlog" | "reviews" | "body" | "mind";
+type AppId = "backlog" | "reviews" | "body" | "mind" | "finances";
 const APPS: { id: AppId; label: string }[] = [
     { id: "backlog", label: "Backlog" },
     { id: "reviews", label: "Reviews" },
     { id: "body", label: "Body" },
     { id: "mind", label: "Mind" },
+    { id: "finances", label: "Finances" },
 ];
 
 const Desktop = () => {
@@ -182,6 +184,7 @@ const Desktop = () => {
                             {id === "reviews" && <ReviewsWindow />}
                             {id === "body" && <BodyWindow />}
                             {id === "mind" && <MindWindow />}
+                            {id === "finances" && <FinancesWindow />}
                         </div>
                     ))}
                 </div>

@@ -4,6 +4,7 @@
 import config from "../config";
 import type { AudioTrack } from "../types";
 import type { MindQuest, MindDiscipline, MindEvent, MindSession, MindTurn } from "../types/mind";
+import type { AssignmentInput, FinanceData, ScheduleInput, Target, TransactionInput } from "../types/finances";
 
 type Params = Record<string, string | undefined>;
 
@@ -152,4 +153,27 @@ export const backend = {
         }),
     endMindSession: (id: string, summary?: string) =>
         request<void>(`/api/mind/sessions/${id}/end`, { ...gated, method: "POST", body: JSON.stringify({ summary }) }),
+
+    // ── Finances ──────────────────────────────────────────────────────
+    // All gated. `today` is the browser's date: the server runs in UTC, and
+    // the read also records any Scheduled transactions that have come due.
+    getFinances: (today: string) => request<FinanceData>("/api/finances", { ...gated, params: { today } }),
+    addFinanceTransaction: (payload: TransactionInput) => financePost("/transactions/add", payload),
+    updateFinanceTransaction: (id: string, payload: TransactionInput) => financePost("/transactions/update", { id, ...payload }),
+    removeFinanceTransaction: (id: string) => financePost("/transactions/remove", { id }),
+    addFinanceAssignment: (payload: AssignmentInput) => financePost("/assignments/add", payload),
+    updateFinanceAssignment: (id: string, payload: AssignmentInput) => financePost("/assignments/update", { id, ...payload }),
+    removeFinanceAssignment: (id: string) => financePost("/assignments/remove", { id }),
+    fundFinanceTargets: (today: string) => financePost("/assignments/fund_targets", { today }),
+    addFinanceEnvelope: (payload: { name: string; target?: Target | null }) => financePost("/envelopes/add", payload),
+    updateFinanceEnvelope: (id: string, payload: { name?: string; target?: Target | null; archived?: boolean }) =>
+        financePost("/envelopes/update", { id, ...payload }),
+    reorderFinanceEnvelopes: (ids: string[]) => financePost("/envelopes/reorder", { ids }),
+    addFinanceSchedule: (payload: ScheduleInput, today: string) => financePost("/schedules/add", { ...payload, today }),
+    updateFinanceSchedule: (id: string, payload: ScheduleInput) => financePost("/schedules/update", { id, ...payload }),
+    removeFinanceSchedule: (id: string) => financePost("/schedules/remove", { id }),
 };
+
+function financePost(path: string, payload: unknown) {
+    return request<unknown>(`/api/finances${path}`, { ...gated, method: "POST", body: JSON.stringify(payload) });
+}
