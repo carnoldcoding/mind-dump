@@ -138,6 +138,27 @@ Hint copy **never counts**. A line reporting how many Critique sections were
 written would put a figure on a Critique that `CONTEXT.md` is explicit should
 not carry one.
 
+### Controls
+
+A title strip holds its title and nothing else. A button in a title strip
+reads as part of the window rather than part of what the section shows.
+
+Every other control goes in one of two places. One test decides which:
+**does it change data, or only what is shown?**
+
+- A **view control** changes only what is shown: a filter, a sort, a search,
+  a month picker, a switch between views of the same data. It goes in a
+  **toolbar row** — a bordered row directly under the title strip, inside the
+  section ([`ToolbarRow`](../src/components/common/ToolbarRow.tsx)). Body's
+  tag filter is the model.
+- An **action** creates, assigns or edits data. It sits next to the thing it
+  acts on: "Fund targets" beside the Unassigned amount, "New Envelope" as the
+  last row of the Envelope list.
+
+Tabs are neither. A tab strip is its own edge of the box it switches
+([`TabStrip`](../src/components/common/TabStrip.tsx)), with the selected tab
+inverted.
+
 ### Section glyphs
 
 A geometric mark per Critique section, in `SECTION_GLYPH`
