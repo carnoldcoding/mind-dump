@@ -9,20 +9,31 @@ import type { Envelope } from "../../../../types/finances";
 // shadow behind it (docs/chrome.md) — so the window reads as one of the set.
 
 /** A titled block: header band, body, offset shadow. */
-export const Section = ({ title, action, children, className = "" }: {
-    title: ReactNode;
-    action?: ReactNode;
+// The title strip holds the title and nothing else: view controls go in a
+// ToolbarRow under it, actions beside what they act on (docs/chrome.md,
+// "Controls"). So there is no slot here for a button.
+export const Section = ({ title, children, className = "" }: {
+    title: string;
     children: ReactNode;
     className?: string;
 }) => (
     <section className={`bg-nier-100-lighter border border-nier-150 relative ${className}`}>
         <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
-        <div className="min-h-7 bg-nier-150 flex flex-wrap items-center justify-between gap-2 px-3 py-1">
+        <div className="min-h-7 bg-nier-150 flex items-center px-3 py-1">
             <span className="text-nier-text-dark text-body uppercase tracking-wide truncate">{title}</span>
-            {action}
         </div>
         {children}
     </section>
+);
+
+/** The last row of a list: the action that adds one more item to it. */
+export const NewRow = ({ label, onClick }: { label: string; onClick: () => void }) => (
+    <button
+        onClick={onClick}
+        className="w-full text-left px-3 py-3 border-t border-nier-150/30 text-label uppercase tracking-widest text-nier-text-dark/70 hover:bg-nier-150/30 hover:text-nier-text-dark cursor-pointer transition-colors"
+    >
+        {label}
+    </button>
 );
 
 export const primaryBtn =

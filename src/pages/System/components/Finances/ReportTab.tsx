@@ -11,6 +11,7 @@ import {
 } from "./report";
 import { GRID, INCOME, INK, INK_LIGHT, OTHER, RAMP, SPENDING, envelopeColors } from "./palette";
 import { MonthPicker, Section } from "./ui";
+import { ToolbarRow } from "../../../../components/common/ToolbarRow";
 import type { Envelope, FinanceData, Transaction } from "../../../../types/finances";
 
 ChartJS.register(ArcElement, BarElement, BarController, LineController, CategoryScale, Filler, Legend, LinearScale, LineElement, PointElement, Tooltip);
@@ -57,16 +58,15 @@ const ReportTab = ({ data, month, onMonth }: Props) => {
 
     return (
         <div className="flex flex-col gap-4">
-            <Section
-                title={
+            <Section title="Summary">
+                <ToolbarRow>
                     <MonthPicker
                         label={monthLabel(month)}
                         onPrev={() => onMonth(shiftMonth(month, -1))}
                         onNext={() => onMonth(shiftMonth(month, 1))}
                         nextDisabled={month >= monthOf(data.today)}
                     />
-                }
-            >
+                </ToolbarRow>
                 <Tiles transactions={transactions} month={month} />
             </Section>
 

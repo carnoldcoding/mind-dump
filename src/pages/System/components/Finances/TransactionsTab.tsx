@@ -1,6 +1,7 @@
 import { formatCents } from "./money";
 import { monthLabel, monthOf, shiftMonth, type Month } from "./report";
-import { MonthPicker, Section, smallBtn } from "./ui";
+import { MonthPicker, NewRow, Section } from "./ui";
+import { ToolbarRow } from "../../../../components/common/ToolbarRow";
 import type { FinanceData, Schedule, Transaction } from "../../../../types/finances";
 
 type Props = {
@@ -26,18 +27,16 @@ const TransactionsTab = ({ data, month, onMonth, onEditTransaction, onEditSchedu
 
     return (
         <div className="flex flex-col gap-4">
-            <Section
-                title={
+            <Section title="Transactions">
+                <ToolbarRow>
                     <MonthPicker
                         label={monthLabel(month)}
                         onPrev={() => onMonth(shiftMonth(month, -1))}
                         onNext={() => onMonth(shiftMonth(month, 1))}
                         nextDisabled={month >= monthOf(data.today)}
                     />
-                }
-                action={<button onClick={() => onEditTransaction("new")} className={smallBtn}>New Transaction</button>}
-            >
-                {shown.length === 0 ? (
+                </ToolbarRow>
+                <div>{shown.length === 0 ? (
                     <p className="text-label text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">No Transactions this month.</p>
                 ) : shown.map(t => (
                     <button
@@ -59,14 +58,12 @@ const TransactionsTab = ({ data, month, onMonth, onEditTransaction, onEditSchedu
                             {t.kind === "income" ? "+" : "−"}{formatCents(t.amount)}
                         </span>
                     </button>
-                ))}
+                ))}</div>
+                <NewRow label="New Transaction" onClick={() => onEditTransaction("new")} />
             </Section>
 
-            <Section
-                title="Scheduled"
-                action={<button onClick={() => onEditSchedule("new")} className={smallBtn}>New Schedule</button>}
-            >
-                {data.schedules.length === 0 ? (
+            <Section title="Scheduled">
+                <div>{data.schedules.length === 0 ? (
                     <p className="text-label text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">Pay and bills that record themselves.</p>
                 ) : data.schedules.map(s => (
                     <button
@@ -84,7 +81,8 @@ const TransactionsTab = ({ data, month, onMonth, onEditTransaction, onEditSchedu
                             {s.kind === "income" ? "+" : "−"}{formatCents(s.amount)}
                         </span>
                     </button>
-                ))}
+                ))}</div>
+                <NewRow label="New Schedule" onClick={() => onEditSchedule("new")} />
             </Section>
         </div>
     );

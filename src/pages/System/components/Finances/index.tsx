@@ -3,6 +3,7 @@ import { backend } from "../../../../api/backend";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { cascade, wipe } from "../../../../utils/motion";
 import { Panel } from "../../../../components/common/Panel";
+import { TabStrip } from "../../../../components/common/TabStrip";
 import LogBar from "./LogBar";
 import EnvelopesTab from "./EnvelopesTab";
 import TransactionsTab from "./TransactionsTab";
@@ -18,10 +19,10 @@ import type { Assignment, Envelope, FinanceData, Schedule, Transaction } from ".
 
 type ActiveTab = "envelopes" | "transactions" | "report";
 
-const TABS: { key: ActiveTab; label: string }[] = [
-    { key: "envelopes", label: "Envelopes" },
-    { key: "transactions", label: "Transactions" },
-    { key: "report", label: "Report" },
+const TABS: { id: ActiveTab; label: string }[] = [
+    { id: "envelopes", label: "Envelopes" },
+    { id: "transactions", label: "Transactions" },
+    { id: "report", label: "Report" },
 ];
 
 // Which editor is open, and over what. One at a time: opening a record from
@@ -39,13 +40,17 @@ type EditorKind = NonNullable<Editing>["kind"];
 // a tab on the SYSTEM.OS desktop like Body: the Desktop owns the frame chrome
 // and the close control, so this window has no title bar of its own.
 const FinancesWindow = () => {
-    // The frame Wipes as stable chrome; the window then Cascades, keyed on the
-    // data and the tab, so nothing arrives un-animated (ADR-0012, R41).
+    // Mind's split (docs/motion.md): the frame Wipes and the chrome — the tab
+    // strip — Cascades once, on open. The log bar Cascades once, when the data
+    // first lands. Only the tab content Cascades again, on a tab change, so
+    // the strip and the log bar stay put while it fades in under them. A
+    // reload after a save animates nothing; the numbers change in place.
     const scope = useRef<HTMLDivElement>(null);
-    useRevealTimeline(true, (tl) => {
-        wipe(tl, '[data-panel-surface]');
-    }, scope);
     const panelRef = useRef<HTMLElement>(null);
+    const logRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    useRevealTimeline(true, (tl) => { wipe(tl, '[data-panel-surface]'); }, scope);
+    useRevealTimeline(true, (tl) => { if (panelRef.current) cascade(tl, panelRef.current, 0.15); }, scope);
 
     const [data, setData] = useState<FinanceData | null>(null);
     const [loadError, setLoadError] = useState(false);
@@ -66,9 +71,8 @@ const FinancesWindow = () => {
     const shownTransaction = useRetained(editing?.kind === "transaction" ? editing : null);
     const shownSchedule = useRetained(editing?.kind === "schedule" ? editing : null);
 
-    useRevealTimeline(true, (tl) => {
-        if (panelRef.current) cascade(tl, panelRef.current, 0.15);
-    }, scope, [data === null, activeTab]);
+    useRevealTimeline(true, (tl) => { if (logRef.current) cascade(tl, logRef.current, 0); }, scope, [data === null]);
+    useRevealTimeline(true, (tl) => { if (contentRef.current) cascade(tl, contentRef.current, 0); }, scope, [data === null, activeTab]);
 
     // Each read also records any Scheduled transactions that have come due
     // (R26), so the window always opens on today's numbers.
@@ -98,11 +102,6 @@ const FinancesWindow = () => {
     const pickable = (keep: (string | null | undefined)[]) =>
         data ? data.envelopes.filter(e => !e.archived || keep.includes(e._id)) : [];
 
-    const tabBtn = (active: boolean) =>
-        `text-label uppercase tracking-wide px-4 py-2 border-b-2 transition-colors cursor-pointer ${
-            active ? "border-nier-dark text-nier-text-dark" : "border-transparent text-nier-text-dark/40 hover:text-nier-text-dark"
-        }`;
-
     return (
         <>
             <Panel
@@ -111,45 +110,45 @@ const FinancesWindow = () => {
                 className="bg-nier-100 border border-nier-150 h-full"
                 frameRef={panelRef}
             >
-                <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
-                    {data === null ? (
-                        <div className="h-64 bg-nier-100-lighter border border-nier-150 flex items-center justify-center">
-                            <span className="text-nier-text-dark/40 text-label uppercase tracking-widest">
-                                {loadError ? "Couldn't reach the finances API." : "Loading…"}
-                            </span>
-                        </div>
-                    ) : (
-                        <>
-                            <LogBar envelopes={activeEnvelopes} payees={payees} onSaved={refresh} />
+                <div className="flex flex-col h-full min-h-0">
+                    <TabStrip tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
-                            <div className="flex overflow-x-auto shrink-0">
-                                {TABS.map(t => (
-                                    <button key={t.key} className={tabBtn(activeTab === t.key)} onClick={() => setActiveTab(t.key)}>
-                                        {t.label}
-                                    </button>
-                                ))}
+                    <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
+                        {data === null ? (
+                            <div className="h-64 bg-nier-100-lighter border border-nier-150 flex items-center justify-center">
+                                <span className="text-nier-text-dark/40 text-label uppercase tracking-widest">
+                                    {loadError ? "Couldn't reach the finances API." : "Loading…"}
+                                </span>
                             </div>
+                        ) : (
+                            <>
+                                <div ref={logRef} data-reveal-own>
+                                    <LogBar envelopes={activeEnvelopes} payees={payees} onSaved={refresh} />
+                                </div>
 
-                            {activeTab === "envelopes" && (
-                                <EnvelopesTab
-                                    data={data}
-                                    onChanged={refresh}
-                                    onOpenEnvelope={id => open({ kind: "envelope", envelope: id === "new" ? null : data.envelopes.find(e => e._id === id) ?? null })}
-                                    onAssign={() => open({ kind: "assignment", assignment: null })}
-                                />
-                            )}
-                            {activeTab === "transactions" && (
-                                <TransactionsTab
-                                    data={data}
-                                    month={month}
-                                    onMonth={setMonth}
-                                    onEditTransaction={t => open({ kind: "transaction", transaction: t === "new" ? null : t })}
-                                    onEditSchedule={s => open({ kind: "schedule", schedule: s === "new" ? null : s })}
-                                />
-                            )}
-                            {activeTab === "report" && <ReportTab data={data} month={month} onMonth={setMonth} />}
-                        </>
-                    )}
+                                <div ref={contentRef} data-reveal-own className="flex flex-col gap-4">
+                                    {activeTab === "envelopes" && (
+                                        <EnvelopesTab
+                                            data={data}
+                                            onChanged={refresh}
+                                            onOpenEnvelope={id => open({ kind: "envelope", envelope: id === "new" ? null : data.envelopes.find(e => e._id === id) ?? null })}
+                                            onAssign={() => open({ kind: "assignment", assignment: null })}
+                                        />
+                                    )}
+                                    {activeTab === "transactions" && (
+                                        <TransactionsTab
+                                            data={data}
+                                            month={month}
+                                            onMonth={setMonth}
+                                            onEditTransaction={t => open({ kind: "transaction", transaction: t === "new" ? null : t })}
+                                            onEditSchedule={s => open({ kind: "schedule", schedule: s === "new" ? null : s })}
+                                        />
+                                    )}
+                                    {activeTab === "report" && <ReportTab data={data} month={month} onMonth={setMonth} />}
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
             </Panel>
 
