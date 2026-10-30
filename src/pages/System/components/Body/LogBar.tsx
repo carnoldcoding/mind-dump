@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NumTextField } from "../../../../components/common/NumTextField";
+import { ShadowBox } from "../../../../components/common/ShadowBox";
 import { backend } from "../../../../api/backend";
 import { atLocalMidnight, buildGoal, describeGoal, fieldValue, todayValue } from "./entry";
 import type { Entry, Movement } from "./entry";
@@ -100,17 +101,21 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
     };
 
     return (
-        <section aria-label="Log" className="bg-nier-100-lighter border border-nier-150 relative">
-            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
+        <ShadowBox as="section" label="Log" className="bg-nier-100-lighter border border-nier-150">
 
-            {/* Movement and goal */}
-            <div className="min-h-7 bg-nier-150 flex flex-wrap items-center justify-between gap-2 px-3 py-1">
+            {/* The title strip names the Movement and holds nothing else
+                (docs/chrome.md, "Controls"). */}
+            <div className="min-h-7 bg-nier-150 flex items-center px-3 py-1">
+                <span className="text-nier-text-dark text-body uppercase tracking-wide truncate">
+                    {movement.displayName}
+                </span>
+            </div>
+
+            {/* Goal, with the toggle that edits it beside it. */}
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 border-b border-nier-150/40">
                 <div className="flex items-baseline gap-3 min-w-0">
-                    <span className="text-nier-text-dark text-body uppercase tracking-wide truncate">
-                        {movement.displayName}
-                    </span>
                     <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/60 shrink-0">Goal</span>
-                    <span className="text-label text-nier-text-dark/80 shrink-0">
+                    <span className="text-label text-nier-text-dark/80 truncate">
                         {goalText ?? "No goal set"}
                     </span>
                 </div>
@@ -175,7 +180,7 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
                     </span>
                 </button>
             )}
-        </section>
+        </ShadowBox>
     );
 };
 
