@@ -203,6 +203,23 @@ therefore get their own timeline on their own readiness, keyed on `loading`.
 The frame does not: rebuilding replays, and a frame that re-wipes because its
 contents arrived is the flash this whole design exists to remove.
 
+### Chrome holds; content arrives
+
+In a System window, the chrome — the frame, the tab strips, the log bars, the
+lists that stay on screen — Cascades when it first has something to show, and
+then holds still. A tab change Cascades only the content of the new tab. A
+new selection Cascades only the region that shows it. Saving, editing or
+removing a record animates nothing: the numbers change in place.
+
+The reason is the same as for the frame above. A strip that fades out and back
+on every tab change says that the window was rebuilt, when only its content
+changed.
+
+Mind is the model ([`Mind/index.tsx`](../src/pages/System/components/Mind/index.tsx)):
+one timeline Cascades the panel with no `rebuildOn`, and the content region is
+`data-reveal-own` with its own Cascade keyed on the view. Finances and Body
+follow it.
+
 ## The arrival grammar
 
 A surface reveals in one continuous sequence, and the rule is total: **nothing

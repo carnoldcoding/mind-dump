@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { backend } from "../../../../api/backend";
 import { formatCents, todayIso } from "./money";
-import { ErrorLine, Section, smallBtn } from "./ui";
+import { ErrorLine, NewRow, Section, smallBtn } from "./ui";
+import { ToolbarRow } from "../../../../components/common/ToolbarRow";
 import { errorText } from "./errorText";
 import type { Envelope, FinanceData, Target } from "../../../../types/finances";
 
@@ -46,9 +47,17 @@ const EnvelopesTab = ({ data, onChanged, onOpenEnvelope, onAssign }: Props) => {
 
     return (
         <div className="flex flex-col gap-4">
-            <Section
-                title="Unassigned"
-                action={
+            <Section title="Unassigned">
+                {/* The actions that move Unassigned sit beside the amount they move. */}
+                <div className="px-3 py-3 flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-col gap-1">
+                        <span data-testid="unassigned" className={`text-title tracking-wide ${negative(unassigned)}`}>
+                            {formatCents(unassigned)}
+                        </span>
+                        <span className="text-label text-nier-text-dark/60">
+                            Targets need {formatCents(totalNeeded)} this month
+                        </span>
+                    </div>
                     <div className="flex flex-wrap gap-1">
                         <button
                             onClick={handleFund}
@@ -59,23 +68,11 @@ const EnvelopesTab = ({ data, onChanged, onOpenEnvelope, onAssign }: Props) => {
                         </button>
                         <button onClick={onAssign} className={smallBtn}>Assign / Move</button>
                     </div>
-                }
-            >
-                <div className="px-3 py-3 flex flex-wrap items-baseline justify-between gap-2">
-                    <span data-testid="unassigned" className={`text-title tracking-wide ${negative(unassigned)}`}>
-                        {formatCents(unassigned)}
-                    </span>
-                    <span className="text-label text-nier-text-dark/60">
-                        Targets need {formatCents(totalNeeded)} this month
-                    </span>
                 </div>
                 {error && <div className="px-3 pb-2"><ErrorLine error={error} /></div>}
             </Section>
 
-            <Section
-                title="Envelopes"
-                action={<button onClick={() => onOpenEnvelope("new")} className={smallBtn}>New Envelope</button>}
-            >
+            <Section title="Envelopes">
                 {active.length === 0 ? (
                     <p className="text-label text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">Add an Envelope to begin.</p>
                 ) : (
@@ -93,17 +90,16 @@ const EnvelopesTab = ({ data, onChanged, onOpenEnvelope, onAssign }: Props) => {
                         </tbody>
                     </table>
                 )}
+                <NewRow label="New Envelope" onClick={() => onOpenEnvelope("new")} />
             </Section>
 
             {archived.length > 0 && (
-                <Section
-                    title="Archived"
-                    action={
+                <Section title="Archived">
+                    <ToolbarRow>
                         <button onClick={() => setShowArchived(s => !s)} aria-expanded={showArchived} className={smallBtn}>
                             {showArchived ? "Hide" : "Show"}
                         </button>
-                    }
-                >
+                    </ToolbarRow>
                     {showArchived && archived.map(e => (
                         <div key={e._id} className="flex items-center justify-between gap-3 px-3 py-2 border-b border-nier-150/30 last:border-0">
                             <span className="text-label text-nier-text-dark/70 truncate">{e.name}</span>

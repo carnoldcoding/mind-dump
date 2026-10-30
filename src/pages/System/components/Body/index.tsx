@@ -13,8 +13,14 @@ import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { cascade, wipe } from "../../../../utils/motion";
 import { useRetained } from "../../../../hooks/useRetained";
 import { Panel } from "../../../../components/common/Panel";
+import { TabStrip } from "../../../../components/common/TabStrip";
 
 type ActiveTab = "chart" | "history";
+
+const TABS: { id: ActiveTab; label: string }[] = [
+    { id: "chart", label: "Chart" },
+    { id: "history", label: "History" },
+];
 
 // Runs as a tab on the SYSTEM.OS desktop: the Desktop owns the frame chrome and
 // the close control, so this window carries no title bar of its own and fills
@@ -25,10 +31,12 @@ const BodyWindow = () => {
     // Desktop's conditional render gives it a fresh mount each time. The
     // canonical order: the frame Wipes, its title Decodes, and the rest of the
     // chrome Fades a beat behind.
-    // The frame Wipes as stable chrome; the whole window then Cascades so nothing
-    // arrives un-animated (ADR-0012). The Cascade is keyed on the content it shows
-    // — the fetched docs, the selected movement, the active tab — so it re-runs
-    // when the data lands and when the view changes, rather than popping.
+    // The frame Wipes as stable chrome. The chrome — Movement list, log bar,
+    // Chart / History strip, grid — Cascades when it first has something to
+    // show: on open, when the docs land, when a Movement is first selected.
+    // After that only the box under the strip Cascades, on a tab change or a
+    // new Movement (docs/motion.md, Mind's split). Logging animates nothing;
+    // the numbers change in place.
     const scope = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, (tl) => {
         wipe(tl, '[data-panel-surface]');
@@ -42,9 +50,13 @@ const BodyWindow = () => {
     const [editingEntry, setEditingEntry]         = useState<Entry | null>(null);
     const [activeTab, setActiveTab]               = useState<ActiveTab>("chart");
 
+    const tabContentRef = useRef<HTMLDivElement>(null);
     useRevealTimeline(true, (tl) => {
         if (panelRef.current) cascade(tl, panelRef.current, 0.15);
-    }, scope, [docs.length, selectedName, activeTab]);
+    }, scope, [docs.length === 0, selectedName === null]);
+    useRevealTimeline(true, (tl) => {
+        if (tabContentRef.current) cascade(tl, tabContentRef.current, 0);
+    }, scope, [selectedName, activeTab]);
 
     const fetchDocs = useCallback(async () => {
         try {
@@ -126,11 +138,6 @@ const BodyWindow = () => {
         fetchDocs();
     }, [movements, fetchDocs]);
 
-    const tabBtn = (active: boolean) =>
-        `text-label uppercase tracking-wide px-4 py-2 border-b-2 transition-colors cursor-pointer ${
-            active ? "border-nier-dark text-nier-text-dark" : "border-transparent text-nier-text-dark/40 hover:text-nier-text-dark"
-        }`;
-
     return (
         <>
             <Panel
@@ -162,45 +169,34 @@ const BodyWindow = () => {
                                             onSaved={fetchDocs}
                                         />
 
-                                        <div className="flex">
-                                            <button className={tabBtn(activeTab === "chart")}   onClick={() => setActiveTab("chart")}>Chart</button>
-                                            <button className={tabBtn(activeTab === "history")} onClick={() => setActiveTab("history")}>History</button>
-                                        </div>
-
-                                        {activeTab === "chart" ? (
-                                            // data-reveal-own: a chart draws itself; the window Cascade
-                                            // steps over it rather than animating a canvas.
-                                            <div data-reveal-own>
-                                                <MovementChart
-                                                    name={selected.displayName}
-                                                    entries={selectedEntries}
-                                                    goal={selected.goal}
-                                                />
+                                        {/* The strip is the top edge of the box it switches; it
+                                            stays put while the content under it fades in. */}
+                                        <div className="bg-nier-100-lighter border border-nier-150 relative flex flex-col">
+                                            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
+                                            <TabStrip tabs={TABS} active={activeTab} onChange={setActiveTab} />
+                                            <div ref={tabContentRef} data-reveal-own className="flex flex-col">
+                                                {activeTab === "chart" ? (
+                                                    <MovementChart entries={selectedEntries} goal={selected.goal} />
+                                                ) : (
+                                                    <section aria-label="History" className="h-64 overflow-y-auto">
+                                                        {selectedEntries.length === 0 ? (
+                                                            <p className="text-label text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">No entries yet.</p>
+                                                        ) : selectedEntries.map(e => (
+                                                            <button
+                                                                key={e.id ?? e.datetime}
+                                                                onClick={() => e.id && setEditingEntry(e)}
+                                                                className="w-full flex items-center justify-between gap-3 px-3 py-3 border-b border-nier-150/30 last:border-0 hover:bg-nier-150/30 text-left cursor-pointer transition-colors"
+                                                            >
+                                                                <span className="text-eyebrow text-nier-text-dark/50 uppercase tracking-wide shrink-0">
+                                                                    {new Date(e.datetime).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+                                                                </span>
+                                                                <span className="text-label text-nier-text-dark">{describeEntry(e)}</span>
+                                                            </button>
+                                                        ))}
+                                                    </section>
+                                                )}
                                             </div>
-                                        ) : (
-                                            <section aria-label="History" className="h-64 bg-nier-100-lighter border border-nier-150 relative flex flex-col">
-                                                <div className="h-7 bg-nier-150 flex items-center px-3 shrink-0">
-                                                    <span className="text-nier-text-dark text-body uppercase tracking-wide">Entries</span>
-                                                </div>
-                                                <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
-                                                <div className="overflow-y-auto flex-1">
-                                                    {selectedEntries.length === 0 ? (
-                                                        <p className="text-label text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">No entries yet.</p>
-                                                    ) : selectedEntries.map(e => (
-                                                        <button
-                                                            key={e.id ?? e.datetime}
-                                                            onClick={() => e.id && setEditingEntry(e)}
-                                                            className="w-full flex items-center justify-between gap-3 px-3 py-3 border-b border-nier-150/30 last:border-0 hover:bg-nier-150/30 text-left cursor-pointer transition-colors"
-                                                        >
-                                                            <span className="text-eyebrow text-nier-text-dark/50 uppercase tracking-wide shrink-0">
-                                                                {new Date(e.datetime).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
-                                                            </span>
-                                                            <span className="text-label text-nier-text-dark">{describeEntry(e)}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </section>
-                                        )}
+                                        </div>
                                     </>
                                 ) : (
                                     <div className="h-64 bg-nier-100-lighter border border-nier-150 flex items-center justify-center">

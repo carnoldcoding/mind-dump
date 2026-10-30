@@ -10,11 +10,11 @@ import {
     Legend,
 } from "chart.js";
 import type { Entry, Goal } from "./entry";
+import { ToolbarRow } from "../../../../components/common/ToolbarRow";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
 type Props = {
-    name: string;
     entries: Entry[];
     goal: Goal | null;
 };
@@ -42,7 +42,7 @@ function goalFor(metric: Metric, goal: Goal | null): number | null {
     return goal.reps != null && goal.weight != null ? goal.reps * goal.weight : null;
 }
 
-const MovementChart = ({ name, entries, goal }: Props) => {
+const MovementChart = ({ entries, goal }: Props) => {
     const [metric, setMetric] = useState<Metric>("volume");
 
     const isVolume = metric === "volume";
@@ -142,23 +142,24 @@ const MovementChart = ({ name, entries, goal }: Props) => {
                 : "border-nier-dark text-nier-text-dark/60 hover:text-nier-text-dark hover:bg-nier-150/40"
         }`;
 
+    // The box around this — frame, shadow, the Chart / History strip — is
+    // Body's. The metric switch only changes what is drawn, so it is a view
+    // control and sits in a toolbar row (docs/chrome.md, "Controls").
     return (
-        <div className="w-full h-64 bg-nier-100-lighter relative">
-            <div className="min-h-7 w-full bg-nier-150 flex items-center justify-between gap-2 px-3 py-1">
-                <span className="text-nier-text-dark text-body uppercase tracking-wide truncate">{name}</span>
-                <div className="flex gap-1 shrink-0">
-                    {METRICS.map(m => (
-                        <button key={m.key} onClick={() => setMetric(m.key)} className={tabBtn(metric === m.key)}>
-                            {m.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
-            <div className="w-full h-full px-4 pt-2 pb-12">
+        <>
+            <ToolbarRow>
+                {METRICS.map(m => (
+                    <button key={m.key} onClick={() => setMetric(m.key)} className={tabBtn(metric === m.key)}>
+                        {m.label}
+                    </button>
+                ))}
+            </ToolbarRow>
+            {/* data-reveal-own: a chart draws itself; a Cascade steps over it
+                rather than animating a canvas. */}
+            <div data-reveal-own className="w-full h-56 px-4 pt-2 pb-3">
                 <Line data={chartData} options={options} />
             </div>
-        </div>
+        </>
     );
 };
 
