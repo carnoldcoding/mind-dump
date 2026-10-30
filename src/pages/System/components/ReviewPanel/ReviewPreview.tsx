@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "../../../../components/common/Button";
+import { ShadowBox } from "../../../../components/common/ShadowBox";
 
 // `onStatusUpdate` is still accepted because ReviewList passes it, but this
 // component has never actually called it — the handler that would have was
@@ -81,7 +82,7 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: a
             {
                 isOpen && 
                 <aside className="fixed top-0 left-0 h-screen w-screen bg-black/40 z-99 flex items-center justify-center">
-                <div className="w-lg bg-nier-100-lighter relative ">
+                <ShadowBox wrapperClassName="w-lg" className="bg-nier-100-lighter">
                     <div className="h-7 w-full bg-nier-150 flex items-center justify-between px-2">
                         <h3 className="text-nier-text-dark">Confirmation Message</h3>
                     </div>
@@ -103,9 +104,7 @@ export const ReviewPreview = ({review, deletePost, onDelete, onEdit} :{review: a
                             <Button label="confirm" type="primary" handleClick={authenticateDeletion}></Button>
                         </div>
                     </div>
-                    <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1">
-                    </aside>
-                </div>
+                </ShadowBox>
             </aside>
             }
         </li>

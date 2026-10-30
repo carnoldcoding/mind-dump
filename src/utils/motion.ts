@@ -286,6 +286,12 @@ export const cascade = (timeline: gsap.core.Timeline, root: HTMLElement, startPo
       // The frame surfaces have their own Wipe; a [data-reveal-own] sub-tree runs
       // its own timeline (a shared list, say) and must not be double-animated.
       if (child.matches('[data-panel-surface], [data-reveal-own]')) continue;
+      // A box's shadow takes no beat of its own: it fades with the first thing
+      // in the box after it, so it never shows as a bare gray box first.
+      if (child.matches('[data-box-shadow]')) {
+        ripple(timeline, child, position);
+        continue;
+      }
       if (isRevealUnit(child)) {
         revealUnit(timeline, child, position);
         position += REVEAL_STEP;

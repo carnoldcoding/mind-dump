@@ -1,5 +1,6 @@
 import { useId, useRef, type ReactNode } from "react";
 import { Modal } from "../../../../components/common/Modal";
+import { ShadowBox } from "../../../../components/common/ShadowBox";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { cascade } from "../../../../utils/motion";
 import type { Envelope } from "../../../../types/finances";
@@ -17,13 +18,12 @@ export const Section = ({ title, children, className = "" }: {
     children: ReactNode;
     className?: string;
 }) => (
-    <section className={`bg-nier-100-lighter border border-nier-150 relative ${className}`}>
-        <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
+    <ShadowBox as="section" wrapperClassName={className} className="bg-nier-100-lighter border border-nier-150">
         <div className="min-h-7 bg-nier-150 flex items-center px-3 py-1">
             <span className="text-nier-text-dark text-body uppercase tracking-wide truncate">{title}</span>
         </div>
         {children}
-    </section>
+    </ShadowBox>
 );
 
 /** The last row of a list: the action that adds one more item to it. */

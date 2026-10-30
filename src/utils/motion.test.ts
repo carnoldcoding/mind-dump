@@ -145,6 +145,19 @@ describe('cascade', () => {
     expect(tweensOf(tl).length).toBe(1);
   });
 
+  it('fades a box shadow on the same beat as the first thing in its box', () => {
+    // A shadow that takes a beat of its own shows as a bare gray box before
+    // the box that casts it. It belongs to the box's first beat instead.
+    const rows = Array.from({ length: 10 }, (_, i) => `<span>row${i}</span>`).join('');
+    const root = build(`<p>before</p><div><aside data-box-shadow></aside><section>${rows}</section></div>`);
+    const tl = gsap.timeline({ paused: true });
+    cascade(tl, root, 0);
+
+    const startOf = (el: Element) =>
+      tweensOf(tl).find((t) => (t.targets() as Element[])[0] === el)!.startTime();
+    expect(startOf(root.querySelector('[data-box-shadow]')!)).toBe(startOf(root.querySelector('section span')!));
+  });
+
   it('decodes a section header toward its own text', () => {
     const root = build('<h2 data-section-header>Rating</h2>');
     const tl = gsap.timeline({ paused: true });

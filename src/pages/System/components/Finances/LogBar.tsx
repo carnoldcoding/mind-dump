@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { TextField } from "../../../../components/common/TextField";
+import { ShadowBox } from "../../../../components/common/ShadowBox";
 import { backend } from "../../../../api/backend";
 import { parseDollars, todayIso } from "./money";
 import { EnvelopeSelect, ErrorLine, MoneyField, primaryBtn } from "./ui";
@@ -48,8 +49,7 @@ const LogBar = ({ envelopes, payees, onSaved }: Props) => {
     };
 
     return (
-        <section aria-label="Log spending" className="bg-nier-100-lighter border border-nier-150 relative shrink-0">
-            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
+        <ShadowBox as="section" label="Log spending" wrapperClassName="shrink-0" className="bg-nier-100-lighter border border-nier-150">
             <div className="p-3 grid grid-cols-2 gap-2 sm:flex sm:items-end sm:gap-3">
                 <div className="min-w-0 sm:w-32 sm:shrink-0">
                     <MoneyField label="Spent $" value={amount} onChange={setAmount} />
@@ -65,7 +65,7 @@ const LogBar = ({ envelopes, payees, onSaved }: Props) => {
                 </button>
             </div>
             {error && <div className="px-3 pb-2"><ErrorLine error={error} /></div>}
-        </section>
+        </ShadowBox>
     );
 };
 

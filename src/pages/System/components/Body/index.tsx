@@ -14,6 +14,7 @@ import { cascade, wipe } from "../../../../utils/motion";
 import { useRetained } from "../../../../hooks/useRetained";
 import { Panel } from "../../../../components/common/Panel";
 import { TabStrip } from "../../../../components/common/TabStrip";
+import { ShadowBox } from "../../../../components/common/ShadowBox";
 
 type ActiveTab = "chart" | "history";
 
@@ -171,8 +172,7 @@ const BodyWindow = () => {
 
                                         {/* The strip is the top edge of the box it switches; it
                                             stays put while the content under it fades in. */}
-                                        <div className="bg-nier-100-lighter border border-nier-150 relative flex flex-col">
-                                            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
+                                        <ShadowBox className="bg-nier-100-lighter border border-nier-150 flex flex-col">
                                             <TabStrip tabs={TABS} active={activeTab} onChange={setActiveTab} />
                                             <div ref={tabContentRef} data-reveal-own className="flex flex-col">
                                                 {activeTab === "chart" ? (
@@ -196,7 +196,7 @@ const BodyWindow = () => {
                                                     </section>
                                                 )}
                                             </div>
-                                        </div>
+                                        </ShadowBox>
                                     </>
                                 ) : (
                                     <div className="h-64 bg-nier-100-lighter border border-nier-150 flex items-center justify-center">

@@ -1,5 +1,6 @@
 import { useMemo, useState, useRef } from "react";
 import type { Entry } from "./entry";
+import { ShadowBox } from "../../../../components/common/ShadowBox";
 
 type Props = {
     entries: Entry[];
@@ -80,11 +81,10 @@ const WorkoutGrid = ({ entries }: Props) => {
     };
 
     return (
-        <div className="bg-nier-100-lighter relative" ref={containerRef}>
+        <ShadowBox boxRef={containerRef} className="bg-nier-100-lighter">
             <div className="h-7 w-full bg-nier-150 flex items-center px-3">
                 <span className="text-nier-text-dark text-body">Workout Frequency</span>
             </div>
-            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
 
             <div className="p-4 overflow-x-auto">
                 {/* Month labels */}
@@ -136,7 +136,7 @@ const WorkoutGrid = ({ entries }: Props) => {
                     {tooltip.text}
                 </div>
             )}
-        </div>
+        </ShadowBox>
     );
 };
 
