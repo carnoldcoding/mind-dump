@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { NumTextField } from "../../../../components/common/NumTextField";
+import { ShadowBox } from "../../../../components/common/ShadowBox";
 import { backend } from "../../../../api/backend";
 import { atLocalMidnight, buildGoal, describeGoal, fieldValue, todayValue } from "./entry";
 import type { Entry, Movement } from "./entry";
@@ -100,8 +101,7 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
     };
 
     return (
-        <section aria-label="Log" className="bg-nier-100-lighter border border-nier-150 relative">
-            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
+        <ShadowBox as="section" label="Log" className="bg-nier-100-lighter border border-nier-150">
 
             {/* The title strip names the Movement and holds nothing else
                 (docs/chrome.md, "Controls"). */}
@@ -180,7 +180,7 @@ const LogBar = ({ movement, lastEntry, onSaved }: Props) => {
                     </span>
                 </button>
             )}
-        </section>
+        </ShadowBox>
     );
 };
 

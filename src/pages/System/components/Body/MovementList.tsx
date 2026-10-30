@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Movement } from "./entry";
+import { ShadowBox } from "../../../../components/common/ShadowBox";
 
 type TagFilter = "all" | "upper" | "lower";
 
@@ -32,8 +33,7 @@ const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCrea
     const selectedMovement = movements.find(m => m.workoutName === selected) ?? null;
 
     return (
-        <div className="relative shrink-0 w-full md:w-52 bg-nier-100-lighter flex flex-col md:max-h-96">
-            <aside className="absolute h-full w-full bg-nier-shadow -z-1 top-1 left-1" />
+        <ShadowBox wrapperClassName="shrink-0 w-full md:w-52" className="bg-nier-100-lighter flex flex-col md:max-h-96">
 
             {/* Mobile picker header — on desktop the list is always open, so
                 this collapses away entirely. */}
@@ -130,7 +130,7 @@ const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCrea
                     </button>
                 </div>
             </div>
-        </div>
+        </ShadowBox>
     );
 };
 
