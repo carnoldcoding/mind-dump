@@ -91,7 +91,7 @@ const TransactionModal = ({ open, transaction, envelopes, payees, onClose, onSav
                 ? <EnvelopeSelect label="Envelope" envelopes={envelopes} value={envelopeId} onChange={setEnvelopeId} />
                 : <p className="text-label text-nier-text-dark/60">Income goes to Unassigned.</p>}
             <DateField label="Date" value={date} onChange={setDate} />
-            <TextField label="Payee" value={payee} onChange={setPayee} autofillData={payees} />
+            <TextField label="Payee" value={payee} onChange={setPayee} autofillData={payees} suggestWhenEmpty />
             <TextField label="Note" value={note} onChange={setNote} />
 
             {kind === "income" && (
