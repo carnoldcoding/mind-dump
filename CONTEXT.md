@@ -116,6 +116,32 @@ One teaching sitting with Claude — start/end, full transcript, the Events it p
 One immutable, timestamped fact in the learning history (an answer, a Recall, a Boss attempt, a Mastery, a Logos change). The append-only `events` log is the source the current-state projection and every pattern chart are built from.
 _Avoid_: Entry — an Entry is a Body set; a learning fact is an Event.
 
+### Finances
+
+A System area for zero-based budgeting: every dollar of income is assigned to an Envelope until none is left unassigned.
+
+**Envelope**:
+A named spending group (e.g. "Groceries", "Rent") that holds a running balance. Money is assigned into it and spending is taken out of it. A balance carries over from month to month; a negative balance is covered by moving money in from another Envelope.
+_Avoid_: Category — that term means a game/movie/book type in this app. Also avoid "budget" for a single group; "budget" means the whole set of Envelopes.
+
+**Unassigned**:
+Money that has come in as income but is not yet in any Envelope. Income always lands here first. The goal state is $0 Unassigned.
+
+**Assignment**:
+A dated move of money from Unassigned into an Envelope, or from one Envelope to another.
+
+**Transaction**:
+A dated record of money actually spent or received: amount, payee, note, and — for spending — the one Envelope it comes out of. Income has no Envelope; it goes to Unassigned.
+_Avoid_: Entry — that term means a logged set in Body tracking.
+
+**Target**:
+A monthly amount an Envelope should receive, of one of two kinds:
+- **Fill to** — bring the Envelope up to the amount once a month. Still needed this month: the Target, minus the balance at the start of the month, minus what was assigned this month. For bills and spending (Rent, Groceries).
+- **Add each month** — give the Envelope the amount every month, whatever its balance. Still needed this month: the Target, minus what was assigned this month. For saving up (yearly bills, Investing, Savings).
+
+**Scheduled transaction**:
+A rule that records the same Transaction automatically on fixed days of each month — pay on the 1st and 15th, rent, subscriptions. The recorded Transaction is ordinary and editable.
+
 ### Journal
 
 Planned third area (alongside Reviews and Body) for free-form entries. The frontend is currently just a placeholder page, hidden from primary navigation — but the backend already has a full CRUD API for it (`/api/soul`, `Soul Data` collection), unauthenticated until [ADR-0001](./docs/adr/0001-tailnet-gated-system-access.md) lands.
