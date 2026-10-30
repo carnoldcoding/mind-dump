@@ -58,7 +58,7 @@ const LogBar = ({ envelopes, payees, onSaved }: Props) => {
                     <EnvelopeSelect label="Envelope" envelopes={envelopes} value={envelopeId} onChange={setEnvelopeId} />
                 </div>
                 <div className="min-w-0 sm:flex-1">
-                    <TextField label="Payee" value={payee} onChange={setPayee} autofillData={payees} />
+                    <TextField label="Payee" value={payee} onChange={setPayee} autofillData={payees} suggestWhenEmpty />
                 </div>
                 <button onClick={handleLog} disabled={saving} className={primaryBtn}>
                     {saving ? "…" : "Log"}

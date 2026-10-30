@@ -8,9 +8,11 @@ interface TextFieldProps {
   altBg?: boolean;
   type?: string;
   autofillData?: string[];
+  /** Offer every suggestion in an empty field, not only after typing. */
+  suggestWhenEmpty?: boolean;
 }
 
-export const TextField = ({ label, value, onChange, disabled, altBg, type, autofillData }: TextFieldProps) => {
+export const TextField = ({ label, value, onChange, disabled, altBg, type, autofillData, suggestWhenEmpty }: TextFieldProps) => {
   const id = useId();
   const [filteredData, setFilteredData] = useState<string[]>([]);
   const [isFocused, setIsFocused] = useState(false);
@@ -23,7 +25,8 @@ export const TextField = ({ label, value, onChange, disabled, altBg, type, autof
   }, [autofillData]); 
 
   const filterDataFromValue = (searchValue: string, dataSource: string[]) => {
-    if (!searchValue || !dataSource?.length) return [];
+    if (!dataSource?.length) return [];
+    if (!searchValue) return suggestWhenEmpty ? dataSource : [];
 
     const exactMatch = dataSource.find(
       data => data.toLowerCase() === searchValue.toLowerCase()

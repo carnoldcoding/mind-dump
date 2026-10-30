@@ -66,7 +66,7 @@ A Review can carry several Genres, so a compound of two existing Genres is not a
 ### System (admin area)
 
 **System**:
-The personal dashboard, styled as a retro desktop/terminal, reachable only from a **Trusted device**. Contains three areas ("windows"): Backlog, Reviews management, and Body tracking. This is where Reviews get authored/edited — the public Now/Backlog/Category pages are read-only.
+The personal dashboard, styled as a retro desktop/terminal, reachable only from a **Trusted device**. Contains five areas ("windows"): Backlog, Reviews management, Body tracking, Mind, and Finances. This is where Reviews get authored/edited — the public Now/Backlog/Category pages are read-only.
 
 The first two split the collection by lifecycle: **Backlog** owns unfinished work — capture, grooming, and the `todo → active → done` transitions — and **Reviews** owns finished work: critique, rating, screenshots, audio, mods. An unfinished Review is edited from the Backlog folder, since the Reviews window no longer lists it ([ADR-0004](./docs/adr/0004-backlog-as-unfinished-work.md)).
 

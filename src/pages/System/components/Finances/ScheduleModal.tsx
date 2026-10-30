@@ -76,7 +76,7 @@ const ScheduleModal = ({ open, schedule, envelopes, payees, onClose, onSaved }: 
     return (
         <EditorModal open={open} title={schedule ? "Edit Schedule" : "New Schedule"} onClose={onClose}>
             <KindToggle kind={kind} onChange={setKind} />
-            <TextField label="Payee" value={payee} onChange={setPayee} autofillData={payees} />
+            <TextField label="Payee" value={payee} onChange={setPayee} autofillData={payees} suggestWhenEmpty />
             <MoneyField label="Amount $" value={amount} onChange={setAmount} />
             {kind === "spending"
                 ? <EnvelopeSelect label="Envelope" envelopes={envelopes} value={envelopeId} onChange={setEnvelopeId} />

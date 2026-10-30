@@ -11,6 +11,7 @@ import EnvelopeModal from "./EnvelopeModal";
 import AssignModal from "./AssignModal";
 import TransactionModal from "./TransactionModal";
 import ScheduleModal from "./ScheduleModal";
+import { useRetained } from "../../../../hooks/useRetained";
 import { todayIso } from "./money";
 import { monthOf, payeeSuggestions, type Month } from "./report";
 import type { Assignment, Envelope, FinanceData, Schedule, Transaction } from "../../../../types/finances";
@@ -32,6 +33,8 @@ type Editing =
     | { kind: "schedule"; schedule: Schedule | null }
     | null;
 
+type EditorKind = NonNullable<Editing>["kind"];
+
 // Zero-based budgeting, as a System app (specs/mind-dump-finances.md). Runs as
 // a tab on the SYSTEM.OS desktop like Body: the Desktop owns the frame chrome
 // and the close control, so this window has no title bar of its own.
@@ -49,9 +52,19 @@ const FinancesWindow = () => {
     const [activeTab, setActiveTab] = useState<ActiveTab>("envelopes");
     const [month, setMonth] = useState<Month>(monthOf(todayIso()));
     const [editing, setEditing] = useState<Editing>(null);
-    // Bumped on every open, so an editor remounts with fresh fields rather
-    // than whatever the last record left in them.
-    const [editorKey, setEditorKey] = useState(0);
+    // Bumped on each open of that editor, so it remounts with fresh fields
+    // rather than whatever the last record left in them. One counter per
+    // editor: a shared one would remount an editor during its exit.
+    const [editorKeys, setEditorKeys] = useState<Record<EditorKind, number>>(
+        { envelope: 0, assignment: 0, transaction: 0, schedule: 0 }
+    );
+
+    // Each editor stays mounted after it closes and plays its exit over the
+    // record it showed — see useRetained and docs/motion.md.
+    const shownEnvelope = useRetained(editing?.kind === "envelope" ? editing : null);
+    const shownAssignment = useRetained(editing?.kind === "assignment" ? editing : null);
+    const shownTransaction = useRetained(editing?.kind === "transaction" ? editing : null);
+    const shownSchedule = useRetained(editing?.kind === "schedule" ? editing : null);
 
     useRevealTimeline(true, (tl) => {
         if (panelRef.current) cascade(tl, panelRef.current, 0.15);
@@ -70,7 +83,10 @@ const FinancesWindow = () => {
 
     useEffect(() => { refresh(); }, [refresh]);
 
-    const open = (next: Editing) => { setEditorKey(k => k + 1); setEditing(next); };
+    const open = (next: NonNullable<Editing>) => {
+        setEditorKeys(keys => ({ ...keys, [next.kind]: keys[next.kind] + 1 }));
+        setEditing(next);
+    };
     const close = () => setEditing(null);
 
     const payees = useMemo(() => (data ? payeeSuggestions(data.transactions) : []), [data]);
@@ -137,11 +153,11 @@ const FinancesWindow = () => {
                 </div>
             </Panel>
 
-            {data && editing?.kind === "envelope" && (
+            {data && shownEnvelope && (
                 <EnvelopeModal
-                    key={editorKey}
-                    open
-                    envelope={editing.envelope}
+                    key={editorKeys.envelope}
+                    open={editing?.kind === "envelope"}
+                    envelope={shownEnvelope.envelope}
                     data={data}
                     onClose={close}
                     onSaved={refresh}
@@ -149,34 +165,34 @@ const FinancesWindow = () => {
                     onEditTransaction={t => open({ kind: "transaction", transaction: t })}
                 />
             )}
-            {data && editing?.kind === "assignment" && (
+            {data && shownAssignment && (
                 <AssignModal
-                    key={editorKey}
-                    open
-                    assignment={editing.assignment}
-                    envelopes={pickable([editing.assignment?.envelopeId, editing.assignment?.sourceEnvelopeId])}
+                    key={editorKeys.assignment}
+                    open={editing?.kind === "assignment"}
+                    assignment={shownAssignment.assignment}
+                    envelopes={pickable([shownAssignment.assignment?.envelopeId, shownAssignment.assignment?.sourceEnvelopeId])}
                     unassigned={data.summary.unassigned}
                     onClose={close}
                     onSaved={refresh}
                 />
             )}
-            {data && editing?.kind === "transaction" && (
+            {data && shownTransaction && (
                 <TransactionModal
-                    key={editorKey}
-                    open
-                    transaction={editing.transaction}
-                    envelopes={pickable([editing.transaction?.envelopeId])}
+                    key={editorKeys.transaction}
+                    open={editing?.kind === "transaction"}
+                    transaction={shownTransaction.transaction}
+                    envelopes={pickable([shownTransaction.transaction?.envelopeId])}
                     payees={payees}
                     onClose={close}
                     onSaved={refresh}
                 />
             )}
-            {data && editing?.kind === "schedule" && (
+            {data && shownSchedule && (
                 <ScheduleModal
-                    key={editorKey}
-                    open
-                    schedule={editing.schedule}
-                    envelopes={pickable([editing.schedule?.envelopeId])}
+                    key={editorKeys.schedule}
+                    open={editing?.kind === "schedule"}
+                    schedule={shownSchedule.schedule}
+                    envelopes={pickable([shownSchedule.schedule?.envelopeId])}
                     payees={payees}
                     onClose={close}
                     onSaved={refresh}

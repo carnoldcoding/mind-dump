@@ -134,6 +134,13 @@ describe("log bar (R20, R21)", () => {
         expect(mocked.addFinanceTransaction).not.toHaveBeenCalled();
     });
 
+    it("suggests past payees before anything is typed", async () => {
+        await renderWindow();
+        const bar = screen.getByRole("region", { name: "Log spending" });
+        fireEvent.focus(within(bar).getByLabelText("Payee"));
+        expect(within(bar).getByText("Kroger")).toBeTruthy();
+    });
+
     it("stays on screen on every tab", async () => {
         await renderWindow();
         for (const tab of ["Transactions", "Report", "Envelopes"]) {
