@@ -3,7 +3,8 @@ import { Modal } from "../../../../components/common/Modal";
 import { ShadowBox } from "../../../../components/common/ShadowBox";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { cascade } from "../../../../utils/motion";
-import type { Envelope } from "../../../../types/finances";
+import { formatCents } from "./money";
+import type { Envelope, Target } from "../../../../types/finances";
 
 // Small pieces the Finances window repeats. They draw in the same grammar as
 // Body — a lighter surface under a nier-150 header band, with the offset
@@ -25,6 +26,11 @@ export const Section = ({ title, children, className = "" }: {
         {children}
     </ShadowBox>
 );
+
+export function describeTarget(target: Target | null): string {
+    if (!target) return "—";
+    return target.kind === "fillTo" ? `Fill to ${formatCents(target.amount)}` : `Add ${formatCents(target.amount)}/mo`;
+}
 
 /** The last row of a list: the action that adds one more item to it. */
 export const NewRow = ({ label, onClick }: { label: string; onClick: () => void }) => (
@@ -69,12 +75,14 @@ export const MoneyField = ({ label, value, onChange }: { label: string; value: s
  * A native select, so a phone opens its own picker. `allowNone` adds a blank
  * first option (Unassigned, or no Envelope) under `noneLabel`.
  */
-export const EnvelopeSelect = ({ label, envelopes, value, onChange, noneLabel }: {
+export const EnvelopeSelect = ({ label, envelopes, value, onChange, noneLabel, optionLabel = e => e.name }: {
     label: string;
     envelopes: Envelope[];
     value: string;
     onChange: (id: string) => void;
     noneLabel?: string;
+    /** An option's text. A native option holds plain text only. */
+    optionLabel?: (envelope: Envelope) => string;
 }) => {
     const id = useId();
     return (
@@ -89,7 +97,7 @@ export const EnvelopeSelect = ({ label, envelopes, value, onChange, noneLabel }:
                 {noneLabel !== undefined
                     ? <option value="">{noneLabel}</option>
                     : <option value="" disabled>{label}</option>}
-                {envelopes.map(e => <option key={e._id} value={e._id}>{e.name}</option>)}
+                {envelopes.map(e => <option key={e._id} value={e._id}>{optionLabel(e)}</option>)}
             </select>
         </div>
     );

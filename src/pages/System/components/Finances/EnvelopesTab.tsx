@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { backend } from "../../../../api/backend";
 import { formatCents, todayIso } from "./money";
-import { ErrorLine, NewRow, Section, smallBtn } from "./ui";
+import { describeTarget, ErrorLine, NewRow, Section, smallBtn } from "./ui";
 import { ToolbarRow } from "../../../../components/common/ToolbarRow";
 import { errorText } from "./errorText";
-import type { Envelope, FinanceData, Target } from "../../../../types/finances";
+import type { Envelope, FinanceData } from "../../../../types/finances";
 
 type Props = {
     data: FinanceData;
@@ -12,11 +12,6 @@ type Props = {
     onOpenEnvelope: (id: string | "new") => void;
     onAssign: () => void;
 };
-
-function describeTarget(target: Target | null): string {
-    if (!target) return "—";
-    return target.kind === "fillTo" ? `Fill to ${formatCents(target.amount)}` : `Add ${formatCents(target.amount)}/mo`;
-}
 
 const negative = (cents: number) => (cents < 0 ? "text-red-800" : "text-nier-text-dark");
 
