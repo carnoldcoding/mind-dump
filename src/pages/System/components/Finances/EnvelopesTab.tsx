@@ -41,17 +41,18 @@ const EnvelopesTab = ({ data, onChanged, onOpenEnvelope, onAssign }: Props) => {
         setFunding(false);
     };
 
-    // A drop shows at once; the server's order replaces it after the write. A
-    // failed write drops the local order, so the list returns to the old one
-    // (envelope-ux R8).
-    const [order, setOrder] = useState<string[] | null>(null);
-    const shown = order
-        ? order.map(id => active.find(e => e._id === id)).filter((e): e is Envelope => !!e)
+    // A drop shows at once. The local order holds only while the data it was
+    // made from is current: the next load brings the server's order, and with
+    // it any Envelope added or restored since. A failed write drops the local
+    // order, so the list returns to the old one (envelope-ux R8).
+    const [order, setOrder] = useState<{ ids: string[]; madeFrom: Envelope[] } | null>(null);
+    const shown = order && order.madeFrom === data.envelopes
+        ? order.ids.map(id => active.find(e => e._id === id)).filter((e): e is Envelope => !!e)
         : active;
 
     const handleMove = async (from: number, to: number) => {
         const ids = moveItem(shown.map(e => e._id), from, to);
-        setOrder(ids);
+        setOrder({ ids, madeFrom: data.envelopes });
         setError("");
         try {
             await backend.reorderFinanceEnvelopes(ids);
