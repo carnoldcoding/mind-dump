@@ -2,6 +2,8 @@
 // places it becomes text and comes back, so a float never holds a dollar
 // amount anywhere in between.
 
+import type { Target } from "../../../../types/finances";
+
 const DOLLARS = /^(\d*)(?:\.(\d{1,2}))?$/;
 
 /** "$1,200.50" → 120050. Null for anything that is not a positive amount. */
@@ -29,4 +31,9 @@ export function centsToInput(cents: number): string {
 export function todayIso(): string {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function describeTarget(target: Target | null): string {
+    if (!target) return "—";
+    return target.kind === "fillTo" ? `Fill to ${formatCents(target.amount)}` : `Add ${formatCents(target.amount)}/mo`;
 }

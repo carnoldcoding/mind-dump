@@ -13,6 +13,7 @@
     "migrate:dates": "esbuild scripts/migrate-dates.ts --bundle --format=esm --platform=node --outfile=node_modules/.cache/migrate-dates.mjs && node node_modules/.cache/migrate-dates.mjs"
   },
   "dependencies": {
+    "@dnd-kit/react": "0.5.1",
     "@gsap/react": "^2.1.2",
     "@tailwindcss/vite": "^4.1.11",
     "@types/d3-force": "^3.0.10",
