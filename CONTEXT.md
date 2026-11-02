@@ -128,7 +128,7 @@ _Avoid_: Category — that term means a game/movie/book type in this app. Also a
 Money that has come in as income but is not yet in any Envelope. Income always lands here first. The goal state is $0 Unassigned.
 
 **Assignment**:
-A dated move of money from Unassigned into an Envelope, or from one Envelope to another.
+A dated move of money from Unassigned into an Envelope, from one Envelope to another, or from an Envelope back to Unassigned.
 
 **Transaction**:
 A dated record of money actually spent or received: amount, payee, note, and — for spending — the one Envelope it comes out of. Income has no Envelope; it goes to Unassigned.
