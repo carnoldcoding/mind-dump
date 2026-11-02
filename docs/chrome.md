@@ -153,7 +153,8 @@ Every other control goes in one of two places. One test decides which:
   tag filter is the model.
 - An **action** creates, assigns or edits data. It sits next to the thing it
   acts on: "Fund targets" beside the Unassigned amount, "New Envelope" as the
-  last row of the Envelope list.
+  first row of the Envelope list. It is the first row, not the last, because
+  the list scrolls past 8 rows and a last row would scroll out of reach.
 
 Tabs are neither. A tab strip is its own edge of the box it switches
 ([`TabStrip`](../src/components/common/TabStrip.tsx)), with the selected tab

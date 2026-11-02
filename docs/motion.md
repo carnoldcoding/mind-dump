@@ -23,6 +23,14 @@ library does. These three are disjoint, and all three answer to
 The test for one vocabulary is not "one library". It is that these three do not
 overlap and none of them escapes the seam.
 
+**Drag is the one motion none of the three owns.** When a list is reordered by
+dragging (Envelopes, Body's Movements), dnd-kit moves the rows: the rows below
+slide aside, and the dropped row settles into its place. dnd-kit computes those
+positions from the pointer, so no timeline could own them. It animates with
+inline styles, which the `motion-off` class does not reach, so
+[`Sortable.tsx`](../src/components/common/Sortable.tsx) asks the seam itself:
+with motion off, the rows jump into place and the drop does not animate.
+
 ### The boot sequence
 
 Boot is on the timeline too, clock and gestures both. Its choreography lives in
@@ -149,6 +157,16 @@ noted.
 A stage *hold* and a gesture *duration* are deliberately different numbers — a
 hold is how long a stage waits before handing over, a duration is how long the
 gesture takes — so they do not track each other. See the boot notes above.
+
+### Drag — dnd-kit defaults, [`src/components/common/Sortable.tsx`](../src/components/common/Sortable.tsx)
+
+| Value | Sets |
+|---|---|
+| 250ms, `cubic-bezier(0.25, 1, 0.5, 1)` | a row sliding aside during a drag, and a keyboard move |
+| dnd-kit's default drop animation | the dropped row settling into its place |
+
+These are the library's defaults, not ours; `@dnd-kit/react` is pinned to
+`0.5.1`, so they change only with a deliberate upgrade.
 
 ### Overlap — per call site, by design
 

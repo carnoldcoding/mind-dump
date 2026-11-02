@@ -50,7 +50,7 @@ const sample = (over: Partial<FinanceData> = {}): FinanceData => ({
     ],
     assignments: [{ _id: "a1", date: "2026-10-01", amount: 40000, envelopeId: "g", sourceEnvelopeId: null }],
     schedules: [{ _id: "s1", payee: "Paycheck", amount: 300000, kind: "income", envelopeId: null, note: "", days: [1, 15], lastRecorded: "2026-10-15" }],
-    summary: { unassigned: 260000, envelopes: { g: { balance: -3000, needed: 0 }, f: { balance: 0, needed: 0 } } },
+    summary: { unassigned: 260000, envelopes: { g: { balance: -3000, needed: 0, gap: 0 }, f: { balance: 0, needed: 0, gap: 0 } } },
     ...over,
 });
 
@@ -87,19 +87,35 @@ describe("Envelopes tab (R12, R13)", () => {
     });
 
     it("marks a negative balance and a negative Unassigned in the error color", async () => {
-        await renderWindow(sample({ summary: { unassigned: -500, envelopes: { g: { balance: -3000, needed: 0 }, f: { balance: 0, needed: 0 } } } }));
+        await renderWindow(sample({ summary: { unassigned: -500, envelopes: { g: { balance: -3000, needed: 0, gap: 0 }, f: { balance: 0, needed: 0, gap: 0 } } } }));
         expect(screen.getByTestId("unassigned").className).toContain("text-red-800");
         expect(within(screen.getByTestId("envelope-Groceries")).getByTestId("balance").className).toContain("text-red-800");
         expect(within(screen.getByTestId("envelope-Fun")).getByTestId("balance").className).not.toContain("text-red-800");
     });
 
     it("funds targets as of today and reloads", async () => {
-        const data = sample({ summary: { unassigned: 260000, envelopes: { g: { balance: 0, needed: 25000 }, f: { balance: 0, needed: 0 } } } });
+        const data = sample({ summary: { unassigned: 260000, envelopes: { g: { balance: 0, needed: 25000, gap: 25000 }, f: { balance: 0, needed: 0, gap: 0 } } } });
         await renderWindow(data);
         mocked.fundFinanceTargets.mockResolvedValue([]);
         fireEvent.click(screen.getByRole("button", { name: "Fund targets" }));
         await waitFor(() => expect(mocked.fundFinanceTargets).toHaveBeenCalledWith("2026-10-20"));
         await waitFor(() => expect(mocked.getFinances).toHaveBeenCalledTimes(2));
+    });
+
+    it("leaves reorder to the tab's drag handles (envelope-ux R5, R9)", async () => {
+        await renderWindow();
+        expect(screen.getByRole("button", { name: "Reorder Groceries" })).toBeTruthy();
+        fireEvent.click(screen.getByTestId("envelope-Groceries"));
+        const dialog = await screen.findByRole("dialog");
+        expect(within(dialog).queryByRole("button", { name: "Move up" })).toBeNull();
+        expect(within(dialog).queryByRole("button", { name: "Move down" })).toBeNull();
+    });
+
+    it("puts New Envelope above the list (envelope-ux R3)", async () => {
+        await renderWindow();
+        const newRow = screen.getByRole("button", { name: "New Envelope" });
+        const firstRow = screen.getByTestId("envelope-Groceries");
+        expect(newRow.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
     it("shows the server's reason when archiving is refused (R19)", async () => {
@@ -108,6 +124,77 @@ describe("Envelopes tab (R12, R13)", () => {
         fireEvent.click(screen.getByTestId("envelope-Groceries"));
         fireEvent.click(await screen.findByRole("button", { name: "Archive" }));
         expect(await screen.findByText("Move this Envelope's money out before archiving it")).toBeTruthy();
+    });
+});
+
+describe("Assign / Move form (envelope-ux R13–R18)", () => {
+    // Groceries: −$30.00, Fill to $400.00, needs $430.00. Fun: $0.00, no Target.
+    const data = () => sample({ summary: { unassigned: 260000, envelopes: {
+        g: { balance: -3000, needed: 43000, gap: 43000 }, f: { balance: 0, needed: 0, gap: 0 },
+    } } });
+    const openForm = async () => {
+        await renderWindow(data());
+        fireEvent.click(screen.getByRole("button", { name: "Assign / Move" }));
+        return screen.findByRole("dialog");
+    };
+    const optionTexts = (select: HTMLElement) => [...select.querySelectorAll("option")].map(o => o.textContent);
+
+    it("names each Envelope with its balance, and what a Target still needs (R13)", async () => {
+        const form = await openForm();
+        expect(optionTexts(within(form).getByLabelText("To"))).toEqual([
+            "Unassigned — $2,600.00",
+            "Groceries — -$30.00 · needs $430.00",
+            "Fun — $0.00",
+        ]);
+    });
+
+    it("shows each end before and after, updating as the amount is typed (R14, R15, R17)", async () => {
+        const form = await openForm();
+        fireEvent.change(within(form).getByLabelText("From"), { target: { value: "f" } });
+        fireEvent.change(within(form).getByLabelText("To"), { target: { value: "g" } });
+        fireEvent.change(within(form).getByLabelText("Amount $"), { target: { value: "30" } });
+
+        const from = within(form).getByTestId("card-from");
+        const to = within(form).getByTestId("card-to");
+        expect(within(from).getByTestId("balance").textContent).toBe("$0.00 → -$30.00");
+        expect(within(from).getByTestId("balance-after").className).toContain("text-red-800");
+        expect(within(to).getByTestId("balance").textContent).toBe("-$30.00 → $0.00");
+        expect(within(to).getByTestId("needed").textContent).toBe("$430.00 → $400.00");
+        expect(within(to).getByText("Fill to $400.00")).toBeTruthy();
+
+        fireEvent.change(within(form).getByLabelText("From"), { target: { value: "" } });
+        expect(within(within(form).getByTestId("card-from")).getByTestId("balance").textContent).toBe("$2,600.00 → $2,570.00");
+    });
+
+    it("moves money from an Envelope back to Unassigned (R18)", async () => {
+        const form = await openForm();
+        mocked.addFinanceAssignment.mockResolvedValue({});
+        fireEvent.change(within(form).getByLabelText("From"), { target: { value: "f" } });
+        fireEvent.change(within(form).getByLabelText("To"), { target: { value: "" } });
+        fireEvent.change(within(form).getByLabelText("Amount $"), { target: { value: "10" } });
+        fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+
+        await waitFor(() => expect(mocked.addFinanceAssignment).toHaveBeenCalledWith({
+            date: "2026-10-20", amount: 1000, envelopeId: null, sourceEnvelopeId: "f",
+        }));
+    });
+
+    it("lists a move to Unassigned in the source Envelope's history (R23)", async () => {
+        await renderWindow(sample({
+            assignments: [{ _id: "a2", date: "2026-10-06", amount: 2500, envelopeId: null, sourceEnvelopeId: "f" }],
+        }));
+        fireEvent.click(screen.getByTestId("envelope-Fun"));
+        const dialog = await screen.findByRole("dialog");
+        expect(within(dialog).getByText(/To Unassigned/)).toBeTruthy();
+        expect(within(dialog).getByText("-$25.00")).toBeTruthy();
+    });
+
+    it("refuses a move with Unassigned at both ends", async () => {
+        const form = await openForm();
+        fireEvent.change(within(form).getByLabelText("Amount $"), { target: { value: "10" } });
+        fireEvent.click(within(form).getByRole("button", { name: "Save" }));
+        expect(await within(form).findByText("Pick an Envelope for one end")).toBeTruthy();
+        expect(mocked.addFinanceAssignment).not.toHaveBeenCalled();
     });
 });
 

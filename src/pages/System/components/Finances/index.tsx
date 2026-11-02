@@ -170,7 +170,8 @@ const FinancesWindow = () => {
                     open={editing?.kind === "assignment"}
                     assignment={shownAssignment.assignment}
                     envelopes={pickable([shownAssignment.assignment?.envelopeId, shownAssignment.assignment?.sourceEnvelopeId])}
-                    unassigned={data.summary.unassigned}
+                    summary={data.summary}
+                    today={data.today}
                     onClose={close}
                     onSaved={refresh}
                 />
