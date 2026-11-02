@@ -50,7 +50,7 @@ const sample = (over: Partial<FinanceData> = {}): FinanceData => ({
     ],
     assignments: [{ _id: "a1", date: "2026-10-01", amount: 40000, envelopeId: "g", sourceEnvelopeId: null }],
     schedules: [{ _id: "s1", payee: "Paycheck", amount: 300000, kind: "income", envelopeId: null, note: "", days: [1, 15], lastRecorded: "2026-10-15" }],
-    summary: { unassigned: 260000, envelopes: { g: { balance: -3000, needed: 0 }, f: { balance: 0, needed: 0 } } },
+    summary: { unassigned: 260000, envelopes: { g: { balance: -3000, needed: 0, gap: 0 }, f: { balance: 0, needed: 0, gap: 0 } } },
     ...over,
 });
 
@@ -87,14 +87,14 @@ describe("Envelopes tab (R12, R13)", () => {
     });
 
     it("marks a negative balance and a negative Unassigned in the error color", async () => {
-        await renderWindow(sample({ summary: { unassigned: -500, envelopes: { g: { balance: -3000, needed: 0 }, f: { balance: 0, needed: 0 } } } }));
+        await renderWindow(sample({ summary: { unassigned: -500, envelopes: { g: { balance: -3000, needed: 0, gap: 0 }, f: { balance: 0, needed: 0, gap: 0 } } } }));
         expect(screen.getByTestId("unassigned").className).toContain("text-red-800");
         expect(within(screen.getByTestId("envelope-Groceries")).getByTestId("balance").className).toContain("text-red-800");
         expect(within(screen.getByTestId("envelope-Fun")).getByTestId("balance").className).not.toContain("text-red-800");
     });
 
     it("funds targets as of today and reloads", async () => {
-        const data = sample({ summary: { unassigned: 260000, envelopes: { g: { balance: 0, needed: 25000 }, f: { balance: 0, needed: 0 } } } });
+        const data = sample({ summary: { unassigned: 260000, envelopes: { g: { balance: 0, needed: 25000, gap: 25000 }, f: { balance: 0, needed: 0, gap: 0 } } } });
         await renderWindow(data);
         mocked.fundFinanceTargets.mockResolvedValue([]);
         fireEvent.click(screen.getByRole("button", { name: "Fund targets" }));

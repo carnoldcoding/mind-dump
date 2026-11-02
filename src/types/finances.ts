@@ -34,7 +34,8 @@ export type Assignment = {
     _id: string;
     date: string;
     amount: number;
-    envelopeId: string;
+    /** Null when the money goes back to Unassigned. */
+    envelopeId: string | null;
     /** Null when the money came out of Unassigned. */
     sourceEnvelopeId: string | null;
 };
@@ -52,7 +53,11 @@ export type Schedule = {
 
 export type FinanceSummary = {
     unassigned: number;
-    envelopes: Record<string, { balance: number; needed: number }>;
+    /**
+     * `gap` is needed before its $0 floor: below $0 when an Envelope is
+     * funded past its Target this month. Needed is max(0, gap).
+     */
+    envelopes: Record<string, { balance: number; needed: number; gap: number }>;
 };
 
 export type FinanceData = {
@@ -78,7 +83,7 @@ export type TransactionInput = {
 export type AssignmentInput = {
     date: string;
     amount: number;
-    envelopeId: string;
+    envelopeId: string | null;
     sourceEnvelopeId?: string | null;
 };
 
