@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { Movement } from "./entry";
 import { ShadowBox } from "../../../../components/common/ShadowBox";
-import { DragHandle, SortableList, useSortableRow } from "../../../../components/common/Sortable";
+import { DragHandle, SortableList } from "../../../../components/common/Sortable";
+import { useSortableRow } from "../../../../hooks/useSortableRow";
 import { moveAmongVisible } from "../../../../utils/reorder";
 
 type TagFilter = "all" | "upper" | "lower";

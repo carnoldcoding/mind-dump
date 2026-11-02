@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { DateField } from "../../../../components/common/DateField";
 import { backend } from "../../../../api/backend";
-import { centsToInput, formatCents, parseDollars, todayIso } from "./money";
+import { centsToInput, describeTarget, formatCents, parseDollars, todayIso } from "./money";
 import { previewEnd, type Move, type Span } from "./movePreview";
-import { describeTarget, EditorModal, EnvelopeSelect, ErrorLine, MoneyField, primaryBtn, secondaryBtn } from "./ui";
+import { EditorModal, EnvelopeSelect, ErrorLine, MoneyField, primaryBtn, secondaryBtn } from "./ui";
 import { errorText } from "./errorText";
 import type { Assignment, Envelope, FinanceSummary } from "../../../../types/finances";
 

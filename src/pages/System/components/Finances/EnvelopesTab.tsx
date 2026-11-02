@@ -1,10 +1,11 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { backend } from "../../../../api/backend";
-import { formatCents, todayIso } from "./money";
-import { describeTarget, ErrorLine, NewRow, Section, smallBtn } from "./ui";
+import { describeTarget, formatCents, todayIso } from "./money";
+import { ErrorLine, NewRow, Section, smallBtn } from "./ui";
 import { ToolbarRow } from "../../../../components/common/ToolbarRow";
 import { errorText } from "./errorText";
-import { DragHandle, SortableList, useSortableRow } from "../../../../components/common/Sortable";
+import { DragHandle, SortableList } from "../../../../components/common/Sortable";
+import { useSortableRow } from "../../../../hooks/useSortableRow";
 import { moveItem } from "../../../../utils/reorder";
 import type { Envelope, FinanceData } from "../../../../types/finances";
 

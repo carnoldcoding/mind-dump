@@ -3,8 +3,7 @@ import { Modal } from "../../../../components/common/Modal";
 import { ShadowBox } from "../../../../components/common/ShadowBox";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { cascade } from "../../../../utils/motion";
-import { formatCents } from "./money";
-import type { Envelope, Target } from "../../../../types/finances";
+import type { Envelope } from "../../../../types/finances";
 
 // Small pieces the Finances window repeats. They draw in the same grammar as
 // Body — a lighter surface under a nier-150 header band, with the offset
@@ -26,11 +25,6 @@ export const Section = ({ title, children, className = "" }: {
         {children}
     </ShadowBox>
 );
-
-export function describeTarget(target: Target | null): string {
-    if (!target) return "—";
-    return target.kind === "fillTo" ? `Fill to ${formatCents(target.amount)}` : `Add ${formatCents(target.amount)}/mo`;
-}
 
 /**
  * The row that adds one more item to a list: its last row, or with `first` its

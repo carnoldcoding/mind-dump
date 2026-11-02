@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { DragDropProvider } from "@dnd-kit/react";
-import { isSortable, useSortable } from "@dnd-kit/react/sortable";
+import { isSortable } from "@dnd-kit/react/sortable";
 import { Feedback } from "@dnd-kit/dom";
 import { animationsDisabled } from "../../utils/animations";
 
@@ -13,7 +13,7 @@ import { animationsDisabled } from "../../utils/animations";
 // class cannot reach it. Motion off is asked here instead: the items stop
 // sliding into place and the drop does not animate (docs/motion.md).
 
-/** The list's drag context. `onMove` gets the visible indices of a drop. */
+/** The list's drag context. `onMove` gets the visible indices of a drop. Rows use `useSortableRow`. */
 export const SortableList = ({ onMove, children }: {
     onMove: (from: number, to: number) => void;
     children: ReactNode;
@@ -31,22 +31,6 @@ export const SortableList = ({ onMove, children }: {
         {children}
     </DragDropProvider>
 );
-
-/**
- * One row of a SortableList. Put `ref` on the row and `handleRef` on its
- * DragHandle. A row with no handle mounted becomes its own handle — dnd-kit
- * makes the whole row a draggable button — so a row that hides its handle
- * passes `disabled` and leaves `ref` off the row.
- */
-export function useSortableRow(id: string, index: number, disabled = false) {
-    const { ref, handleRef, isDragging } = useSortable({
-        id,
-        index,
-        disabled,
-        transition: animationsDisabled() ? null : undefined,
-    });
-    return { ref, handleRef, isDragging };
-}
 
 /** The grip that starts a drag. Only the handle does, so a tap on the row keeps its own job. */
 export const DragHandle = ({ handleRef, label, className = "" }: {
