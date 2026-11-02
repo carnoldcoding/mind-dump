@@ -32,11 +32,17 @@ export const SortableList = ({ onMove, children }: {
     </DragDropProvider>
 );
 
-/** One row of a SortableList. Put `ref` on the row and `handleRef` on its DragHandle. */
-export function useSortableRow(id: string, index: number) {
+/**
+ * One row of a SortableList. Put `ref` on the row and `handleRef` on its
+ * DragHandle. A row with no handle mounted becomes its own handle — dnd-kit
+ * makes the whole row a draggable button — so a row that hides its handle
+ * passes `disabled` and leaves `ref` off the row.
+ */
+export function useSortableRow(id: string, index: number, disabled = false) {
     const { ref, handleRef, isDragging } = useSortable({
         id,
         index,
+        disabled,
         transition: animationsDisabled() ? null : undefined,
     });
     return { ref, handleRef, isDragging };

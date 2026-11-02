@@ -8,7 +8,7 @@ import NewMovementModal from "./NewMovementModal";
 import MovementEditModal from "./MovementEditModal";
 import EntryEditModal from "./EntryEditModal";
 import { partitionBodyDocs, describeEntry, docId } from "./entry";
-import type { BodyDoc, Entry } from "./entry";
+import type { BodyDoc, Entry, Movement } from "./entry";
 import { useRevealTimeline } from "../../../../hooks/useRevealTimeline";
 import { cascade, wipe } from "../../../../utils/motion";
 import { useRetained } from "../../../../hooks/useRetained";
@@ -125,13 +125,12 @@ const BodyWindow = () => {
     // and total rather than depending on whatever the previous values were.
     // The caller names the Movement to swap with, because the neighbour the
     // user can see isn't the adjacent one when a tag filter is applied.
-    const handleReorder = useCallback(async (workoutName: string, swapWith: string) => {
-        const idx = movements.findIndex(m => m.workoutName === workoutName);
-        const swapIdx = movements.findIndex(m => m.workoutName === swapWith);
-        if (idx === -1 || swapIdx === -1) return;
-
-        const reordered = [...movements];
-        [reordered[idx], reordered[swapIdx]] = [reordered[swapIdx], reordered[idx]];
+    // A drop hands over the full order; every Movement's position is written
+    // so the order stays dense.
+    const handleReorder = useCallback(async (order: string[]) => {
+        const reordered = order
+            .map(name => movements.find(m => m.workoutName === name))
+            .filter((m): m is Movement => !!m);
 
         await Promise.all(reordered.map((m, order) =>
             m.id ? backend.updateBodyEntry({ id: m.id, order }) : Promise.resolve()

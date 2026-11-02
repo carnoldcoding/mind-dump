@@ -128,7 +128,7 @@ describe("Manage mode", () => {
     it("hides reorder and edit controls by default", async () => {
         await renderBody([movement("Bench Press")]);
 
-        expect(screen.queryByRole("button", { name: /move bench press up/i })).toBeNull();
+        expect(screen.queryByRole("button", { name: /reorder bench press/i })).toBeNull();
         expect(screen.queryByRole("button", { name: /edit bench press/i })).toBeNull();
     });
 
@@ -136,25 +136,21 @@ describe("Manage mode", () => {
         await renderBody([movement("Bench Press"), movement("Squat", { _id: "m-2", order: 1 })]);
 
         fireEvent.click(screen.getByRole("button", { name: /manage/i }));
-        expect(screen.getByRole("button", { name: /move squat up/i })).toBeDefined();
+        expect(screen.getByRole("button", { name: /reorder squat/i })).toBeDefined();
         expect(screen.getByRole("button", { name: /edit squat/i })).toBeDefined();
 
         fireEvent.click(screen.getByRole("button", { name: /done/i }));
-        expect(screen.queryByRole("button", { name: /move squat up/i })).toBeNull();
+        expect(screen.queryByRole("button", { name: /reorder squat/i })).toBeNull();
     });
 
-    it("persists a new order across every Movement when one is moved", async () => {
-        await renderBody([
-            movement("Bench Press", { _id: "m-1", order: 0 }),
-            movement("Squat", { _id: "m-2", order: 1 }),
-        ]);
+    // Outside Manage mode a row is a plain selection target, not a drag
+    // handle (envelope-ux R10). Where a drop lands in the full order is
+    // tested in src/utils/reorder.test.ts; jsdom has no layout, so the drag
+    // gesture itself is checked by hand.
+    it("makes no row draggable outside manage mode", async () => {
+        await renderBody([movement("Bench Press")]);
 
-        fireEvent.click(screen.getByRole("button", { name: /manage/i }));
-        fireEvent.click(screen.getByRole("button", { name: /move squat up/i }));
-
-        await waitFor(() => expect(mocked.updateBodyEntry).toHaveBeenCalledTimes(2));
-        expect(mocked.updateBodyEntry).toHaveBeenCalledWith({ id: "m-2", order: 0 });
-        expect(mocked.updateBodyEntry).toHaveBeenCalledWith({ id: "m-1", order: 1 });
+        expect(screen.getAllByRole("button", { name: /bench press/i })).toHaveLength(1);
     });
 });
 
@@ -397,38 +393,6 @@ describe("Creating a Movement", () => {
         expect(mocked.addBodyEntry).toHaveBeenCalledWith(
             expect.objectContaining({ workoutName: "Pull-ups", _meta: true, displayName: "Pull-ups" })
         );
-    });
-});
-
-describe("Reordering with a filter applied", () => {
-    it("swaps with the neighbour that is actually visible", async () => {
-        await renderBody([
-            movement("Bench Press", { _id: "m-1", tag: "upper", order: 0 }),
-            movement("Squat",       { _id: "m-2", tag: "lower", order: 1 }),
-            movement("Overhead",    { _id: "m-3", tag: "upper", order: 2 }),
-        ]);
-
-        fireEvent.click(screen.getByRole("button", { name: /^upper$/i }));
-        fireEvent.click(screen.getByRole("button", { name: /manage/i }));
-        // Bench Press and Overhead are adjacent on screen but not in the full list.
-        fireEvent.click(screen.getByRole("button", { name: /move overhead up/i }));
-
-        await waitFor(() => expect(mocked.updateBodyEntry).toHaveBeenCalledTimes(3));
-        expect(mocked.updateBodyEntry).toHaveBeenCalledWith({ id: "m-3", order: 0 });
-        expect(mocked.updateBodyEntry).toHaveBeenCalledWith({ id: "m-1", order: 2 });
-    });
-
-    it("does not offer to move the first or last visible Movement past the edge", async () => {
-        await renderBody([
-            movement("Bench Press", { _id: "m-1", tag: "upper", order: 0 }),
-            movement("Squat",       { _id: "m-2", tag: "lower", order: 1 }),
-        ]);
-
-        fireEvent.click(screen.getByRole("button", { name: /^lower$/i }));
-        fireEvent.click(screen.getByRole("button", { name: /manage/i }));
-
-        expect((screen.getByRole("button", { name: /move squat up/i }) as HTMLButtonElement).disabled).toBe(true);
-        expect((screen.getByRole("button", { name: /move squat down/i }) as HTMLButtonElement).disabled).toBe(true);
     });
 });
 

@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { Movement } from "./entry";
 import { ShadowBox } from "../../../../components/common/ShadowBox";
+import { DragHandle, SortableList, useSortableRow } from "../../../../components/common/Sortable";
+import { moveAmongVisible } from "../../../../utils/reorder";
 
 type TagFilter = "all" | "upper" | "lower";
 
@@ -9,10 +11,12 @@ type Props = {
     selected: string | null;
     onSelect: (workoutName: string) => void;
     onEdit: (workoutName: string) => void;
-    // Named rather than directional: with a tag filter on, the neighbour that
-    // matters is the one visible above or below, not the one adjacent in the
-    // full list.
-    onReorder: (workoutName: string, swapWith: string) => void;
+    /**
+     * The full order after a drop, every Movement's name first to last. With a
+     * tag filter on, the drop is placed among the visible Movements and the
+     * hidden ones keep their places (envelope-ux R11).
+     */
+    onReorder: (order: string[]) => void;
     onCreate: () => void;
 };
 
@@ -23,7 +27,8 @@ const ctrlBtn =
 // once and then basically never. They used to share a row, which is why the
 // frequent action was wedged between three targets too small to hit. Manage
 // mode splits them: a plain wide target by default, the management controls
-// at finger size when explicitly asked for.
+// at finger size when explicitly asked for. In Manage mode a drag handle
+// leads each row (envelope-ux R10, D4).
 const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCreate }: Props) => {
     const [tagFilter, setTagFilter] = useState<TagFilter>("all");
     const [managing, setManaging]   = useState(false);
@@ -71,57 +76,27 @@ const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCrea
                     ))}
                 </div>
 
-                <ul aria-label="Movements" className="flex flex-col overflow-y-auto flex-1 min-h-0 max-h-64 md:max-h-none">
-                    {filtered.length === 0 ? (
-                        <li className="text-nier-text-dark/40 text-label uppercase px-3 py-3">
-                            {movements.length === 0 ? "No movements yet" : "None in this category"}
-                        </li>
-                    ) : filtered.map((m, visibleIdx) => {
-                        const isSelected = selected === m.workoutName;
-                        const above = filtered[visibleIdx - 1];
-                        const below = filtered[visibleIdx + 1];
-                        return (
-                            <li
-                                key={m.workoutName}
-                                className={`flex items-stretch border-b border-nier-150/40 last:border-0 transition-colors ${
-                                    isSelected ? "bg-nier-text-dark" : "hover:bg-nier-150/30"
-                                }`}
-                            >
-                                {managing && (
-                                    <div className="flex shrink-0">
-                                        <button
-                                            onClick={() => above && onReorder(m.workoutName, above.workoutName)}
-                                            disabled={!above}
-                                            aria-label={`Move ${m.displayName} up`}
-                                            className={`w-9 min-h-11 text-label cursor-pointer disabled:opacity-20 disabled:cursor-default ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/60"}`}
-                                        >▲</button>
-                                        <button
-                                            onClick={() => below && onReorder(m.workoutName, below.workoutName)}
-                                            disabled={!below}
-                                            aria-label={`Move ${m.displayName} down`}
-                                            className={`w-9 min-h-11 text-label cursor-pointer disabled:opacity-20 disabled:cursor-default ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/60"}`}
-                                        >▼</button>
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={() => { onSelect(m.workoutName); setPickerOpen(false); }}
-                                    className={`flex-1 min-w-0 text-left text-label uppercase tracking-wide px-3 min-h-11 truncate ${isSelected ? "text-nier-100-lighter" : "text-nier-text-dark"}`}
-                                >
-                                    {m.displayName}
-                                </button>
-
-                                {managing && (
-                                    <button
-                                        onClick={() => onEdit(m.workoutName)}
-                                        aria-label={`Edit ${m.displayName}`}
-                                        className={`w-11 min-h-11 text-body cursor-pointer shrink-0 ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/50"}`}
-                                    >✎</button>
-                                )}
+                <SortableList onMove={(from, to) => onReorder(moveAmongVisible(
+                    movements.map(m => m.workoutName), filtered.map(m => m.workoutName), from, to,
+                ))}>
+                    <ul aria-label="Movements" className="flex flex-col overflow-y-auto flex-1 min-h-0 max-h-64 md:max-h-none">
+                        {filtered.length === 0 ? (
+                            <li className="text-nier-text-dark/40 text-label uppercase px-3 py-3">
+                                {movements.length === 0 ? "No movements yet" : "None in this category"}
                             </li>
-                        );
-                    })}
-                </ul>
+                        ) : filtered.map((m, visibleIdx) => (
+                            <MovementRow
+                                key={m.workoutName}
+                                movement={m}
+                                index={visibleIdx}
+                                selected={selected === m.workoutName}
+                                managing={managing}
+                                onSelect={() => { onSelect(m.workoutName); setPickerOpen(false); }}
+                                onEdit={() => onEdit(m.workoutName)}
+                            />
+                        ))}
+                    </ul>
+                </SortableList>
 
                 <div className="border-t border-nier-150/40 px-2 py-2 flex gap-2 shrink-0">
                     <button className={ctrlBtn} onClick={onCreate}>+ New</button>
@@ -131,6 +106,50 @@ const MovementList = ({ movements, selected, onSelect, onEdit, onReorder, onCrea
                 </div>
             </div>
         </ShadowBox>
+    );
+};
+
+const MovementRow = ({ movement: m, index, selected: isSelected, managing, onSelect, onEdit }: {
+    movement: Movement;
+    index: number;
+    selected: boolean;
+    managing: boolean;
+    onSelect: () => void;
+    onEdit: () => void;
+}) => {
+    const { ref, handleRef, isDragging } = useSortableRow(m.workoutName, index, !managing);
+    return (
+        <li
+            // Outside Manage mode the row is not registered with dnd-kit at
+            // all, which would otherwise make it a draggable button.
+            ref={managing ? ref : undefined}
+            className={`flex items-stretch border-b border-nier-150/40 last:border-0 transition-colors ${
+                isSelected ? "bg-nier-text-dark" : isDragging ? "bg-nier-150/50" : "hover:bg-nier-150/30"
+            }`}
+        >
+            {managing && (
+                <DragHandle
+                    handleRef={handleRef}
+                    label={`Reorder ${m.displayName}`}
+                    className={isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/60"}
+                />
+            )}
+
+            <button
+                onClick={onSelect}
+                className={`flex-1 min-w-0 text-left text-label uppercase tracking-wide px-3 min-h-11 truncate ${isSelected ? "text-nier-100-lighter" : "text-nier-text-dark"}`}
+            >
+                {m.displayName}
+            </button>
+
+            {managing && (
+                <button
+                    onClick={onEdit}
+                    aria-label={`Edit ${m.displayName}`}
+                    className={`w-11 min-h-11 text-body cursor-pointer shrink-0 ${isSelected ? "text-nier-100-lighter/70" : "text-nier-text-dark/50"}`}
+                >✎</button>
+            )}
+        </li>
     );
 };
 
