@@ -32,11 +32,14 @@ export function describeTarget(target: Target | null): string {
     return target.kind === "fillTo" ? `Fill to ${formatCents(target.amount)}` : `Add ${formatCents(target.amount)}/mo`;
 }
 
-/** The last row of a list: the action that adds one more item to it. */
-export const NewRow = ({ label, onClick }: { label: string; onClick: () => void }) => (
+/**
+ * The row that adds one more item to a list: its last row, or with `first` its
+ * first, where a scrolling list keeps it in reach (envelope-ux R3).
+ */
+export const NewRow = ({ label, onClick, first = false }: { label: string; onClick: () => void; first?: boolean }) => (
     <button
         onClick={onClick}
-        className="w-full text-left px-3 py-3 border-t border-nier-150/30 text-label uppercase tracking-widest text-nier-text-dark/70 hover:bg-nier-150/30 hover:text-nier-text-dark cursor-pointer transition-colors"
+        className={`w-full text-left px-3 py-3 ${first ? "border-b" : "border-t"} border-nier-150/30 text-label uppercase tracking-widest text-nier-text-dark/70 hover:bg-nier-150/30 hover:text-nier-text-dark cursor-pointer transition-colors`}
     >
         {label}
     </button>

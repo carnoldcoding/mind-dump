@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { backend } from "../../../../api/backend";
 import { formatCents, todayIso } from "./money";
 import { describeTarget, ErrorLine, NewRow, Section, smallBtn } from "./ui";
 import { ToolbarRow } from "../../../../components/common/ToolbarRow";
 import { errorText } from "./errorText";
+import { DragHandle, SortableList, useSortableRow } from "../../../../components/common/Sortable";
+import { moveItem } from "../../../../utils/reorder";
 import type { Envelope, FinanceData } from "../../../../types/finances";
 
 type Props = {
@@ -38,6 +40,27 @@ const EnvelopesTab = ({ data, onChanged, onOpenEnvelope, onAssign }: Props) => {
         setFunding(false);
     };
 
+    // A drop shows at once; the server's order replaces it after the write. A
+    // failed write drops the local order, so the list returns to the old one
+    // (envelope-ux R8).
+    const [order, setOrder] = useState<string[] | null>(null);
+    const shown = order
+        ? order.map(id => active.find(e => e._id === id)).filter((e): e is Envelope => !!e)
+        : active;
+
+    const handleMove = async (from: number, to: number) => {
+        const ids = moveItem(shown.map(e => e._id), from, to);
+        setOrder(ids);
+        setError("");
+        try {
+            await backend.reorderFinanceEnvelopes(ids);
+            onChanged();
+        } catch (e) {
+            setOrder(null);
+            setError(errorText(e));
+        }
+    };
+
     const unassigned = data.summary.unassigned;
 
     return (
@@ -68,24 +91,14 @@ const EnvelopesTab = ({ data, onChanged, onOpenEnvelope, onAssign }: Props) => {
             </Section>
 
             <Section title="Envelopes">
-                {active.length === 0 ? (
+                {/* New Envelope leads the list, outside the scroll, so it is
+                    never scrolled out of reach (envelope-ux R3, D6). */}
+                <NewRow label="New Envelope" onClick={() => onOpenEnvelope("new")} first />
+                {shown.length === 0 ? (
                     <p className="text-label text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">Add an Envelope to begin.</p>
                 ) : (
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">
-                                <th className="px-3 py-2 font-normal">Envelope</th>
-                                <th className="px-3 py-2 font-normal text-right">Balance</th>
-                                <th className="px-3 py-2 font-normal text-right hidden sm:table-cell">Target</th>
-                                <th className="px-3 py-2 font-normal text-right">Needed</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {active.map(e => <EnvelopeRow key={e._id} envelope={e} data={data} onOpen={() => onOpenEnvelope(e._id)} />)}
-                        </tbody>
-                    </table>
+                    <EnvelopeTable envelopes={shown} data={data} onOpen={onOpenEnvelope} onMove={handleMove} />
                 )}
-                <NewRow label="New Envelope" onClick={() => onOpenEnvelope("new")} />
             </Section>
 
             {archived.length > 0 && (
@@ -112,15 +125,74 @@ const EnvelopesTab = ({ data, onChanged, onOpenEnvelope, onAssign }: Props) => {
     );
 };
 
-const EnvelopeRow = ({ envelope, data, onOpen }: { envelope: Envelope; data: FinanceData; onOpen: () => void }) => {
+// Eight rows show; more scroll inside the section, under headers that stay
+// put (envelope-ux R1, D1). The cap is measured from a real row, so it holds
+// whatever the type scale makes a row's height.
+const VISIBLE_ROWS = 8;
+
+const EnvelopeTable = ({ envelopes, data, onOpen, onMove }: {
+    envelopes: Envelope[];
+    data: FinanceData;
+    onOpen: (id: string) => void;
+    onMove: (from: number, to: number) => void;
+}) => {
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
+
+    useLayoutEffect(() => {
+        const box = scrollRef.current;
+        const head = box?.querySelector("thead");
+        const row = box?.querySelector("tbody tr");
+        if (!head || !row || envelopes.length <= VISIBLE_ROWS) { setMaxHeight(undefined); return; }
+        setMaxHeight(head.getBoundingClientRect().height + VISIBLE_ROWS * row.getBoundingClientRect().height);
+    }, [envelopes.length]);
+
+    return (
+        <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight }}>
+            <table className="w-full text-left">
+                <thead>
+                    <tr className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">
+                        <th className={headCell}><span className="sr-only">Reorder</span></th>
+                        <th className={`${headCell} pl-0`}>Envelope</th>
+                        <th className={`${headCell} text-right`}>Balance</th>
+                        <th className={`${headCell} text-right hidden sm:table-cell`}>Target</th>
+                        <th className={`${headCell} text-right`}>Needed</th>
+                    </tr>
+                </thead>
+                <SortableList onMove={onMove}>
+                    <tbody>
+                        {envelopes.map((e, i) => (
+                            <EnvelopeRow key={e._id} index={i} envelope={e} data={data} onOpen={() => onOpen(e._id)} />
+                        ))}
+                    </tbody>
+                </SortableList>
+            </table>
+        </div>
+    );
+};
+
+// The headers stay visible while the rows scroll under them.
+const headCell = "sticky top-0 z-10 bg-nier-100-lighter px-3 py-2 font-normal";
+
+const EnvelopeRow = ({ envelope, index, data, onOpen }: {
+    envelope: Envelope;
+    index: number;
+    data: FinanceData;
+    onOpen: () => void;
+}) => {
     const { balance = 0, needed = 0 } = data.summary.envelopes[envelope._id] ?? {};
+    const { ref, handleRef, isDragging } = useSortableRow(envelope._id, index);
     return (
         <tr
+            ref={ref}
             onClick={onOpen}
             data-testid={`envelope-${envelope.name}`}
-            className="border-t border-nier-150/30 hover:bg-nier-150/30 cursor-pointer transition-colors"
+            className={`border-t border-nier-150/30 hover:bg-nier-150/30 cursor-pointer transition-colors ${isDragging ? "bg-nier-150/50" : ""}`}
         >
-            <td className="px-3 py-3 text-label text-nier-text-dark truncate max-w-[10rem]">{envelope.name}</td>
+            <td className="pl-1 w-9">
+                <DragHandle handleRef={handleRef} label={`Reorder ${envelope.name}`} className="text-nier-text-dark/50" />
+            </td>
+            <td className="pr-3 py-3 text-label text-nier-text-dark truncate max-w-[10rem]">{envelope.name}</td>
             <td data-testid="balance" className={`px-3 py-3 text-label text-right tabular-nums ${negative(balance)}`}>
                 {formatCents(balance)}
             </td>

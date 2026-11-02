@@ -31,7 +31,7 @@ const TARGET_HINT: Record<TargetChoice, string> = {
     addMonthly: "Given the amount every month, whatever it holds. For saving up.",
 };
 
-// Name, Target, order, archive, and the Envelope's own history (R17–R19).
+// Name, Target, archive, and the Envelope's own history (R17–R19).
 // An Envelope is archived rather than deleted (D18): its past Transactions
 // keep pointing at it, so the Report's past months stay true.
 const EnvelopeModal = ({ open, envelope, data, onClose, onSaved, onEditAssignment, onEditTransaction }: Props) => {
@@ -41,8 +41,6 @@ const EnvelopeModal = ({ open, envelope, data, onClose, onSaved, onEditAssignmen
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
 
-    const active = data.envelopes.filter(e => !e.archived);
-    const index = envelope ? active.findIndex(e => e._id === envelope._id) : -1;
     const balance = envelope ? data.summary.envelopes[envelope._id]?.balance ?? 0 : 0;
 
     const history = useMemo(() => envelope ? envelopeHistory(envelope._id, data) : [], [envelope, data]);
@@ -73,14 +71,6 @@ const EnvelopeModal = ({ open, envelope, data, onClose, onSaved, onEditAssignmen
             : backend.addFinanceEnvelope({ name: name.trim(), target }), true);
         setSaving(false);
     };
-
-    // Swap with the neighbour, then write the whole order back so it stays
-    // dense — the same rule Body's Movement list follows.
-    const move = (by: -1 | 1) => act(() => {
-        const ids = active.map(e => e._id);
-        [ids[index], ids[index + by]] = [ids[index + by], ids[index]];
-        return backend.reorderFinanceEnvelopes(ids);
-    });
 
     return (
         <EditorModal open={open} title={envelope ? envelope.name : "New Envelope"} onClose={onClose}>
@@ -115,10 +105,8 @@ const EnvelopeModal = ({ open, envelope, data, onClose, onSaved, onEditAssignmen
 
             {envelope && (
                 <>
-                    <div className="flex flex-wrap items-center gap-2 border-t border-nier-150 pt-4">
-                        <button onClick={() => move(-1)} disabled={index <= 0} className={smallBtn}>Move up</button>
-                        <button onClick={() => move(1)} disabled={index < 0 || index >= active.length - 1} className={smallBtn}>Move down</button>
-                        <span className="flex-1" />
+                    {/* Order is set by dragging a row's handle on the tab (envelope-ux R9). */}
+                    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-nier-150 pt-4">
                         <button
                             onClick={() => act(() => backend.updateFinanceEnvelope(envelope._id, { archived: true }), true)}
                             className={smallBtn}

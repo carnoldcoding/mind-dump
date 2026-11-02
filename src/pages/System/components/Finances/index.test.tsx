@@ -102,6 +102,22 @@ describe("Envelopes tab (R12, R13)", () => {
         await waitFor(() => expect(mocked.getFinances).toHaveBeenCalledTimes(2));
     });
 
+    it("leaves reorder to the tab's drag handles (envelope-ux R5, R9)", async () => {
+        await renderWindow();
+        expect(screen.getByRole("button", { name: "Reorder Groceries" })).toBeTruthy();
+        fireEvent.click(screen.getByTestId("envelope-Groceries"));
+        const dialog = await screen.findByRole("dialog");
+        expect(within(dialog).queryByRole("button", { name: "Move up" })).toBeNull();
+        expect(within(dialog).queryByRole("button", { name: "Move down" })).toBeNull();
+    });
+
+    it("puts New Envelope above the list (envelope-ux R3)", async () => {
+        await renderWindow();
+        const newRow = screen.getByRole("button", { name: "New Envelope" });
+        const firstRow = screen.getByTestId("envelope-Groceries");
+        expect(newRow.compareDocumentPosition(firstRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it("shows the server's reason when archiving is refused (R19)", async () => {
         await renderWindow();
         mocked.updateFinanceEnvelope.mockRejectedValue(new Error("POST /api/finances/envelopes/update failed (409): move this Envelope's money out before archiving it"));
