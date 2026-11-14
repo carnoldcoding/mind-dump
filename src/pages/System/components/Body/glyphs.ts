@@ -9,8 +9,10 @@ export const GLYPH = {
     started: "◈",
     open: "◇",
     skipped: "⊘",
-    /** The next thing to do, and the control that saves it. */
+    /** The selected row: where attention is. Never a control. */
     next: "➤",
+    /** The control that saves or marks done. Not the caret: one says where, the other says finish. */
+    save: "✓",
     add: "＋",
     remove: "×",
 } as const;

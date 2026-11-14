@@ -11,6 +11,10 @@ import PlanTab from "./PlanTab";
 import ProgressTab from "./ProgressTab";
 import type { BodyData } from "../../../../types/body";
 
+// A local run can pin the date, to look at a training day on a rest day:
+// VITE_BODY_TODAY=2026-11-16 in .env.local. A build ignores it.
+const bodyToday = (): string => (import.meta.env.DEV && import.meta.env.VITE_BODY_TODAY) || todayIso();
+
 type ActiveTab = "today" | "plan" | "progress";
 
 const TABS: { id: ActiveTab; label: string }[] = [
@@ -43,7 +47,7 @@ const BodyWindow = () => {
     // The browser's date decides which day it is; the server runs in UTC.
     const refresh = useCallback(async () => {
         try {
-            setData(await backend.getBody(todayIso()));
+            setData(await backend.getBody(bodyToday()));
             setLoadError(false);
         } catch {
             setLoadError(true);
