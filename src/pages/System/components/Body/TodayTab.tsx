@@ -268,17 +268,12 @@ const MovementDetail = ({ row, previous, onSave, onSkip, onError }: {
                     <span>{previous.sets.map(s => describeSet(movement, s)).join(" / ")}</span>
                 </p>
             )}
-            {sets.map((s, n) => (
-                <p key={s.id} className="flex items-baseline text-label text-nier-text-dark tabular-nums">
-                    <span className={EYEBROW}>Set {n + 1}</span>
-                    <span>{describeSet(movement, s)}</span>
-                </p>
-            ))}
             {skipped ? (
                 <div><GlyphButton glyph={GLYPH.skipped} label="Undo skip" pressed onClick={() => onSkip(false)} /></div>
             ) : (
                 // Keyed on the Set, so each Set starts from the last Session's
-                // value rather than from what was just typed.
+                // value rather than from what was just typed. The Sets logged
+                // today are the glyphs on the row; their numbers are in Progress.
                 <SetForm
                     key={sets.length}
                     movement={movement}
@@ -294,9 +289,9 @@ const MovementDetail = ({ row, previous, onSave, onSkip, onError }: {
     );
 };
 
-// The fields a Set has depend on its Movement (body-plan R21): seconds for a
-// hold; full reps otherwise, with partial and assisted reps only past failure.
-// It is a form, so the Enter key saves as the ✓ control does.
+// A Set is one number: seconds for a hold, clean full reps otherwise. Reps
+// after failure are not a field; nobody counts there. It is a form, so the
+// Enter key saves as the ✓ control does.
 const SetForm = ({ movement, setNumber, start, canSkip, onSave, onSkip, onError }: {
     movement: Movement;
     setNumber: number;
@@ -326,15 +321,7 @@ const SetForm = ({ movement, setNumber, start, canSkip, onSave, onSkip, onError 
             {hold ? (
                 <div className={field}><NumberField label="Seconds" value={fields.seconds} onChange={set("seconds")} autoFocus /></div>
             ) : (
-                <>
-                    <div className={field}><NumberField label="Full" value={fields.full} onChange={set("full")} autoFocus /></div>
-                    {movement.rule === "pastFailure" && (
-                        <>
-                            <div className={field}><NumberField label="Partial" value={fields.partial} onChange={set("partial")} /></div>
-                            <div className={field}><NumberField label="Assisted" value={fields.assisted} onChange={set("assisted")} /></div>
-                        </>
-                    )}
-                </>
+                <div className={field}><NumberField label="Reps" value={fields.full} onChange={set("full")} autoFocus /></div>
             )}
             {movement.loaded && (
                 <div className={field}><NumberField label="Load lb" value={fields.load} onChange={set("load")} decimal /></div>

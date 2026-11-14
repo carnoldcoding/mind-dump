@@ -98,7 +98,7 @@ Two Movements in a Workout that alternate sets.
 One Workout that was done on one date.
 
 **Set**:
-One logged set in a Session. It records full reps, partial reps, and assisted reps, or it records seconds for a hold. It also records the load, if there is one.
+One logged set in a Session. It records full reps, or it records seconds for a hold. Reps after failure are not recorded: past failure the aim is one more rep, and nobody counts. It also records the load, if there is one.
 _Avoid_: Entry. A Set belongs to a dated Session; the old Entry was a loose record against a Movement.
 
 **Stretches**:

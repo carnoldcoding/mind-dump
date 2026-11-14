@@ -54,7 +54,7 @@ const summary = (over: Partial<BodySummary> = {}): BodySummary => ({
     }],
     weight: { latest: null, average: null, count: 0, startLb: 245, targetLb: 216, change: null },
     bests: {},
-    previous: { push: { date: "2026-11-05", sets: [{ id: "p1", movementId: "push", full: 9, partial: 2, assisted: 0 }] } },
+    previous: { push: { date: "2026-11-05", sets: [{ id: "p1", movementId: "push", full: 9 }, { id: "p2", movementId: "push", full: 7 }] } },
     ...over,
 });
 
@@ -94,7 +94,7 @@ const sample = (over: Partial<BodyData> = {}): BodyData => ({
 });
 
 const holdSets: LoggedSet[] = [{ id: "h1", movementId: "hold", seconds: 20 }, { id: "h2", movementId: "hold", seconds: 22 }];
-const reps = (movementId: string, n: number): LoggedSet => ({ id: `${movementId}${n}`, movementId, full: 6, partial: 1, assisted: 0 });
+const reps = (movementId: string, n: number): LoggedSet => ({ id: `${movementId}${n}`, movementId, full: 6 });
 const session = (sets: LoggedSet[], over: Partial<Session> = {}): Session =>
     ({ _id: "sess1", date: TODAY, workoutKey: "upperA", sets, skipped: [], ...over });
 
@@ -311,7 +311,7 @@ describe("Today: the Session (body-plan R19–R25, body-today R15)", () => {
         mocked.startBodySession.mockResolvedValue(session([]));
         mocked.addBodySet.mockResolvedValue(session([]));
         const hold = row("Handstand hold");
-        expect(within(hold).queryByLabelText("Full")).toBeNull();
+        expect(within(hold).queryByLabelText("Reps")).toBeNull();
         type(hold, "Seconds", "25");
         expect(within(hold).getByRole("button", { name: "Save set 1" }).textContent).toBe("✓");
         fireEvent.click(within(hold).getByRole("button", { name: "Save set 1" }));
@@ -320,16 +320,19 @@ describe("Today: the Session (body-plan R19–R25, body-today R15)", () => {
         await waitFor(() => expect(mocked.getBody).toHaveBeenCalledTimes(2));
     });
 
-    it("shows three fields past failure, with the last Session above them and its full reps filled in", async () => {
+    it("shows one field past failure, with the last Session above it and its reps filled in", async () => {
         await renderWindow(training({ sessions: [session(holdSets)] }));
         mocked.addBodySet.mockResolvedValue(session([]));
         const push = row("Deep push-up");
         expect(push.getAttribute("data-open")).toBe("true");
-        expect(within(push).getByTestId("last").textContent).toBe("Last Nov 59·2·0");
-        expect((within(push).getByLabelText("Full") as HTMLInputElement).value).toBe("9");
-        type(push, "Partial", "3");
+        expect(within(push).getByTestId("last").textContent).toBe("Last Nov 59 / 7");
+        expect((within(push).getByLabelText("Reps") as HTMLInputElement).value).toBe("9");
+        // Reps after failure are not counted, so they are not fields.
+        expect(within(push).queryByLabelText("Partial")).toBeNull();
+        expect(within(push).queryByLabelText("Assisted")).toBeNull();
+        type(push, "Reps", "10");
         fireEvent.click(within(push).getByRole("button", { name: "Save set 1" }));
-        await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "push", { full: 9, partial: 3, assisted: 0 }));
+        await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "push", { full: 10 }));
         // The Session exists already, so it is not started again.
         expect(mocked.startBodySession).not.toHaveBeenCalled();
     });
@@ -345,13 +348,20 @@ describe("Today: the Session (body-plan R19–R25, body-today R15)", () => {
         expect(within(row("Deep push-up")).getByRole("button", { name: "Save set 2" })).toBeTruthy();
     });
 
+    it("does not list the Sets logged today under the Movement; the row's glyphs count them", async () => {
+        await renderWindow(training({ sessions: [session([...holdSets, reps("push", 1), reps("pull", 1)])] }));
+        const push = row("Deep push-up");
+        expect(push.getAttribute("data-open")).toBe("true");
+        expect(within(push).getByTestId("state").textContent).toBe("◆◇");
+        expect(within(push).queryByText(/^Set 1/)).toBeNull();
+    });
+
     it("shows one field for a Movement that stops at failure", async () => {
         const sets = [...holdSets, reps("push", 1), reps("pull", 1), reps("push", 2), reps("pull", 2)];
         await renderWindow(training({ sessions: [session(sets)] }));
         const dip = row("Dip");
         expect(dip.getAttribute("data-open")).toBe("true");
-        expect(within(dip).getByLabelText("Full")).toBeTruthy();
-        expect(within(dip).queryByLabelText("Partial")).toBeNull();
+        expect(within(dip).getByLabelText("Reps")).toBeTruthy();
     });
 
     it("refuses a Set with no number in the hint bar, and sends nothing (R22)", async () => {
@@ -445,11 +455,11 @@ describe("Progress (R26–R29)", () => {
     it("lists the past Sets of a Movement, and edits one", async () => {
         await open();
         mocked.updateBodySet.mockResolvedValue(session([]));
-        fireEvent.click(within(screen.getByTestId("past-sets")).getByRole("button", { name: "Set 1: 6·1·0" }));
+        fireEvent.click(within(screen.getByTestId("past-sets")).getByRole("button", { name: "Set 1: 6" }));
         const dialog = await screen.findByRole("dialog");
-        type(dialog, "Full", "8");
+        type(dialog, "Reps", "8");
         fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
-        await waitFor(() => expect(mocked.updateBodySet).toHaveBeenCalledWith("sess1", "push1", { full: 8, partial: 1, assisted: 0 }));
+        await waitFor(() => expect(mocked.updateBodySet).toHaveBeenCalledWith("sess1", "push1", { full: 8 }));
     });
 
     it("deletes a past Set", async () => {
