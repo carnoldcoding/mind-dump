@@ -1,6 +1,6 @@
 # Mind Dump
 
-A personal app for reviewing games, movies, and books, and tracking body/workout data over time. Single-user, gated behind one shared admin password for the authoring/tracking side; the review browsing side is public.
+A personal app for reviewing games, movies, and books, and following a training Plan and tracking it over time. Single-user, gated behind one shared admin password for the authoring/tracking side; the review browsing side is public.
 
 Frontend only — the API lives in a separate `mind-dump-backend` repo.
 

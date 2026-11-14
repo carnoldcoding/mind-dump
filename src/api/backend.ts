@@ -5,6 +5,7 @@ import config from "../config";
 import type { AudioTrack } from "../types";
 import type { MindQuest, MindDiscipline, MindEvent, MindSession, MindTurn } from "../types/mind";
 import type { AssignmentInput, FinanceData, ScheduleInput, Target, TransactionInput } from "../types/finances";
+import type { BodyData, Movement, MovementInput, Phase, RoutineItem, Session, SetValues, Slot, WorkoutKey } from "../types/body";
 
 type Params = Record<string, string | undefined>;
 
@@ -103,14 +104,26 @@ export const backend = {
             body: JSON.stringify({ url }),
         }),
 
-    // ── Body tracking ─────────────────────────────────────────────────
-    getBodyEntries: () => request<any[]>("/api/body", gated),
-    addBodyEntry: (payload: Record<string, unknown>) =>
-        request<any>("/api/body/add_entry", { ...gated, method: "POST", body: JSON.stringify(payload) }),
-    updateBodyEntry: (payload: Record<string, unknown>) =>
-        request<any>("/api/body/update_entry", { ...gated, method: "POST", body: JSON.stringify(payload) }),
-    removeBodyEntry: (id: string) =>
-        request<any>("/api/body/remove_entry", { ...gated, method: "POST", body: JSON.stringify({ id }) }),
+    // ── Body ──────────────────────────────────────────────────────────
+    // `today` is the browser's date: the server runs in UTC, and "what is
+    // due today" is the user's day, not the server's.
+    getBody: (today: string) => request<BodyData>("/api/body", { ...gated, params: { today } }),
+    addBodyMovement: (payload: MovementInput) => bodyPost<Movement>("/movements/add", payload),
+    updateBodyMovement: (id: string, payload: Partial<MovementInput>) => bodyPost<Movement>("/movements/update", { id, ...payload }),
+    removeBodyMovement: (id: string) => bodyPost("/movements/remove", { id }),
+    updateBodyWorkout: (key: WorkoutKey, payload: { weekday?: number; slots?: Slot[] }) =>
+        bodyPost("/plan/update_workout", { key, ...payload }),
+    updateBodyRoutine: (items: RoutineItem[]) => bodyPost("/plan/update_routine", { items }),
+    updateBodyPhase: (phase: Phase) => bodyPost("/plan/update_phase", phase),
+    startBodySession: (date: string, workoutKey: WorkoutKey) => bodyPost<Session>("/sessions/start", { date, workoutKey }),
+    removeBodySession: (id: string) => bodyPost("/sessions/remove", { id }),
+    addBodySet: (id: string, movementId: string, values: SetValues) => bodyPost<Session>("/sessions/add_set", { id, movementId, ...values }),
+    updateBodySet: (id: string, setId: string, values: SetValues) => bodyPost<Session>("/sessions/update_set", { id, setId, ...values }),
+    removeBodySet: (id: string, setId: string) => bodyPost<Session>("/sessions/remove_set", { id, setId }),
+    skipBodyMovement: (id: string, movementId: string, skipped: boolean) => bodyPost<Session>("/sessions/skip", { id, movementId, skipped }),
+    checkBodyRoutine: (date: string, done: boolean) => bodyPost("/routine/check", { date, done }),
+    setBodyWeighIn: (date: string, lb: number) => bodyPost("/weighins/set", { date, lb }),
+    removeBodyWeighIn: (date: string) => bodyPost("/weighins/remove", { date }),
 
     // ── Audio ─────────────────────────────────────────────────────────
     getAudioTracks: (postId: string) => request<AudioTrack[]>("/api/audio", { params: { post_id: postId } }),
@@ -173,6 +186,10 @@ export const backend = {
     updateFinanceSchedule: (id: string, payload: ScheduleInput) => financePost("/schedules/update", { id, ...payload }),
     removeFinanceSchedule: (id: string) => financePost("/schedules/remove", { id }),
 };
+
+function bodyPost<T = unknown>(path: string, payload: unknown) {
+    return request<T>(`/api/body${path}`, { ...gated, method: "POST", body: JSON.stringify(payload) });
+}
 
 function financePost(path: string, payload: unknown) {
     return request<unknown>(`/api/finances${path}`, { ...gated, method: "POST", body: JSON.stringify(payload) });
