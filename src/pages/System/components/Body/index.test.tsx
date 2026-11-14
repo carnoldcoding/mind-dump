@@ -1,457 +1,405 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, waitFor, within, cleanup } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import BodyWindow from "./index";
 import { backend } from "../../../../api/backend";
-import type { LegacyDoc } from "./migration";
+import type { BodyData, BodySummary, LoggedSet, Session } from "../../../../types/body";
 
-// The app's single boundary to the server — faking it here is what lets these
-// tests drive the whole window as a user without knowing how it's built.
+// The app's one boundary to the server; faking it lets these tests drive the
+// window as a user would. What is due, the grid and the averages are the
+// backend's, and are tested there — here the summary is given, and the
+// question is whether the window shows it and sends the right requests.
 vi.mock("../../../../api/backend", () => ({
     backend: {
-        getBodyEntries: vi.fn(),
-        addBodyEntry: vi.fn(),
-        updateBodyEntry: vi.fn(),
-        removeBodyEntry: vi.fn(),
+        getBody: vi.fn(),
+        addBodyMovement: vi.fn(),
+        updateBodyMovement: vi.fn(),
+        removeBodyMovement: vi.fn(),
+        updateBodyWorkout: vi.fn(),
+        updateBodyRoutine: vi.fn(),
+        updateBodyPhase: vi.fn(),
+        startBodySession: vi.fn(),
+        removeBodySession: vi.fn(),
+        addBodySet: vi.fn(),
+        updateBodySet: vi.fn(),
+        removeBodySet: vi.fn(),
+        skipBodyMovement: vi.fn(),
+        checkBodyRoutine: vi.fn(),
+        setBodyWeighIn: vi.fn(),
+        removeBodyWeighIn: vi.fn(),
     },
 }));
 
-// chart.js needs a real canvas; jsdom has none. Nothing here asserts on the
-// chart — the goal line is a visual decision, verified by eye.
-vi.mock("react-chartjs-2", () => ({ Line: () => <div data-testid="chart" /> }));
+// chart.js needs a real canvas; jsdom has none. How a chart looks is checked
+// by eye.
+vi.mock("react-chartjs-2", () => ({
+    Line: () => <div data-testid="chart" />,
+}));
 
 const mocked = vi.mocked(backend);
 
-const movement = (workoutName: string, over: Partial<LegacyDoc> = {}): LegacyDoc => ({
-    _id: `m-${workoutName}`,
-    workoutName,
-    _meta: true,
-    displayName: workoutName,
-    tag: null,
-    notes: "",
-    order: 0,
-    datetime: "2026-01-01T00:00:00.000Z",
+// 2026-11-09 is a Monday.
+const TODAY = "2026-11-09";
+
+const summary = (over: Partial<BodySummary> = {}): BodySummary => ({
+    today: { date: TODAY, weekday: 1, due: "upperA", dueDone: false, missed: [] },
+    grid: [{
+        weekStart: TODAY,
+        workouts: [
+            { key: "upperA", name: "Upper A", weekday: 1, done: false, date: null },
+            { key: "lowerA", name: "Lower A", weekday: 2, done: false, date: null },
+            { key: "upperB", name: "Upper B", weekday: 4, done: false, date: null },
+            { key: "lowerB", name: "Lower B", weekday: 5, done: false, date: null },
+        ],
+        routine: ["09", "10", "11", "12", "13", "14", "15"].map(d => ({ date: `2026-11-${d}`, done: false })),
+    }],
+    weight: { latest: null, average: null, count: 0, startLb: 245, targetLb: 216, change: null },
+    bests: {},
+    previous: { push: { date: "2026-11-05", sets: [{ id: "p1", movementId: "push", full: 9, partial: 2, assisted: 0 }] } },
     ...over,
 });
 
-const entry = (workoutName: string, datetime: string, over: Partial<LegacyDoc> = {}): LegacyDoc => ({
-    _id: `e-${workoutName}-${datetime}`,
-    workoutName,
-    datetime,
-    setsCompleted: 3,
-    repsCompleted: 8,
-    weightUsed: 180,
+const sample = (over: Partial<BodyData> = {}): BodyData => ({
+    today: TODAY,
+    plan: {
+        workouts: [
+            {
+                key: "upperA", name: "Upper A", weekday: 1,
+                slots: [
+                    { movementId: "hold", pair: null },
+                    { movementId: "push", pair: 1 },
+                    { movementId: "pull", pair: 1 },
+                    { movementId: "dip", pair: null },
+                ],
+            },
+            { key: "lowerA", name: "Lower A", weekday: 2, slots: [{ movementId: "squat", pair: null }] },
+            { key: "upperB", name: "Upper B", weekday: 4, slots: [] },
+            { key: "lowerB", name: "Lower B", weekday: 5, slots: [] },
+        ],
+        routine: { items: [{ name: "Pancake", sets: 2, seconds: 30 }, { name: "Wall angels", sets: 1, reps: 10 }] },
+        phase: { name: "Phase 1", startLb: 245, targetLb: 216 },
+    },
+    movements: [
+        { _id: "hold", name: "Handstand hold", kind: "hold", rule: "noFailure", sets: 2, loaded: false },
+        { _id: "push", name: "Deep push-up", kind: "reps", rule: "pastFailure", sets: 2, loaded: false },
+        { _id: "pull", name: "Pull-up", kind: "reps", rule: "pastFailure", sets: 2, loaded: false },
+        { _id: "dip", name: "Dip", kind: "reps", rule: "failure", sets: 2, loaded: false },
+        { _id: "squat", name: "Squat", kind: "reps", rule: "pastFailure", sets: 2, loaded: false },
+        { _id: "spare", name: "Spare", kind: "reps", rule: "failure", sets: 2, loaded: false },
+    ],
+    sessions: [],
+    checks: [],
+    weighins: [],
+    summary: summary(),
     ...over,
 });
 
-const renderBody = async (docs: LegacyDoc[]) => {
-    mocked.getBodyEntries.mockResolvedValue(docs);
-    const result = render(<BodyWindow />);
-    // Wait on something that only exists once the fetch has landed, otherwise
-    // the list renders its empty state and the assertions race the data.
-    if (docs.some(d => d._meta)) await screen.findByRole("region", { name: /log/i });
-    else await screen.findByRole("list", { name: /movements/i });
-    return result;
+const holdSets: LoggedSet[] = [{ id: "h1", movementId: "hold", seconds: 20 }, { id: "h2", movementId: "hold", seconds: 22 }];
+const reps = (movementId: string, n: number): LoggedSet => ({ id: `${movementId}${n}`, movementId, full: 6, partial: 1, assisted: 0 });
+const session = (sets: LoggedSet[], over: Partial<Session> = {}): Session =>
+    ({ _id: "sess1", date: TODAY, workoutKey: "upperA", sets, skipped: [], ...over });
+
+const renderWindow = async (data = sample()) => {
+    mocked.getBody.mockResolvedValue(data);
+    render(<BodyWindow />);
+    if (data.plan) await screen.findByTestId("today-heading");
 };
 
-const list = () => screen.getByRole("list", { name: /movements/i });
+const row = (name: string) => screen.getByTestId(`movement-${name}`);
+const type = (scope: HTMLElement, label: string, value: string) =>
+    fireEvent.change(within(scope).getByLabelText(label), { target: { value } });
 
 beforeEach(() => {
-    vi.stubEnv("VITE_DISABLE_ANIMATIONS", "true");
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.setSystemTime(new Date(2026, 6, 30, 9, 0, 0));
-    mocked.addBodyEntry.mockResolvedValue({});
-    mocked.updateBodyEntry.mockResolvedValue({});
-    mocked.removeBodyEntry.mockResolvedValue({});
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 10, 9, 9, 30));
 });
 
 afterEach(() => {
-    // vitest isn't configured with globals, so Testing Library's automatic
-    // cleanup never registers — without this every render accumulates.
     cleanup();
-    vi.unstubAllEnvs();
     vi.useRealTimers();
     vi.clearAllMocks();
 });
 
-describe("Movement list", () => {
-    it("lists Movements from their own records", async () => {
-        await renderBody([movement("Bench Press"), movement("Squat", { _id: "m-2", order: 1 })]);
-
-        expect(within(list()).getByRole("button", { name: "Bench Press" })).toBeDefined();
-        expect(within(list()).getByRole("button", { name: "Squat" })).toBeDefined();
+describe("loading", () => {
+    // The server runs in UTC; the browser's date decides which day it is.
+    it("asks for the data as of the browser's date", async () => {
+        await renderWindow();
+        expect(mocked.getBody).toHaveBeenCalledWith(TODAY);
     });
 
-    it("lists a Movement that has no entries yet", async () => {
-        await renderBody([movement("Calf Raise")]);
-
-        expect(within(list()).getByRole("button", { name: "Calf Raise" })).toBeDefined();
-    });
-
-    it("does not list a movement that only appears on entries", async () => {
-        await renderBody([movement("Bench Press"), entry("Ghost", "2026-03-01T00:00:00.000Z")]);
-
-        expect(within(list()).queryByRole("button", { name: "Ghost" })).toBeNull();
-    });
-
-    it("orders Movements by their stored order", async () => {
-        await renderBody([
-            movement("Squat", { _id: "m-1", order: 2 }),
-            movement("Bench Press", { _id: "m-2", order: 1 }),
-        ]);
-
-        const names = within(list())
-            .getAllByRole("button", { name: /Squat|Bench Press/ })
-            .map(b => b.textContent);
-        expect(names).toEqual(["Bench Press", "Squat"]);
-    });
-
-    it("shows the Movement's display name rather than its stored name", async () => {
-        await renderBody([movement("bench_press", { displayName: "Bench Press" })]);
-
-        expect(within(list()).getByRole("button", { name: "Bench Press" })).toBeDefined();
-    });
-
-    it("filters by tag", async () => {
-        await renderBody([
-            movement("Bench Press", { _id: "m-1", tag: "upper" }),
-            movement("Squat", { _id: "m-2", tag: "lower", order: 1 }),
-        ]);
-
-        fireEvent.click(screen.getByRole("button", { name: /^lower$/i }));
-
-        expect(within(list()).queryByRole("button", { name: "Bench Press" })).toBeNull();
-        expect(within(list()).getByRole("button", { name: "Squat" })).toBeDefined();
+    it("says that the seed has not run when there is no Plan", async () => {
+        await renderWindow(sample({ plan: null, summary: null }));
+        expect(await screen.findByText(/No Plan yet/)).toBeTruthy();
     });
 });
 
-describe("Manage mode", () => {
-    it("hides reorder and edit controls by default", async () => {
-        await renderBody([movement("Bench Press")]);
-
-        expect(screen.queryByRole("button", { name: /reorder bench press/i })).toBeNull();
-        expect(screen.queryByRole("button", { name: /edit bench press/i })).toBeNull();
+describe("Today (R12–R18)", () => {
+    it("opens on Today, with the weekday and the Workout in the heading", async () => {
+        await renderWindow();
+        expect(screen.getByTestId("today-heading").textContent).toBe("MONDAY — UPPER A");
+        expect(screen.getByTestId("summary-training").textContent).toBe("4 movements, 0 logged");
     });
 
-    it("reveals them when manage mode is entered, and hides them again on exit", async () => {
-        await renderBody([movement("Bench Press"), movement("Squat", { _id: "m-2", order: 1 })]);
-
-        fireEvent.click(screen.getByRole("button", { name: /manage/i }));
-        expect(screen.getByRole("button", { name: /reorder squat/i })).toBeDefined();
-        expect(screen.getByRole("button", { name: /edit squat/i })).toBeDefined();
-
-        fireEvent.click(screen.getByRole("button", { name: /done/i }));
-        expect(screen.queryByRole("button", { name: /reorder squat/i })).toBeNull();
+    it("shows REST on a day with no Workout", async () => {
+        await renderWindow(sample({ summary: summary({ today: { date: TODAY, weekday: 3, due: null, dueDone: false, missed: [] } }) }));
+        expect(screen.getByTestId("today-heading").textContent).toBe("WEDNESDAY — REST");
+        expect(screen.getByTestId("summary-training").textContent).toBe("rest day");
     });
 
-    // Outside Manage mode a row is a plain selection target, not a drag
-    // handle (envelope-ux R10). Where a drop lands in the full order is
-    // tested in src/utils/reorder.test.ts; jsdom has no layout, so the drag
-    // gesture itself is checked by hand.
-    it("makes no row draggable outside manage mode", async () => {
-        await renderBody([movement("Bench Press")]);
+    it("checks the Routine for the date, and clears the check", async () => {
+        await renderWindow();
+        mocked.checkBodyRoutine.mockResolvedValue({});
+        expect(screen.getByText("Pancake")).toBeTruthy();
+        fireEvent.click(screen.getByRole("button", { name: "Mark routine done" }));
+        await waitFor(() => expect(mocked.checkBodyRoutine).toHaveBeenCalledWith(TODAY, true));
+        await waitFor(() => expect(mocked.getBody).toHaveBeenCalledTimes(2));
 
-        expect(screen.getAllByRole("button", { name: /bench press/i })).toHaveLength(1);
-    });
-});
-
-describe("Logging a set", () => {
-    it("writes today's date and the entered values", async () => {
-        await renderBody([movement("Bench Press")]);
-
-        fireEvent.change(screen.getByLabelText("Sets"), { target: { value: "4" } });
-        fireEvent.change(screen.getByLabelText("Reps"), { target: { value: "6" } });
-        fireEvent.change(screen.getByLabelText("Weight"), { target: { value: "195" } });
-        fireEvent.click(screen.getByRole("button", { name: /^log$/i }));
-
-        await waitFor(() => expect(mocked.addBodyEntry).toHaveBeenCalled());
-        expect(mocked.addBodyEntry).toHaveBeenCalledWith({
-            workoutName: "Bench Press",
-            setsCompleted: 4,
-            repsCompleted: 6,
-            weightUsed: 195,
-            datetime: new Date(2026, 6, 30).toISOString(),
-        });
+        cleanup();
+        await renderWindow(sample({ checks: [{ date: TODAY }] }));
+        expect(screen.getByTestId("summary-routine").textContent).toBe("done");
+        fireEvent.click(screen.getByRole("button", { name: "Done — undo" }));
+        await waitFor(() => expect(mocked.checkBodyRoutine).toHaveBeenCalledWith(TODAY, false));
     });
 
-    it("pre-fills the fields from the most recent entry for that Movement", async () => {
-        await renderBody([
-            movement("Bench Press"),
-            entry("Bench Press", "2026-03-01T00:00:00.000Z", { setsCompleted: 5, repsCompleted: 5, weightUsed: 135 }),
-            entry("Bench Press", "2026-07-01T00:00:00.000Z", { setsCompleted: 3, repsCompleted: 8, weightUsed: 185 }),
-        ]);
-
-        expect((screen.getByLabelText("Sets") as HTMLInputElement).value).toBe("3");
-        expect((screen.getByLabelText("Reps") as HTMLInputElement).value).toBe("8");
-        expect((screen.getByLabelText("Weight") as HTMLInputElement).value).toBe("185");
+    it("offers a missed Workout, and starts it on today's date (R15)", async () => {
+        await renderWindow(sample({ summary: summary({ today: { date: TODAY, weekday: 3, due: null, dueDone: false, missed: ["upperA"] } }) }));
+        mocked.startBodySession.mockResolvedValue(session([]));
+        mocked.addBodySet.mockResolvedValue(session([]));
+        fireEvent.click(within(screen.getByTestId("other-upperA")).getByRole("button", { name: "Start" }));
+        type(row("Handstand hold"), "Seconds", "20");
+        fireEvent.click(within(row("Handstand hold")).getByRole("button", { name: "Save set 1" }));
+        await waitFor(() => expect(mocked.startBodySession).toHaveBeenCalledWith(TODAY, "upperA"));
     });
 
-    it("re-fetches so a freshly logged set shows up without a reload", async () => {
-        await renderBody([movement("Bench Press")]);
-        mocked.getBodyEntries.mockClear();
-
-        fireEvent.change(screen.getByLabelText("Sets"), { target: { value: "3" } });
-        fireEvent.click(screen.getByRole("button", { name: /^log$/i }));
-
-        await waitFor(() => expect(mocked.getBodyEntries).toHaveBeenCalled());
+    it("saves one Weigh-in for today", async () => {
+        await renderWindow();
+        mocked.setBodyWeighIn.mockResolvedValue({});
+        fireEvent.change(screen.getByLabelText("Today lb"), { target: { value: "241.5" } });
+        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(mocked.setBodyWeighIn).toHaveBeenCalledWith(TODAY, 241.5));
     });
 
-    // Backdating is no longer possible while logging — a set logged on the
-    // wrong day is fixed afterwards in the Entry editor.
-    it("offers no date control", async () => {
-        await renderBody([movement("Bench Press")]);
-
-        const bar = screen.getByRole("region", { name: /log/i });
-        expect(within(bar).queryByLabelText(/date/i)).toBeNull();
-        expect(within(bar).queryByRole("button", { name: /today/i })).toBeNull();
-    });
-
-    it("refuses to log when no values were entered", async () => {
-        await renderBody([movement("Bench Press")]);
-
-        fireEvent.click(screen.getByRole("button", { name: /^log$/i }));
-
-        expect(mocked.addBodyEntry).not.toHaveBeenCalled();
+    it("shows the latest Weigh-in, the 7-day average and the change from the start", async () => {
+        const weight = { latest: { date: TODAY, lb: 240 }, average: 242.1, count: 7, startLb: 245, targetLb: 216, change: -2.9 };
+        await renderWindow(sample({ weighins: [{ date: TODAY, lb: 240 }], summary: summary({ weight }) }));
+        expect(screen.getByTestId("weight-latest").textContent).toBe("240.0 lb");
+        expect(screen.getByTestId("weight-average").textContent).toBe("242.1 lb (7 weigh-ins)");
+        expect(screen.getByTestId("weight-start").textContent).toBe("245.0 lb");
+        expect(screen.getByTestId("weight-target").textContent).toBe("216.0 lb");
+        expect(screen.getByTestId("weight-change").textContent).toBe("-2.9 lb");
     });
 });
 
-describe("Goal", () => {
-    it("shows the selected Movement's goal alongside the log fields", async () => {
-        await renderBody([movement("Bench Press", { goal: { sets: 3, reps: 8, weight: 185 } })]);
-
-        const bar = screen.getByRole("region", { name: /log/i });
-        expect(within(bar).getByText(/3/)).toBeDefined();
-        expect(within(bar).getByText(/185/)).toBeDefined();
+describe("Session (R19–R25)", () => {
+    it("lists the Movements in Plan order with the first one open", async () => {
+        await renderWindow();
+        const names = screen.getAllByTestId(/^movement-/).map(el => el.getAttribute("data-testid"));
+        expect(names).toEqual(["movement-Handstand hold", "movement-Deep push-up", "movement-Pull-up", "movement-Dip"]);
+        expect(row("Handstand hold").getAttribute("data-open")).toBe("true");
+        expect(row("Deep push-up").getAttribute("data-open")).toBe("false");
     });
 
-    it("says so when a Movement has no goal", async () => {
-        await renderBody([movement("Bench Press")]);
-
-        const bar = screen.getByRole("region", { name: /log/i });
-        expect(within(bar).getByText(/no goal/i)).toBeDefined();
+    it("logs a hold in seconds, and creates the Session with its first Set", async () => {
+        await renderWindow();
+        mocked.startBodySession.mockResolvedValue(session([]));
+        mocked.addBodySet.mockResolvedValue(session([]));
+        const hold = row("Handstand hold");
+        expect(within(hold).queryByLabelText("Full")).toBeNull();
+        type(hold, "Seconds", "25");
+        fireEvent.click(within(hold).getByRole("button", { name: "Save set 1" }));
+        await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "hold", { seconds: 25 }));
+        expect(mocked.startBodySession).toHaveBeenCalledWith(TODAY, "upperA");
+        await waitFor(() => expect(mocked.getBody).toHaveBeenCalledTimes(2));
     });
 
-    it("is saved onto the Movement record, replacing the previous one", async () => {
-        await renderBody([movement("Bench Press", { goal: { sets: 3, reps: 8, weight: 185 } })]);
-
-        fireEvent.click(screen.getByRole("button", { name: /manage/i }));
-        fireEvent.click(screen.getByRole("button", { name: /edit bench press/i }));
-        fireEvent.change(screen.getByLabelText(/weight goal/i), { target: { value: "205" } });
-        fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
-
-        await waitFor(() => expect(mocked.updateBodyEntry).toHaveBeenCalled());
-        expect(mocked.updateBodyEntry).toHaveBeenCalledWith(
-            expect.objectContaining({ id: "m-Bench Press", goal: { sets: 3, reps: 8, weight: 205 } })
-        );
+    it("shows three fields past failure, with the last Session beside them and its full reps filled in", async () => {
+        await renderWindow(sample({ sessions: [session(holdSets)] }));
+        mocked.addBodySet.mockResolvedValue(session([]));
+        const push = row("Deep push-up");
+        expect(push.getAttribute("data-open")).toBe("true");
+        expect(within(push).getByTestId("last").textContent).toBe("Last, Nov 5: 9 full · 2 partial · 0 assisted");
+        expect((within(push).getByLabelText("Full") as HTMLInputElement).value).toBe("9");
+        type(push, "Partial", "3");
+        fireEvent.click(within(push).getByRole("button", { name: "Save set 1" }));
+        await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "push", { full: 9, partial: 3, assisted: 0 }));
+        // The Session exists already, so it is not started again.
+        expect(mocked.startBodySession).not.toHaveBeenCalled();
     });
 
-    it("can be changed from the log bar without opening the Movement editor", async () => {
-        await renderBody([movement("Bench Press", { goal: { sets: 3, reps: 8, weight: 185 } })]);
+    it("moves to the other Movement of a Pair after each Set", async () => {
+        await renderWindow(sample({ sessions: [session([...holdSets, reps("push", 1)])] }));
+        expect(row("Pull-up").getAttribute("data-open")).toBe("true");
+        expect(within(row("Pull-up")).getByRole("button", { name: "Save set 1" })).toBeTruthy();
 
-        fireEvent.click(screen.getByRole("button", { name: /edit goal/i }));
-        fireEvent.change(screen.getByLabelText(/weight goal/i), { target: { value: "205" } });
-        fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
-
-        await waitFor(() => expect(mocked.updateBodyEntry).toHaveBeenCalled());
-        expect(mocked.updateBodyEntry).toHaveBeenCalledWith({
-            id: "m-Bench Press",
-            goal: { sets: 3, reps: 8, weight: 205 },
-        });
+        cleanup();
+        await renderWindow(sample({ sessions: [session([...holdSets, reps("push", 1), reps("pull", 1)])] }));
+        expect(row("Deep push-up").getAttribute("data-open")).toBe("true");
+        expect(within(row("Deep push-up")).getByRole("button", { name: "Save set 2" })).toBeTruthy();
     });
 
-    it("seeds the log bar editor from the Movement's current goal", async () => {
-        await renderBody([movement("Bench Press", { goal: { sets: 3, reps: 8, weight: 185 } })]);
-
-        fireEvent.click(screen.getByRole("button", { name: /edit goal/i }));
-
-        expect((screen.getByLabelText(/set goal/i) as HTMLInputElement).value).toBe("3");
-        expect((screen.getByLabelText(/rep goal/i) as HTMLInputElement).value).toBe("8");
-        expect((screen.getByLabelText(/weight goal/i) as HTMLInputElement).value).toBe("185");
+    it("shows one field for a Movement that stops at failure", async () => {
+        const sets = [...holdSets, reps("push", 1), reps("pull", 1), reps("push", 2), reps("pull", 2)];
+        await renderWindow(sample({ sessions: [session(sets)] }));
+        const dip = row("Dip");
+        expect(dip.getAttribute("data-open")).toBe("true");
+        expect(within(dip).getByLabelText("Full")).toBeTruthy();
+        expect(within(dip).queryByLabelText("Partial")).toBeNull();
+        expect(screen.getByTestId("session-progress").textContent).toBe("3 of 4 movements done");
     });
 
-    it("is removed when every field is cleared", async () => {
-        await renderBody([movement("Bench Press", { goal: { sets: 3, reps: 8, weight: 185 } })]);
-
-        fireEvent.click(screen.getByRole("button", { name: /edit goal/i }));
-        fireEvent.change(screen.getByLabelText(/set goal/i),    { target: { value: "" } });
-        fireEvent.change(screen.getByLabelText(/rep goal/i),    { target: { value: "" } });
-        fireEvent.change(screen.getByLabelText(/weight goal/i), { target: { value: "" } });
-        fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
-
-        await waitFor(() => expect(mocked.updateBodyEntry).toHaveBeenCalled());
-        expect(mocked.updateBodyEntry).toHaveBeenCalledWith({ id: "m-Bench Press", goal: null });
+    it("refuses a Set with no number, and sends nothing", async () => {
+        await renderWindow();
+        fireEvent.click(within(row("Handstand hold")).getByRole("button", { name: "Save set 1" }));
+        expect(await screen.findByText("Enter the seconds")).toBeTruthy();
+        expect(mocked.addBodySet).not.toHaveBeenCalled();
     });
 
-    it("invites a goal on a Movement that has none", async () => {
-        await renderBody([movement("Bench Press")]);
+    it("skips a Movement, and shows it as skipped", async () => {
+        await renderWindow();
+        mocked.startBodySession.mockResolvedValue(session([]));
+        mocked.skipBodyMovement.mockResolvedValue(session([]));
+        fireEvent.click(within(row("Handstand hold")).getByRole("button", { name: "Skip" }));
+        await waitFor(() => expect(mocked.skipBodyMovement).toHaveBeenCalledWith("sess1", "hold", true));
 
-        expect(screen.getByRole("button", { name: /set goal/i })).toBeDefined();
+        cleanup();
+        await renderWindow(sample({ sessions: [session([], { skipped: ["hold"] })] }));
+        expect(within(row("Handstand hold")).getByTestId("state").textContent).toBe("skipped");
+        expect(row("Deep push-up").getAttribute("data-open")).toBe("true");
     });
 
-    it("re-fetches so a changed goal reaches the chart without a reload", async () => {
-        await renderBody([movement("Bench Press", { goal: { sets: 3, reps: 8, weight: 185 } })]);
-        mocked.getBodyEntries.mockClear();
-
-        fireEvent.click(screen.getByRole("button", { name: /edit goal/i }));
-        fireEvent.change(screen.getByLabelText(/weight goal/i), { target: { value: "205" } });
-        fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
-
-        await waitFor(() => expect(mocked.getBodyEntries).toHaveBeenCalled());
-    });
-});
-
-describe("Notes", () => {
-    it("shows the Movement's notes next to the log fields", async () => {
-        await renderBody([movement("Bench Press", { notes: "elbows tucked, pause at chest" })]);
-
-        expect(screen.getByText(/elbows tucked, pause at chest/i)).toBeDefined();
+    it("shows the server's reason when a Set is refused", async () => {
+        await renderWindow(sample({ sessions: [session([])] }));
+        mocked.addBodySet.mockRejectedValue(new Error("POST /api/body/sessions/add_set failed (400): seconds must be a whole number from 1 to 3600"));
+        type(row("Handstand hold"), "Seconds", "9999");
+        fireEvent.click(within(row("Handstand hold")).getByRole("button", { name: "Save set 1" }));
+        expect(await screen.findByText("Seconds must be a whole number from 1 to 3600")).toBeTruthy();
     });
 });
 
-describe("Tabs", () => {
-    it("shows the chart first", async () => {
-        await renderBody([movement("Bench Press")]);
+describe("Progress (R26–R29)", () => {
+    const done = () => {
+        const s = summary();
+        s.grid[0].workouts[0] = { ...s.grid[0].workouts[0], done: true, date: TODAY };
+        s.grid[0].routine[0] = { date: TODAY, done: true };
+        s.bests = { push: { best: { date: TODAY, value: 6 }, series: [{ date: TODAY, value: 6 }] } };
+        return sample({ sessions: [session([reps("push", 1)])], weighins: [{ date: TODAY, lb: 244 }], summary: s });
+    };
+    const open = async () => {
+        await renderWindow(done());
+        fireEvent.click(screen.getByRole("button", { name: "Progress" }));
+        await screen.findByTestId(`grid-${TODAY}-upperA`);
+    };
 
-        expect(screen.getByTestId("chart")).toBeDefined();
+    it("marks each Workout and each Routine day done or not done, with no streak count", async () => {
+        await open();
+        expect(screen.getByTestId(`grid-${TODAY}-upperA`).getAttribute("data-done")).toBe("true");
+        expect(screen.getByTestId(`grid-${TODAY}-lowerA`).getAttribute("data-done")).toBe("false");
+        expect(screen.getByTestId(`grid-${TODAY}`).getAttribute("data-done")).toBe("true");
+        expect(screen.getByTestId("grid-2026-11-10").getAttribute("data-done")).toBe("false");
+        expect(screen.queryByText(/streak/i)).toBeNull();
     });
 
-    it("has no Notes tab", async () => {
-        await renderBody([movement("Bench Press")]);
-
-        expect(screen.queryByRole("button", { name: /^notes$/i })).toBeNull();
-    });
-});
-
-describe("History", () => {
-    it("lists the selected Movement's logged sets", async () => {
-        await renderBody([
-            movement("Bench Press"),
-            entry("Bench Press", "2026-07-01T00:00:00.000Z", { setsCompleted: 3, repsCompleted: 8, weightUsed: 185 }),
-        ]);
-
-        fireEvent.click(screen.getByRole("button", { name: /^history$/i }));
-        const history = screen.getByRole("region", { name: /history/i });
-        expect(within(history).getByText(/3 sets/i)).toBeDefined();
-        expect(within(history).getByText(/185 lbs/i)).toBeDefined();
+    it("lists the past Sets of a Movement, and edits one", async () => {
+        await open();
+        mocked.updateBodySet.mockResolvedValue(session([]));
+        fireEvent.click(within(screen.getByTestId("past-sets")).getByRole("button", { name: "Set 1: 6 full · 1 partial · 0 assisted" }));
+        const dialog = await screen.findByRole("dialog");
+        type(dialog, "Full", "8");
+        fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(mocked.updateBodySet).toHaveBeenCalledWith("sess1", "push1", { full: 8, partial: 1, assisted: 0 }));
     });
 
-    it("shows only the selected Movement's sets", async () => {
-        await renderBody([
-            movement("Bench Press", { _id: "m-1" }),
-            movement("Squat", { _id: "m-2", order: 1 }),
-            entry("Squat", "2026-07-01T00:00:00.000Z", { setsCompleted: 9, repsCompleted: 9, weightUsed: 225 }),
-        ]);
-
-        fireEvent.click(screen.getByRole("button", { name: /^history$/i }));
-        const history = screen.getByRole("region", { name: /history/i });
-        expect(within(history).queryByText(/225 lbs/i)).toBeNull();
+    it("deletes a past Set", async () => {
+        await open();
+        mocked.removeBodySet.mockResolvedValue(session([]));
+        fireEvent.click(within(screen.getByTestId("past-sets")).getByRole("button", { name: /^Set 1:/ }));
+        fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete set" }));
+        await waitFor(() => expect(mocked.removeBodySet).toHaveBeenCalledWith("sess1", "push1"));
     });
 
-    it("edits a logged set", async () => {
-        await renderBody([
-            movement("Bench Press"),
-            entry("Bench Press", "2026-07-01T00:00:00.000Z"),
-        ]);
-
-        fireEvent.click(screen.getByRole("button", { name: /^history$/i }));
-        const history = screen.getByRole("region", { name: /history/i });
-        fireEvent.click(within(history).getAllByRole("button")[0]);
-
-        const dialog = screen.getByRole("dialog", { name: /edit entry/i });
-        fireEvent.change(within(dialog).getByLabelText("Weight"), { target: { value: "190" } });
-        fireEvent.click(within(dialog).getByRole("button", { name: /^save$/i }));
-
-        await waitFor(() => expect(mocked.updateBodyEntry).toHaveBeenCalled());
-        expect(mocked.updateBodyEntry).toHaveBeenCalledWith(
-            expect.objectContaining({ id: "e-Bench Press-2026-07-01T00:00:00.000Z", weightUsed: 190 })
-        );
-    });
-
-    it("deletes a logged set", async () => {
-        await renderBody([
-            movement("Bench Press"),
-            entry("Bench Press", "2026-07-01T00:00:00.000Z"),
-        ]);
-
-        fireEvent.click(screen.getByRole("button", { name: /^history$/i }));
-        const history = screen.getByRole("region", { name: /history/i });
-        fireEvent.click(within(history).getAllByRole("button")[0]);
-        fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
-
-        await waitFor(() => expect(mocked.removeBodyEntry).toHaveBeenCalledWith("e-Bench Press-2026-07-01T00:00:00.000Z"));
+    it("removes a Weigh-in", async () => {
+        await open();
+        mocked.removeBodyWeighIn.mockResolvedValue({});
+        fireEvent.click(within(screen.getByTestId(`weighin-${TODAY}`)).getByRole("button", { name: "Remove" }));
+        await waitFor(() => expect(mocked.removeBodyWeighIn).toHaveBeenCalledWith(TODAY));
     });
 });
 
-describe("Creating a Movement", () => {
-    it("writes exactly one record", async () => {
-        await renderBody([]);
+describe("Plan (R10, R11)", () => {
+    const open = async () => {
+        await renderWindow();
+        fireEvent.click(screen.getByRole("button", { name: "Plan" }));
+        await screen.findByTestId("workout-upperA");
+    };
 
-        fireEvent.click(screen.getByRole("button", { name: /new/i }));
-        fireEvent.change(screen.getByLabelText(/movement name/i), { target: { value: "Pull-ups" } });
-        fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
-
-        await waitFor(() => expect(mocked.addBodyEntry).toHaveBeenCalledTimes(1));
-        expect(mocked.addBodyEntry).toHaveBeenCalledWith(
-            expect.objectContaining({ workoutName: "Pull-ups", _meta: true, displayName: "Pull-ups" })
-        );
-    });
-});
-
-describe("Clearing a value", () => {
-    it("sends null so an emptied field is actually cleared", async () => {
-        await renderBody([
-            movement("Bench Press"),
-            entry("Bench Press", "2026-07-01T00:00:00.000Z"),
-        ]);
-
-        fireEvent.click(screen.getByRole("button", { name: /^history$/i }));
-        fireEvent.click(within(screen.getByRole("region", { name: /history/i })).getAllByRole("button")[0]);
-
-        const dialog = screen.getByRole("dialog", { name: /edit entry/i });
-        fireEvent.change(within(dialog).getByLabelText("Weight"), { target: { value: "" } });
-        fireEvent.click(within(dialog).getByRole("button", { name: /^save$/i }));
-
-        await waitFor(() => expect(mocked.updateBodyEntry).toHaveBeenCalled());
-        expect(mocked.updateBodyEntry).toHaveBeenCalledWith(
-            expect.objectContaining({ weightUsed: null })
-        );
-    });
-});
-
-describe("Deleting", () => {
-    it("keeps the Movement when all of its entries are deleted", async () => {
-        await renderBody([
-            movement("Bench Press"),
-            entry("Bench Press", "2026-07-01T00:00:00.000Z"),
-        ]);
-
-        fireEvent.click(screen.getByRole("button", { name: /^history$/i }));
-        fireEvent.click(within(screen.getByRole("region", { name: /history/i })).getAllByRole("button")[0]);
-
-        const dialog = screen.getByRole("dialog", { name: /edit entry/i });
-        // The Movement record is refetched unchanged; only the Entry goes.
-        mocked.getBodyEntries.mockResolvedValue([movement("Bench Press")]);
-        fireEvent.click(within(dialog).getByRole("button", { name: /^delete$/i }));
-
-        await waitFor(() => expect(mocked.removeBodyEntry).toHaveBeenCalledTimes(1));
-        expect(mocked.removeBodyEntry).toHaveBeenCalledWith("e-Bench Press-2026-07-01T00:00:00.000Z");
-        await waitFor(() =>
-            expect(within(list()).getByRole("button", { name: "Bench Press" })).toBeDefined()
-        );
+    it("moves a Workout to another weekday", async () => {
+        await open();
+        mocked.updateBodyWorkout.mockResolvedValue({});
+        fireEvent.change(screen.getByLabelText("Upper B weekday"), { target: { value: "3" } });
+        await waitFor(() => expect(mocked.updateBodyWorkout).toHaveBeenCalledWith("upperB", { weekday: 3 }));
     });
 
-    it("removes a Movement and all of its entries when explicitly deleted", async () => {
-        await renderBody([
-            movement("Bench Press"),
-            entry("Bench Press", "2026-07-01T00:00:00.000Z"),
-        ]);
+    it("replaces a Movement in a Workout and keeps its Pair", async () => {
+        await open();
+        mocked.updateBodyWorkout.mockResolvedValue({});
+        fireEvent.click(within(screen.getByTestId("workout-upperA")).getByTestId("slot-Deep push-up"));
+        const dialog = await screen.findByRole("dialog");
+        fireEvent.change(within(dialog).getByLabelText("Replace with"), { target: { value: "spare" } });
+        fireEvent.click(within(dialog).getByRole("button", { name: "Replace" }));
+        await waitFor(() => expect(mocked.updateBodyWorkout).toHaveBeenCalledWith("upperA", { slots: [
+            { movementId: "hold", pair: null },
+            { movementId: "spare", pair: 1 },
+            { movementId: "pull", pair: 1 },
+            { movementId: "dip", pair: null },
+        ] }));
+    });
 
-        fireEvent.click(screen.getByRole("button", { name: /manage/i }));
-        fireEvent.click(screen.getByRole("button", { name: /edit bench press/i }));
-        fireEvent.click(screen.getByRole("button", { name: /^delete$/i }));
-        fireEvent.change(screen.getByLabelText(/type the name/i), { target: { value: "Bench Press" } });
-        fireEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
+    it("removes a Movement from a Workout and clears its partner's Pair", async () => {
+        await open();
+        mocked.updateBodyWorkout.mockResolvedValue({});
+        fireEvent.click(within(screen.getByTestId("workout-upperA")).getByTestId("slot-Deep push-up"));
+        fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Remove from Upper A" }));
+        await waitFor(() => expect(mocked.updateBodyWorkout).toHaveBeenCalledWith("upperA", { slots: [
+            { movementId: "hold", pair: null },
+            { movementId: "pull", pair: null },
+            { movementId: "dip", pair: null },
+        ] }));
+    });
 
-        await waitFor(() => expect(mocked.removeBodyEntry).toHaveBeenCalledWith("m-Bench Press"));
-        expect(mocked.removeBodyEntry).toHaveBeenCalledWith("e-Bench Press-2026-07-01T00:00:00.000Z");
+    it("changes a Movement's Rule and set count", async () => {
+        await open();
+        mocked.updateBodyMovement.mockResolvedValue({} as never);
+        fireEvent.click(within(screen.getByTestId("workout-upperA")).getByTestId("slot-Dip"));
+        const dialog = await screen.findByRole("dialog");
+        fireEvent.change(within(dialog).getByLabelText("Sets"), { target: { value: "3" } });
+        fireEvent.change(within(dialog).getByLabelText("Rule"), { target: { value: "pastFailure" } });
+        fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+        await waitFor(() => expect(mocked.updateBodyMovement).toHaveBeenCalledWith("dip", {
+            name: "Dip", kind: "reps", rule: "pastFailure", sets: 3, loaded: false,
+        }));
+    });
+
+    it("adds an existing Movement to a Workout", async () => {
+        await open();
+        mocked.updateBodyWorkout.mockResolvedValue({});
+        fireEvent.click(within(screen.getByTestId("workout-upperB")).getByRole("button", { name: "Add movement" }));
+        const dialog = await screen.findByRole("dialog");
+        fireEvent.change(within(dialog).getByLabelText("Existing movement"), { target: { value: "spare" } });
+        fireEvent.click(within(dialog).getByRole("button", { name: "Add" }));
+        await waitFor(() => expect(mocked.updateBodyWorkout).toHaveBeenCalledWith("upperB", { slots: [{ movementId: "spare", pair: null }] }));
+    });
+
+    it("shows the server's reason when a Movement with Sets cannot be deleted (D15)", async () => {
+        await open();
+        mocked.removeBodyMovement.mockRejectedValue(new Error("POST /api/body/movements/remove failed (409): This Movement has logged Sets and cannot be deleted"));
+        fireEvent.click(within(screen.getByTestId("unused-Spare")).getByRole("button", { name: "Delete" }));
+        expect(await screen.findByText("This Movement has logged Sets and cannot be deleted")).toBeTruthy();
+    });
+
+    it("saves the Phase target", async () => {
+        await open();
+        mocked.updateBodyPhase.mockResolvedValue({});
+        fireEvent.change(screen.getByLabelText("Target lb"), { target: { value: "209" } });
+        fireEvent.click(screen.getByRole("button", { name: "Save phase" }));
+        await waitFor(() => expect(mocked.updateBodyPhase).toHaveBeenCalledWith({ name: "Phase 1", startLb: 245, targetLb: 209 }));
     });
 });
