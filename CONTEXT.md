@@ -76,19 +76,42 @@ _Avoid_: "logged in" / "authenticated" — there's no session or account, just n
 
 ### Body tracking
 
+Body is built on a Plan: what to do on each weekday, and a record of what was done. Full design in `specs/mind-dump-body-plan.md` (in the parent folder); the model is [ADR-0013](./docs/adr/0013-body-plan-replaces-goal.md).
+
+**Plan**:
+The weekly schedule. It maps a weekday to a Workout.
+
+**Workout**:
+One of the planned training days, such as "Upper A". It holds an ordered list of Movements.
+_Avoid_: using "workout" for a logged set. That was the old informal use.
+
 **Movement**:
-A named exercise (e.g. "Bench Press") that the user tracks over time. A stored record — it exists in its own right, whether or not anything has ever been logged against it, and survives the deletion of all its Entries. Has a display name, an `upper`/`lower` tag, free-text notes, a manual sort order, and a current Goal.
-_Avoid_: Workout — "workout" isn't a distinct concept in this app (see below).
+A named exercise, such as "Pull-up". It has a kind (reps or hold), a Rule, and a set count. One Movement record can appear in more than one Workout, and its history covers all of them.
 
-**Goal**:
-The target a Movement is currently being worked toward — some combination of sets, reps and weight. A Movement has at most one at a time; setting a new Goal replaces the old one, and no record of previous targets is kept. See [ADR-0002](./docs/adr/0002-goal-as-movement-state.md).
-_Avoid_: treating a Goal as an event or a dated thing — it's current state, and asking "what was my goal in March" is not a question this app can answer.
+**Rule**:
+How far a set of a Movement goes: past failure, failure only, or no failure.
 
-**Entry**:
-A single dated record of a set that was actually performed against a Movement — sets, reps and weight completed. Nothing else lives in this shape: Goals belong to the Movement, and a Movement's own identity is a Movement record rather than a specially flagged Entry.
+**Pair**:
+Two Movements in a Workout that alternate sets.
 
-**"Workout"**:
-Not a modeled entity — no session groups multiple Movements together. Used informally in UI copy/component names ("Log Workout" button, "Workout Frequency" grid) to mean "logging a set against a Movement."
+**Session**:
+One Workout that was done on one date.
+
+**Set**:
+One logged set in a Session. It records full reps, partial reps, and assisted reps, or it records seconds for a hold. It also records the load, if there is one.
+_Avoid_: Entry. A Set belongs to a dated Session; the old Entry was a loose record against a Movement.
+
+**Routine**:
+The morning stretch list. It is logged as one check for each date.
+
+**Weigh-in**:
+One dated bodyweight.
+
+**Phase**:
+The current body target, such as "Phase 1: 216 lb".
+
+**Goal** (removed):
+The old fixed target of sets, reps and weight on a Movement. The set count and the Rule on the Movement replace it, and the target is to beat the last best Set. [ADR-0002](./docs/adr/0002-goal-as-movement-state.md) describes the old model; [ADR-0013](./docs/adr/0013-body-plan-replaces-goal.md) replaces it.
 
 ### Mind (learning)
 

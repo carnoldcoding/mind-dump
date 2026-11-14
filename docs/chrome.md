@@ -149,8 +149,8 @@ Every other control goes in one of two places. One test decides which:
 - A **view control** changes only what is shown: a filter, a sort, a search,
   a month picker, a switch between views of the same data. It goes in a
   **toolbar row** — a bordered row directly under the title strip, inside the
-  section ([`ToolbarRow`](../src/components/common/ToolbarRow.tsx)). Body's
-  tag filter is the model.
+  section ([`ToolbarRow`](../src/components/common/ToolbarRow.tsx)). The
+  Movement picker on Body's Progress view is the model.
 - An **action** creates, assigns or edits data. It sits next to the thing it
   acts on: "Fund targets" beside the Unassigned amount, "New Envelope" as the
   first row of the Envelope list. It is the first row, not the last, because
