@@ -272,15 +272,7 @@ const SetModal = ({ open, session, set, movement, onClose, onChanged }: {
             {movement.kind === "hold" ? (
                 <NumberField label="Seconds" value={fields.seconds} onChange={change("seconds")} />
             ) : (
-                <>
-                    <NumberField label="Full" value={fields.full} onChange={change("full")} />
-                    {movement.rule === "pastFailure" && (
-                        <>
-                            <NumberField label="Partial" value={fields.partial} onChange={change("partial")} />
-                            <NumberField label="Assisted" value={fields.assisted} onChange={change("assisted")} />
-                        </>
-                    )}
-                </>
+                <NumberField label="Reps" value={fields.full} onChange={change("full")} />
             )}
             {movement.loaded && <NumberField label="Load lb" value={fields.load} onChange={change("load")} decimal />}
             <div className="flex gap-2">

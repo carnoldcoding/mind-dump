@@ -102,14 +102,16 @@ describe("prefill (R22)", () => {
 });
 
 describe("valuesFromFields (R21)", () => {
-    const blank = { full: "", partial: "", assisted: "", seconds: "", load: "" };
+    const blank = { full: "", seconds: "", load: "" };
 
-    it("reads three counts for a past-failure Movement, with blanks as zero", () => {
-        expect(valuesFromFields(movements[1], { ...blank, full: "7", partial: "3" })).toEqual({ values: { full: 7, partial: 3, assisted: 0 } });
+    it("reads full reps alone, whatever the Rule", () => {
+        expect(valuesFromFields(movements[1], { ...blank, full: "7" })).toEqual({ values: { full: 7 } });
+        expect(valuesFromFields(movements[3], { ...blank, full: "9" })).toEqual({ values: { full: 9 } });
     });
 
-    it("reads full reps alone for a Movement that is not past failure", () => {
-        expect(valuesFromFields(movements[3], { ...blank, full: "9", partial: "4" })).toEqual({ values: { full: 9 } });
+    it("refuses a Set of no reps, whatever the Rule", () => {
+        expect(valuesFromFields(movements[1], { ...blank, full: "0" }).error).toBe("A Set needs one rep or more");
+        expect(valuesFromFields(movements[3], { ...blank, full: "0" }).error).toBe("A Set needs one rep or more");
     });
 
     it("reads seconds for a hold", () => {
@@ -118,8 +120,8 @@ describe("valuesFromFields (R21)", () => {
 
     it("reads a load on a loaded Movement only", () => {
         const shrug = reps("shrug", { loaded: true });
-        expect(valuesFromFields(shrug, { ...blank, full: "12", load: "52.5" })).toEqual({ values: { full: 12, partial: 0, assisted: 0, load: 52.5 } });
-        expect(valuesFromFields(movements[1], { ...blank, full: "12", load: "52.5" })).toEqual({ values: { full: 12, partial: 0, assisted: 0 } });
+        expect(valuesFromFields(shrug, { ...blank, full: "12", load: "52.5" })).toEqual({ values: { full: 12, load: 52.5 } });
+        expect(valuesFromFields(movements[1], { ...blank, full: "12", load: "52.5" })).toEqual({ values: { full: 12 } });
     });
 
     it("refuses a blank or a non-number", () => {
@@ -178,11 +180,11 @@ describe("Plan slots (R10)", () => {
 
 describe("text", () => {
     it("describes a Set by what its Movement records", () => {
-        expect(describeSet(movements[1], { id: "x", movementId: "push", full: 7, partial: 3, assisted: 2 })).toBe("7·3·2");
+        expect(describeSet(movements[1], { id: "x", movementId: "push", full: 7 })).toBe("7");
         expect(describeSet(movements[3], { id: "x", movementId: "dip", full: 9 })).toBe("9");
         expect(describeSet(movements[0], { id: "x", movementId: "hold", seconds: 25 })).toBe("25 s");
-        expect(describeSet(reps("shrug", { loaded: true }), { id: "x", movementId: "shrug", full: 12, partial: 0, assisted: 0, load: 70 }))
-            .toBe("12·0·0 @ 70");
+        expect(describeSet(reps("shrug", { loaded: true }), { id: "x", movementId: "shrug", full: 12, load: 70 }))
+            .toBe("12 @ 70");
     });
 
     it("describes a Routine item", () => {

@@ -55,9 +55,9 @@ export function prefill(movement: Movement, previous: { date?: string; sets: Log
     return value == null ? "" : String(value);
 }
 
-export type SetFields = { full: string; partial: string; assisted: string; seconds: string; load: string };
+export type SetFields = { full: string; seconds: string; load: string };
 
-export const blankFields: SetFields = { full: "", partial: "", assisted: "", seconds: "", load: "" };
+export const blankFields: SetFields = { full: "", seconds: "", load: "" };
 
 const WHOLE = /^\d+$/;
 
@@ -76,17 +76,8 @@ export function valuesFromFields(movement: Movement, fields: SetFields): { value
     } else {
         const full = whole(fields.full);
         if (full == null) return { error: "Enter the full reps" };
+        if (full === 0) return { error: "A Set needs one rep or more" };
         values.full = full;
-        if (movement.rule === "pastFailure") {
-            const partial = fields.partial.trim() === "" ? 0 : whole(fields.partial);
-            const assisted = fields.assisted.trim() === "" ? 0 : whole(fields.assisted);
-            if (partial == null || assisted == null) return { error: "Reps are whole numbers" };
-            values.partial = partial;
-            values.assisted = assisted;
-            if (full + partial + assisted === 0) return { error: "A Set needs one rep or more" };
-        } else if (full === 0) {
-            return { error: "A Set needs one rep or more" };
-        }
     }
     if (movement.loaded && fields.load.trim() !== "") {
         const load = Number(fields.load.trim());
@@ -99,5 +90,5 @@ export function valuesFromFields(movement: Movement, fields: SetFields): { value
 /** A logged Set as the text its fields would hold, for editing it. */
 export function fieldsFromSet(set: LoggedSet): SetFields {
     const text = (n: number | undefined) => (n == null ? "" : String(n));
-    return { full: text(set.full), partial: text(set.partial), assisted: text(set.assisted), seconds: text(set.seconds), load: text(set.load) };
+    return { full: text(set.full), seconds: text(set.seconds), load: text(set.load) };
 }

@@ -42,11 +42,12 @@ export type Plan = {
     phase: Phase;
 };
 
-/** What a Set records depends on its Movement: seconds for a hold, reps otherwise. */
+/**
+ * What a Set records depends on its Movement: seconds for a hold, full reps
+ * otherwise. Reps after failure are not recorded; nobody counts there.
+ */
 export type SetValues = {
     full?: number;
-    partial?: number;
-    assisted?: number;
     seconds?: number;
     load?: number;
 };
