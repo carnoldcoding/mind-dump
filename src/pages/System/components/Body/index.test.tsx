@@ -136,56 +136,107 @@ describe("Today (R12–R18)", () => {
     it("opens on Today, with the weekday and the Workout in the heading", async () => {
         await renderWindow();
         expect(screen.getByTestId("today-heading").textContent).toBe("MONDAY — UPPER A");
-        expect(screen.getByTestId("summary-training").textContent).toBe("4 movements, 0 logged");
+        expect(screen.getByTestId("summary-training").textContent).toBe("0 / 4");
     });
 
     it("shows REST on a day with no Workout", async () => {
         await renderWindow(sample({ summary: summary({ today: { date: TODAY, weekday: 3, due: null, dueDone: false, missed: [] } }) }));
         expect(screen.getByTestId("today-heading").textContent).toBe("WEDNESDAY — REST");
-        expect(screen.getByTestId("summary-training").textContent).toBe("rest day");
+        expect(screen.getByTestId("summary-training").textContent).toBe("—");
+        // A rest day with nothing missed is the status bar alone (body-ui R17).
+        expect(screen.queryByText("Session")).toBeNull();
     });
 
-    it("checks the Routine for the date, and clears the check", async () => {
+    it("checks the Routine on its status row, and clears the check (body-ui R6)", async () => {
         await renderWindow();
         mocked.checkBodyRoutine.mockResolvedValue({});
-        expect(screen.getByText("Pancake")).toBeTruthy();
+        expect(screen.getByTestId("summary-routine").textContent).toBe("◇");
         fireEvent.click(screen.getByRole("button", { name: "Mark routine done" }));
         await waitFor(() => expect(mocked.checkBodyRoutine).toHaveBeenCalledWith(TODAY, true));
         await waitFor(() => expect(mocked.getBody).toHaveBeenCalledTimes(2));
 
         cleanup();
         await renderWindow(sample({ checks: [{ date: TODAY }] }));
-        expect(screen.getByTestId("summary-routine").textContent).toBe("done");
-        fireEvent.click(screen.getByRole("button", { name: "Done — undo" }));
+        expect(screen.getByTestId("summary-routine").textContent).toBe("◆");
+        fireEvent.click(screen.getByRole("button", { name: "Mark routine not done" }));
         await waitFor(() => expect(mocked.checkBodyRoutine).toHaveBeenCalledWith(TODAY, false));
     });
 
-    it("offers a missed Workout, and starts it on today's date (R15)", async () => {
+    it("keeps a Routine that is done to one row, with its list closed (body-ui R7)", async () => {
+        await renderWindow(sample({ checks: [{ date: TODAY }] }));
+        expect(screen.queryByTestId("routine-items")).toBeNull();
+        expect(screen.queryByText("Pancake")).toBeNull();
+        expect(within(screen.getByTestId("routine-row")).getByText("2 items")).toBeTruthy();
+    });
+
+    it("opens the Routine list from its name, and closes it again (body-ui R6)", async () => {
+        await renderWindow();
+        expect(screen.queryByText("Pancake")).toBeNull();
+        fireEvent.click(screen.getByRole("button", { name: "Routine" }));
+        expect(within(screen.getByTestId("routine-items")).getByText("Pancake")).toBeTruthy();
+        expect(within(screen.getByTestId("routine-items")).getByText("2 × 30 s")).toBeTruthy();
+        fireEvent.click(screen.getByRole("button", { name: "Routine" }));
+        expect(screen.queryByTestId("routine-items")).toBeNull();
+    });
+
+    it("has no Morning routine section and no Bodyweight section (body-ui R4)", async () => {
+        await renderWindow();
+        expect(screen.queryByText("Morning routine")).toBeNull();
+        expect(screen.queryByText("Bodyweight")).toBeNull();
+    });
+
+    it("shows no chip row when no other Workout can be opened (body-ui R11)", async () => {
+        await renderWindow();
+        expect(screen.queryByTestId("other-upperA")).toBeNull();
+    });
+
+    it("offers a missed Workout as a chip, and starts it on today's date (body-plan R15, body-ui R11)", async () => {
         await renderWindow(sample({ summary: summary({ today: { date: TODAY, weekday: 3, due: null, dueDone: false, missed: ["upperA"] } }) }));
         mocked.startBodySession.mockResolvedValue(session([]));
         mocked.addBodySet.mockResolvedValue(session([]));
-        fireEvent.click(within(screen.getByTestId("other-upperA")).getByRole("button", { name: "Start" }));
+        const chip = screen.getByTestId("other-upperA");
+        expect(chip.textContent).toBe("◇ Upper A");
+        expect(chip.getAttribute("aria-pressed")).toBe("false");
+        fireEvent.click(chip);
+        expect(screen.getByTestId("other-upperA").getAttribute("aria-pressed")).toBe("true");
         type(row("Handstand hold"), "Seconds", "20");
         fireEvent.click(within(row("Handstand hold")).getByRole("button", { name: "Save set 1" }));
         await waitFor(() => expect(mocked.startBodySession).toHaveBeenCalledWith(TODAY, "upperA"));
     });
 
-    it("saves one Weigh-in for today", async () => {
+    it("switches between the Workout due and a missed one (body-ui R11)", async () => {
+        await renderWindow(sample({ summary: summary({ today: { date: TODAY, weekday: 1, due: "upperA", dueDone: false, missed: ["lowerA"] } }) }));
+        expect(screen.getByTestId("other-upperA").getAttribute("aria-pressed")).toBe("true");
+        expect(screen.queryByTestId("movement-Squat")).toBeNull();
+        fireEvent.click(screen.getByTestId("other-lowerA"));
+        expect(screen.getByTestId("movement-Squat")).toBeTruthy();
+        expect(screen.queryByTestId("movement-Dip")).toBeNull();
+    });
+
+    it("saves one Weigh-in for today from the Weight row (body-ui R9)", async () => {
         await renderWindow();
         mocked.setBodyWeighIn.mockResolvedValue({});
-        fireEvent.change(screen.getByLabelText("Today lb"), { target: { value: "241.5" } });
-        fireEvent.click(screen.getByRole("button", { name: "Save" }));
+        fireEvent.change(screen.getByLabelText("Weight lb"), { target: { value: "241.5" } });
+        fireEvent.click(screen.getByRole("button", { name: "Save weigh-in" }));
         await waitFor(() => expect(mocked.setBodyWeighIn).toHaveBeenCalledWith(TODAY, 241.5));
     });
 
-    it("shows the latest Weigh-in, the 7-day average and the change from the start", async () => {
+    it("shows today's Weigh-in as a value, and opens the field again on a press (body-ui R9)", async () => {
         const weight = { latest: { date: TODAY, lb: 240 }, average: 242.1, count: 7, startLb: 245, targetLb: 216, change: -2.9 };
         await renderWindow(sample({ weighins: [{ date: TODAY, lb: 240 }], summary: summary({ weight }) }));
-        expect(screen.getByTestId("weight-latest").textContent).toBe("240.0 lb");
-        expect(screen.getByTestId("weight-average").textContent).toBe("242.1 lb (7 weigh-ins)");
-        expect(screen.getByTestId("weight-start").textContent).toBe("245.0 lb");
-        expect(screen.getByTestId("weight-target").textContent).toBe("216.0 lb");
+        expect(screen.queryByLabelText("Weight lb")).toBeNull();
+        expect(screen.getByTestId("weight-today").textContent).toBe("240.0 lb");
+        fireEvent.click(screen.getByTestId("weight-today"));
+        expect((screen.getByLabelText("Weight lb") as HTMLInputElement).value).toBe("240");
+    });
+
+    it("shows the 7-day average and the change from the start, and not the start or the target (body-ui R10)", async () => {
+        const weight = { latest: { date: TODAY, lb: 240 }, average: 242.1, count: 7, startLb: 245, targetLb: 216, change: -2.9 };
+        await renderWindow(sample({ weighins: [{ date: TODAY, lb: 240 }], summary: summary({ weight }) }));
+        expect(screen.getByTestId("weight-average").textContent).toBe("242.1");
         expect(screen.getByTestId("weight-change").textContent).toBe("-2.9 lb");
+        expect(screen.queryByTestId("weight-start")).toBeNull();
+        expect(screen.queryByTestId("weight-target")).toBeNull();
     });
 });
 
@@ -216,7 +267,7 @@ describe("Session (R19–R25)", () => {
         mocked.addBodySet.mockResolvedValue(session([]));
         const push = row("Deep push-up");
         expect(push.getAttribute("data-open")).toBe("true");
-        expect(within(push).getByTestId("last").textContent).toBe("Last, Nov 5: 9 full · 2 partial · 0 assisted");
+        expect(within(push).getByTestId("last").textContent).toBe("Last Nov 59·2·0");
         expect((within(push).getByLabelText("Full") as HTMLInputElement).value).toBe("9");
         type(push, "Partial", "3");
         fireEvent.click(within(push).getByRole("button", { name: "Save set 1" }));
@@ -243,7 +294,8 @@ describe("Session (R19–R25)", () => {
         expect(dip.getAttribute("data-open")).toBe("true");
         expect(within(dip).getByLabelText("Full")).toBeTruthy();
         expect(within(dip).queryByLabelText("Partial")).toBeNull();
-        expect(screen.getByTestId("session-progress").textContent).toBe("3 of 4 movements done");
+        expect(screen.getByTestId("summary-training").textContent).toBe("3 / 4");
+        expect(screen.queryByText(/movements done/)).toBeNull();
     });
 
     it("refuses a Set with no number, and sends nothing", async () => {
@@ -262,8 +314,50 @@ describe("Session (R19–R25)", () => {
 
         cleanup();
         await renderWindow(sample({ sessions: [session([], { skipped: ["hold"] })] }));
-        expect(within(row("Handstand hold")).getByTestId("state").textContent).toBe("skipped");
+        expect(within(row("Handstand hold")).getByTestId("state").textContent).toBe("⊘");
+        expect(within(row("Handstand hold")).getByTestId("mark").textContent).toBe("⊘");
         expect(row("Deep push-up").getAttribute("data-open")).toBe("true");
+    });
+
+    it("removes a skip with the same glyph (body-ui R16)", async () => {
+        await renderWindow(sample({ sessions: [session([], { skipped: ["hold"] })] }));
+        mocked.skipBodyMovement.mockResolvedValue(session([]));
+        fireEvent.click(within(row("Handstand hold")).getByRole("button", { expanded: false }));
+        fireEvent.click(within(row("Handstand hold")).getByRole("button", { name: "Undo skip" }));
+        await waitFor(() => expect(mocked.skipBodyMovement).toHaveBeenCalledWith("sess1", "hold", false));
+    });
+
+    it("offers Skip only before the first Set (body-ui R16)", async () => {
+        await renderWindow(sample({ sessions: [session([holdSets[0]])] }));
+        expect(row("Handstand hold").getAttribute("data-open")).toBe("true");
+        expect(within(row("Handstand hold")).queryByRole("button", { name: "Skip" })).toBeNull();
+    });
+
+    it("draws a Movement's state and its Sets as glyphs (body-ui R12, R13)", async () => {
+        await renderWindow(sample({ sessions: [session([...holdSets, reps("push", 1)])] }));
+        // Done: both Sets filled.
+        expect(within(row("Handstand hold")).getByTestId("mark").textContent).toBe("◆");
+        expect(within(row("Handstand hold")).getByTestId("state").textContent).toBe("◆◆");
+        // Started, and not the open one.
+        expect(within(row("Deep push-up")).getByTestId("mark").textContent).toBe("◈");
+        expect(within(row("Deep push-up")).getByTestId("state").textContent).toBe("◆◇");
+        // The open row carries the caret.
+        expect(within(row("Pull-up")).getByTestId("mark").textContent).toBe("➤");
+        expect(within(row("Pull-up")).getByTestId("state").textContent).toBe("◇◇");
+        expect(within(row("Dip")).getByTestId("mark").textContent).toBe("◇");
+        // The Rule is a glyph that carries its name.
+        expect(within(row("Pull-up")).getByLabelText("Past failure").textContent).toBe("▲▲");
+        expect(within(row("Dip")).getByLabelText("Failure only").textContent).toBe("▲");
+        expect(within(row("Handstand hold")).getByLabelText("No failure").textContent).toBe("△");
+    });
+
+    it("saves the open Set with the Enter key (body-ui R15)", async () => {
+        await renderWindow(sample({ sessions: [session([])] }));
+        mocked.addBodySet.mockResolvedValue(session([]));
+        const hold = row("Handstand hold");
+        type(hold, "Seconds", "31");
+        fireEvent.submit(within(hold).getByLabelText("Seconds").closest("form")!);
+        await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "hold", { seconds: 31 }));
     });
 
     it("shows the server's reason when a Set is refused", async () => {
@@ -301,7 +395,7 @@ describe("Progress (R26–R29)", () => {
     it("lists the past Sets of a Movement, and edits one", async () => {
         await open();
         mocked.updateBodySet.mockResolvedValue(session([]));
-        fireEvent.click(within(screen.getByTestId("past-sets")).getByRole("button", { name: "Set 1: 6 full · 1 partial · 0 assisted" }));
+        fireEvent.click(within(screen.getByTestId("past-sets")).getByRole("button", { name: "Set 1: 6·1·0" }));
         const dialog = await screen.findByRole("dialog");
         type(dialog, "Full", "8");
         fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
@@ -311,7 +405,7 @@ describe("Progress (R26–R29)", () => {
     it("deletes a past Set", async () => {
         await open();
         mocked.removeBodySet.mockResolvedValue(session([]));
-        fireEvent.click(within(screen.getByTestId("past-sets")).getByRole("button", { name: /^Set 1:/ }));
+        fireEvent.click(within(screen.getByTestId("past-sets")).getByRole("button", { name: /^Set 1/ }));
         fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete set" }));
         await waitFor(() => expect(mocked.removeBodySet).toHaveBeenCalledWith("sess1", "push1"));
     });
@@ -319,8 +413,27 @@ describe("Progress (R26–R29)", () => {
     it("removes a Weigh-in", async () => {
         await open();
         mocked.removeBodyWeighIn.mockResolvedValue({});
-        fireEvent.click(within(screen.getByTestId(`weighin-${TODAY}`)).getByRole("button", { name: "Remove" }));
+        const remove = within(screen.getByTestId(`weighin-${TODAY}`)).getByRole("button", { name: "Remove the weigh-in of Nov 9" });
+        expect(remove.textContent).toBe("×");
+        fireEvent.click(remove);
         await waitFor(() => expect(mocked.removeBodyWeighIn).toHaveBeenCalledWith(TODAY));
+    });
+
+    it("draws the grid cells as glyphs (body-ui R23)", async () => {
+        await open();
+        expect(screen.getByTestId(`grid-${TODAY}-upperA`).textContent).toBe("◆");
+        expect(screen.getByTestId(`grid-${TODAY}-lowerA`).textContent).toBe("◇");
+    });
+
+    it("shows the start, the target, the average and the change on one line (body-ui R24)", async () => {
+        const data = done();
+        data.summary!.weight = { latest: { date: TODAY, lb: 244 }, average: 244.5, count: 2, startLb: 245, targetLb: 216, change: -0.5 };
+        await renderWindow(data);
+        fireEvent.click(screen.getByRole("button", { name: "Progress" }));
+        expect((await screen.findByTestId("weight-start")).textContent).toBe("245.0");
+        expect(screen.getByTestId("weight-target").textContent).toBe("216.0");
+        expect(screen.getByTestId("weight-average").textContent).toBe("244.5");
+        expect(screen.getByTestId("weight-change").textContent).toBe("-0.5 lb");
     });
 });
 
@@ -331,8 +444,59 @@ describe("Plan (R10, R11)", () => {
         await screen.findByTestId("workout-upperA");
     };
 
+    const show = (id: string) => fireEvent.click(screen.getByTestId(`plan-${id}`));
+
+    it("shows one list at a time, and opens on the Workout that is due next (body-ui R18)", async () => {
+        await open();
+        expect(screen.getByTestId("plan-upperA").getAttribute("aria-pressed")).toBe("true");
+        expect(screen.queryByTestId("workout-lowerA")).toBeNull();
+        expect(screen.queryByTestId("plan-list-routine")).toBeNull();
+        expect(screen.queryByTestId("plan-list-phase")).toBeNull();
+
+        show("lowerA");
+        expect(screen.getByTestId("workout-lowerA")).toBeTruthy();
+        expect(screen.queryByTestId("workout-upperA")).toBeNull();
+
+        show("routine");
+        expect(within(screen.getByTestId("plan-list-routine")).getByText("Pancake")).toBeTruthy();
+        expect(screen.queryByTestId("workout-lowerA")).toBeNull();
+
+        show("phase");
+        expect(screen.getByTestId("plan-list-phase")).toBeTruthy();
+        expect(screen.queryByTestId("plan-list-routine")).toBeNull();
+    });
+
+    it("opens on the next Workout when today's is done (body-ui R18)", async () => {
+        await renderWindow(sample({ summary: summary({ today: { date: TODAY, weekday: 1, due: "upperA", dueDone: true, missed: [] } }) }));
+        fireEvent.click(screen.getByRole("button", { name: "Plan" }));
+        expect((await screen.findByTestId("plan-lowerA")).getAttribute("aria-pressed")).toBe("true");
+    });
+
+    it("offers Unused only when a Movement is in no Workout (body-ui R19)", async () => {
+        await open();
+        expect(screen.getByTestId("plan-unused")).toBeTruthy();
+
+        cleanup();
+        const data = sample();
+        data.movements = data.movements.filter(m => m._id !== "spare");
+        await renderWindow(data);
+        fireEvent.click(screen.getByRole("button", { name: "Plan" }));
+        await screen.findByTestId("plan-upperA");
+        expect(screen.queryByTestId("plan-unused")).toBeNull();
+    });
+
+    it("shows a Movement's Sets and Rule as a glyph, and a Pair as one bracket (body-ui R21)", async () => {
+        await open();
+        expect(within(screen.getByTestId("slot-Deep push-up")).getByText("2 × ▲▲")).toBeTruthy();
+        expect(within(screen.getByTestId("slot-Handstand hold")).getByText("2 × △")).toBeTruthy();
+        expect(screen.getByTestId("slot-Deep push-up").getAttribute("data-pair")).toBe("first");
+        expect(screen.getByTestId("slot-Pull-up").getAttribute("data-pair")).toBe("second");
+        expect(screen.getByTestId("slot-Dip").getAttribute("data-pair")).toBeNull();
+    });
+
     it("moves a Workout to another weekday", async () => {
         await open();
+        show("upperB");
         mocked.updateBodyWorkout.mockResolvedValue({});
         fireEvent.change(screen.getByLabelText("Upper B weekday"), { target: { value: "3" } });
         await waitFor(() => expect(mocked.updateBodyWorkout).toHaveBeenCalledWith("upperB", { weekday: 3 }));
@@ -381,7 +545,10 @@ describe("Plan (R10, R11)", () => {
     it("adds an existing Movement to a Workout", async () => {
         await open();
         mocked.updateBodyWorkout.mockResolvedValue({});
-        fireEvent.click(within(screen.getByTestId("workout-upperB")).getByRole("button", { name: "Add movement" }));
+        show("upperB");
+        const add = within(screen.getByTestId("workout-upperB")).getByRole("button", { name: "Add movement" });
+        expect(add.textContent).toBe("＋");
+        fireEvent.click(add);
         const dialog = await screen.findByRole("dialog");
         fireEvent.change(within(dialog).getByLabelText("Existing movement"), { target: { value: "spare" } });
         fireEvent.click(within(dialog).getByRole("button", { name: "Add" }));
@@ -391,13 +558,15 @@ describe("Plan (R10, R11)", () => {
     it("shows the server's reason when a Movement with Sets cannot be deleted (D15)", async () => {
         await open();
         mocked.removeBodyMovement.mockRejectedValue(new Error("POST /api/body/movements/remove failed (409): This Movement has logged Sets and cannot be deleted"));
-        fireEvent.click(within(screen.getByTestId("unused-Spare")).getByRole("button", { name: "Delete" }));
+        show("unused");
+        fireEvent.click(within(screen.getByTestId("unused-Spare")).getByRole("button", { name: "Delete Spare" }));
         expect(await screen.findByText("This Movement has logged Sets and cannot be deleted")).toBeTruthy();
     });
 
     it("saves the Phase target", async () => {
         await open();
         mocked.updateBodyPhase.mockResolvedValue({});
+        show("phase");
         fireEvent.change(screen.getByLabelText("Target lb"), { target: { value: "209" } });
         fireEvent.click(screen.getByRole("button", { name: "Save phase" }));
         await waitFor(() => expect(mocked.updateBodyPhase).toHaveBeenCalledWith({ name: "Phase 1", startLb: 245, targetLb: 209 }));

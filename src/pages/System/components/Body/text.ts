@@ -18,12 +18,17 @@ export const RULE_LABEL: Record<Rule, string> = {
     noFailure: "No failure",
 };
 
+/**
+ * A Set as numbers in field order, with no words (body-ui R14): "9·3·1" is
+ * full, partial and assisted reps; "9" full reps alone; "30 s" a hold. The
+ * field labels of the form under it give the order.
+ */
 export function describeSet(movement: Movement, set: LoggedSet): string {
     let text: string;
     if (movement.kind === "hold") text = `${set.seconds ?? 0} s`;
-    else if (movement.rule === "pastFailure") text = `${set.full ?? 0} full · ${set.partial ?? 0} partial · ${set.assisted ?? 0} assisted`;
-    else text = `${set.full ?? 0} full`;
-    return set.load != null ? `${text} @ ${set.load} lb` : text;
+    else if (movement.rule === "pastFailure") text = `${set.full ?? 0}·${set.partial ?? 0}·${set.assisted ?? 0}`;
+    else text = `${set.full ?? 0}`;
+    return set.load != null ? `${text} @ ${set.load}` : text;
 }
 
 export function describeRoutineItem(item: RoutineItem): string {

@@ -166,3 +166,31 @@ A geometric mark per Critique section, in `SECTION_GLYPH`
 ([`critique.ts`](../src/utils/critique.ts)). Shared between the Review detail's
 tabs and anywhere else a section is named, so one section looks the same
 wherever it appears.
+
+### Body glyphs
+
+The marks the Body views draw with, in `GLYPH` and `RULE_GLYPH`
+([`glyphs.ts`](../src/pages/System/components/Body/glyphs.ts)). In Body a
+state is a glyph and not a word, and each glyph has one meaning in each view.
+
+| Glyph | Meaning |
+|---|---|
+| `◆` | done |
+| `◈` | started, not done |
+| `◇` | not done |
+| `⊘` | skipped |
+| `➤` | the next thing to do; also the control that saves the open Set |
+| `▲▲` | Rule: past failure |
+| `▲` | Rule: failure only |
+| `△` | Rule: no failure |
+| `＋` | add |
+| `×` | remove |
+| `☰` | drag (the shared `DragHandle`) |
+
+A control that shows only a glyph carries its full name in `aria-label` and
+`title` — [`GlyphButton`](../src/pages/System/components/Body/marks.tsx) takes
+the name as a required prop, so one cannot be drawn without it.
+
+A status row can be the control. Today's status bar reports the Routine and
+the Weigh-in and also changes them, on the same row. A report above and a
+control below showed each value twice.

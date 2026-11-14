@@ -1,16 +1,21 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { backend } from "../../../../api/backend";
 import { TextField } from "../../../../components/common/TextField";
 import { DragHandle, SortableList } from "../../../../components/common/Sortable";
 import { useSortableRow } from "../../../../hooks/useSortableRow";
 import { useRetained } from "../../../../hooks/useRetained";
-import { EditorModal, ErrorLine, NewRow, Section, primaryBtn, secondaryBtn, smallBtn } from "../Finances/ui";
+import { ShadowBox } from "../../../../components/common/ShadowBox";
+import { ToolbarRow } from "../../../../components/common/ToolbarRow";
+import { EditorModal, ErrorLine, primaryBtn, secondaryBtn, smallBtn } from "../Finances/ui";
 import { errorText } from "../Finances/errorText";
 import { NumberField, Select, Toggle } from "./fields";
-import { addSlot, afterMove, removeSlot, replaceSlot, togglePair } from "./plan";
+import { GLYPH, RULE_GLYPH } from "./glyphs";
+import { AddRow, Chip, GlyphButton } from "./marks";
+import { addSlot, afterMove, nextWorkout, pairEdge, removeSlot, replaceSlot, togglePair } from "./plan";
 import { RULE_LABEL, WEEKDAYS, describeRoutineItem } from "./text";
 import type { Ready } from "./TodayTab";
-import type { Movement, MovementInput, MovementKind, Phase, RoutineItem, Rule, Slot, Workout } from "../../../../types/body";
+import type { Movement, MovementInput, MovementKind, Phase, RoutineItem, Rule, Slot, Workout, WorkoutKey } from "../../../../types/body";
 
 type Props = { data: Ready; onChanged: () => Promise<void> | void };
 
@@ -21,11 +26,15 @@ type Editing =
     | { kind: "routine"; index: number | null }
     | null;
 
-// Every edit to the Plan happens here (spec R10), away from the screen used
-// each day. A Workout's Movements, their order and their Pairs are one list,
-// and each change writes that whole list.
+// What the Plan view can show. One at a time (body-ui R18): seven lists with
+// the same shape, stacked, were a long scroll for a view opened to change one.
+type Shown = WorkoutKey | "routine" | "phase" | "unused";
+
+// Every edit to the Plan happens here (body-plan R10), away from the screen
+// used each day. A Workout's Movements, their order and their Pairs are one
+// list, and each change writes that whole list.
 const PlanTab = ({ data, onChanged }: Props) => {
-    const { plan, movements } = data;
+    const { plan, movements, summary } = data;
     const [editing, setEditing] = useState<Editing>(null);
     // Bumped on each open, so an editor remounts with fresh fields.
     const [openCount, setOpenCount] = useState(0);
@@ -54,49 +63,71 @@ const PlanTab = ({ data, onChanged }: Props) => {
     const unused = movements.filter(m => !inPlan.has(m._id));
     const byWeekday = [...plan.workouts].sort((a, b) => a.weekday - b.weekday);
 
+    // Opens on the Workout that is due next: the one most likely to be changed.
+    const [picked, setPicked] = useState<Shown | null>(null);
+    const fallback: Shown = nextWorkout(plan.workouts, summary.today.weekday, summary.today.dueDone)?.key ?? "routine";
+    // The last unused Movement can be deleted while its list is open.
+    const shown: Shown = picked === "unused" && unused.length === 0 ? fallback : picked ?? fallback;
+    const workout = plan.workouts.find(w => w.key === shown) ?? null;
+
+    const entries: { id: Shown; label: string }[] = [
+        ...byWeekday.map(w => ({ id: w.key as Shown, label: w.name })),
+        { id: "routine", label: "Routine" },
+        { id: "phase", label: "Phase" },
+        ...(unused.length > 0 ? [{ id: "unused" as Shown, label: "Unused" }] : []),
+    ];
+
     return (
         <div className="flex flex-col gap-4">
-            <ErrorLine error={error} />
-
-            {byWeekday.map(workout => (
-                <WorkoutSection
-                    key={workout.key}
-                    workout={workout}
-                    movements={movements}
-                    onWeekday={weekday => run(() => backend.updateBodyWorkout(workout.key, { weekday }))}
-                    onMove={(from, to) => run(() => backend.updateBodyWorkout(workout.key, { slots: afterMove(workout.slots, from, to) }))}
-                    onOpenSlot={index => open({ kind: "slot", workout, index })}
-                    onAdd={() => open({ kind: "add", workout })}
-                />
-            ))}
-
-            <Section title="Morning routine">
-                <NewRow label="New item" onClick={() => open({ kind: "routine", index: null })} first />
-                {plan.routine.items.map((item, i) => (
-                    <button
-                        key={`${item.name}-${i}`}
-                        onClick={() => open({ kind: "routine", index: i })}
-                        className="w-full flex items-center justify-between gap-3 px-3 py-3 border-b border-nier-150/30 last:border-0 hover:bg-nier-150/30 text-left cursor-pointer transition-colors"
-                    >
-                        <span className="text-label text-nier-text-dark truncate">{item.name}</span>
-                        <span className="text-label text-nier-text-dark/60 shrink-0">{describeRoutineItem(item)}</span>
-                    </button>
-                ))}
-            </Section>
-
-            <PhaseSection key={`${plan.phase.name}:${plan.phase.startLb}:${plan.phase.targetLb}`} phase={plan.phase} onSave={phase => run(() => backend.updateBodyPhase(phase))} />
-
-            {unused.length > 0 && (
-                <Section title="Not in a workout">
-                    {unused.map(m => (
-                        <div key={m._id} data-testid={`unused-${m.name}`} className="flex items-center justify-between gap-3 px-3 py-2 border-b border-nier-150/30 last:border-0">
-                            <span className="text-label text-nier-text-dark/70 truncate">{m.name}</span>
-                            {/* A Movement with Sets is history; the server refuses to delete it (D15). */}
-                            <button onClick={() => run(() => backend.removeBodyMovement(m._id))} className={smallBtn}>Delete</button>
-                        </div>
+            <ShadowBox as="section" label="Plan" className="bg-nier-100-lighter border border-nier-150">
+                <ToolbarRow>
+                    {entries.map(e => (
+                        <Chip key={e.id} testId={`plan-${e.id}`} active={shown === e.id} onClick={() => setPicked(e.id)}>{e.label}</Chip>
                     ))}
-                </Section>
-            )}
+                </ToolbarRow>
+
+                {workout && (
+                    <WorkoutList
+                        key={workout.key}
+                        workout={workout}
+                        movements={movements}
+                        onWeekday={weekday => run(() => backend.updateBodyWorkout(workout.key, { weekday }))}
+                        onMove={(from, to) => run(() => backend.updateBodyWorkout(workout.key, { slots: afterMove(workout.slots, from, to) }))}
+                        onOpenSlot={index => open({ kind: "slot", workout, index })}
+                        onAdd={() => open({ kind: "add", workout })}
+                    />
+                )}
+
+                {shown === "routine" && (
+                    <div data-testid="plan-list-routine">
+                        <AddRow label="New item" onClick={() => open({ kind: "routine", index: null })} first />
+                        {plan.routine.items.map((item, i) => (
+                            <button
+                                key={`${item.name}-${i}`}
+                                onClick={() => open({ kind: "routine", index: i })}
+                                className="w-full flex items-center justify-between gap-3 px-3 min-h-11 border-b border-nier-150/30 last:border-0 hover:bg-nier-150/30 text-left cursor-pointer transition-colors"
+                            >
+                                <span className="text-label text-nier-text-dark truncate">{item.name}</span>
+                                <span className="text-label text-nier-text-dark/60 shrink-0 tabular-nums">{describeRoutineItem(item)}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {shown === "phase" && (
+                    <PhaseForm key={`${plan.phase.name}:${plan.phase.startLb}:${plan.phase.targetLb}`} phase={plan.phase} onSave={phase => run(() => backend.updateBodyPhase(phase))} />
+                )}
+
+                {shown === "unused" && unused.map(m => (
+                    <div key={m._id} data-testid={`unused-${m.name}`} className="flex items-center justify-between gap-3 pl-3 border-b border-nier-150/30 last:border-0">
+                        <span className="text-label text-nier-text-dark/70 truncate">{m.name}</span>
+                        {/* A Movement with Sets is history; the server refuses to delete it (body-plan D15). */}
+                        <GlyphButton glyph={GLYPH.remove} label={`Delete ${m.name}`} onClick={() => run(() => backend.removeBodyMovement(m._id))} className="border-0 w-11 h-11" />
+                    </div>
+                ))}
+
+                {error && <div className="px-3 py-2"><ErrorLine error={error} /></div>}
+            </ShadowBox>
 
             {shownSlot && (
                 <SlotModal
@@ -133,7 +164,7 @@ const PlanTab = ({ data, onChanged }: Props) => {
     );
 };
 
-const WorkoutSection = ({ workout, movements, onWeekday, onMove, onOpenSlot, onAdd }: {
+const WorkoutList = ({ workout, movements, onWeekday, onMove, onOpenSlot, onAdd }: {
     workout: Workout;
     movements: Movement[];
     onWeekday: (weekday: number) => void;
@@ -143,49 +174,47 @@ const WorkoutSection = ({ workout, movements, onWeekday, onMove, onOpenSlot, onA
 }) => {
     const byId = new Map(movements.map(m => [m._id, m]));
     return (
-        <Section title={workout.name}>
-            <div data-testid={`workout-${workout.key}`}>
-                {/* The weekday changes the Plan, so it sits with the Workout it moves, not in a toolbar. */}
-                <div className="px-3 py-3 border-b border-nier-150/30 sm:w-64">
-                    <Select
-                        label={`${workout.name} weekday`}
-                        value={String(workout.weekday)}
-                        onChange={v => onWeekday(Number(v))}
-                        options={WEEKDAYS.map((name, i) => ({ value: String(i + 1), label: name }))}
-                    />
-                </div>
-                <SortableList onMove={onMove}>
-                    {workout.slots.map((slot, i) => {
-                        const movement = byId.get(slot.movementId);
-                        if (!movement) return null;
-                        return <SlotRow key={slot.movementId} slot={slot} movement={movement} index={i} onOpen={() => onOpenSlot(i)} />;
-                    })}
-                </SortableList>
-                <NewRow label="Add movement" onClick={onAdd} />
+        <div data-testid={`workout-${workout.key}`}>
+            {/* The weekday changes the Plan, so it sits with the Workout it moves, not in the toolbar. */}
+            <div className="px-3 py-3 border-b border-nier-150/30 sm:w-64">
+                <Select
+                    label={`${workout.name} weekday`}
+                    value={String(workout.weekday)}
+                    onChange={v => onWeekday(Number(v))}
+                    options={WEEKDAYS.map((name, i) => ({ value: String(i + 1), label: name }))}
+                />
             </div>
-        </Section>
+            <SortableList onMove={onMove}>
+                {workout.slots.map((slot, i) => {
+                    const movement = byId.get(slot.movementId);
+                    if (!movement) return null;
+                    return <SlotRow key={slot.movementId} edge={pairEdge(workout.slots, i)} movement={movement} index={i} onOpen={() => onOpenSlot(i)} />;
+                })}
+            </SortableList>
+            <AddRow label="Add movement" onClick={onAdd} />
+        </div>
     );
 };
 
-const SlotRow = ({ slot, movement, index, onOpen }: { slot: Slot; movement: Movement; index: number; onOpen: () => void }) => {
+// The two rows of a Pair end in the two halves of one bracket.
+const BRACKET = { first: "┐", second: "┘" } as const;
+
+const SlotRow = ({ edge, movement, index, onOpen }: { edge: "first" | "second" | null; movement: Movement; index: number; onOpen: () => void }) => {
     const { ref, handleRef, isDragging } = useSortableRow(movement._id, index);
     return (
         <div
             ref={ref}
             onClick={onOpen}
             data-testid={`slot-${movement.name}`}
-            className={`flex items-center gap-1 border-b border-nier-150/30 hover:bg-nier-150/30 cursor-pointer transition-colors ${slot.pair != null ? "border-l-4 border-l-nier-150" : ""} ${isDragging ? "bg-nier-150/50" : ""}`}
+            data-pair={edge ?? undefined}
+            className={`flex items-center gap-1 border-b border-nier-150/30 hover:bg-nier-150/30 cursor-pointer transition-colors ${isDragging ? "bg-nier-150/50" : ""}`}
         >
             <DragHandle handleRef={handleRef} label={`Reorder ${movement.name}`} className="text-nier-text-dark/50" />
-            <span className="flex-1 min-w-0 py-3 flex flex-col">
-                <span className="text-label text-nier-text-dark truncate">{movement.name}</span>
-                <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">
-                    {RULE_LABEL[movement.rule]}{slot.pair != null ? " · pair" : ""}
-                </span>
+            <span className="flex-1 min-w-0 text-label text-nier-text-dark truncate">{movement.name}</span>
+            <span title={RULE_LABEL[movement.rule]} className="text-label text-nier-text-dark/70 shrink-0 tabular-nums">
+                {movement.sets} × {RULE_GLYPH[movement.rule]}
             </span>
-            <span className="px-3 text-label text-nier-text-dark/70 shrink-0">
-                {movement.sets} × {movement.kind === "hold" ? "hold" : "reps"}
-            </span>
+            <span aria-label={edge ? "Pair" : undefined} className="w-6 shrink-0 text-body text-nier-text-dark/50 leading-none">{edge ? BRACKET[edge] : ""}</span>
         </div>
     );
 };
@@ -420,13 +449,14 @@ const RoutineModal = ({ open, items, index, onClose, onChanged }: {
     );
 };
 
-const PhaseSection = ({ phase, onSave }: { phase: Phase; onSave: (phase: Phase) => Promise<boolean> }) => {
+const PhaseForm = ({ phase, onSave }: { phase: Phase; onSave: (phase: Phase) => Promise<boolean> }) => {
     const [name, setName] = useState(phase.name);
     const [start, setStart] = useState(String(phase.startLb));
     const [target, setTarget] = useState(String(phase.targetLb));
     const [error, setError] = useState("");
 
-    const save = () => {
+    const save = (e: FormEvent) => {
+        e.preventDefault();
         const startLb = Number(start.trim());
         const targetLb = Number(target.trim());
         if (!name.trim() || !Number.isFinite(startLb) || !Number.isFinite(targetLb) || startLb <= 0 || targetLb <= 0) {
@@ -438,17 +468,15 @@ const PhaseSection = ({ phase, onSave }: { phase: Phase; onSave: (phase: Phase) 
     };
 
     return (
-        <Section title="Phase">
-            <div className="p-3 flex flex-col gap-3">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <TextField label="Name" value={name} onChange={setName} />
-                    <NumberField label="Start lb" value={start} onChange={setStart} decimal />
-                    <NumberField label="Target lb" value={target} onChange={setTarget} decimal />
-                </div>
-                <div><button onClick={save} className={primaryBtn}>Save phase</button></div>
-                <ErrorLine error={error} />
+        <form onSubmit={save} data-testid="plan-list-phase" className="p-3 flex flex-col gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-3">
+                <TextField label="Name" value={name} onChange={setName} />
+                <NumberField label="Start lb" value={start} onChange={setStart} decimal />
+                <NumberField label="Target lb" value={target} onChange={setTarget} decimal />
+                <GlyphButton glyph={GLYPH.next} label="Save phase" type="submit" solid />
             </div>
-        </Section>
+            <ErrorLine error={error} />
+        </form>
     );
 };
 

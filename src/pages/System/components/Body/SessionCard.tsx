@@ -1,8 +1,12 @@
 import { useState } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { backend } from "../../../../api/backend";
-import { ErrorLine, Section, primaryBtn, smallBtn } from "../Finances/ui";
+import { ErrorLine, Section } from "../Finances/ui";
 import { errorText } from "../Finances/errorText";
 import { NumberField } from "./fields";
+import { GLYPH, RULE_GLYPH, setPips } from "./glyphs";
+import { GlyphButton } from "./marks";
+import { pairEdge } from "./plan";
 import { blankFields, nextUp, prefill, sessionRows, valuesFromFields } from "./session";
 import type { Row, SetFields } from "./session";
 import { RULE_LABEL, describeSet, shortDate } from "./text";
@@ -15,14 +19,16 @@ type Props = {
     session: Session | null;
     previous: BodySummary["previous"];
     date: string;
+    /** The row that switches to another Workout of the week, when there is one. */
+    chips?: ReactNode;
     onChanged: () => Promise<void> | void;
 };
 
-// One Session on one screen (spec R19–R25). The Plan already knows the
-// Movement, the order and the set count, so nothing is picked from a list and
-// nothing opens in a modal: the next Set to log is open, with the last
-// Session's numbers beside it.
-const SessionCard = ({ workout, movements, session, previous, date, onChanged }: Props) => {
+// One Session on one screen (body-plan R19–R25, body-ui R12–R16). The Plan
+// already knows the Movement, the order and the set count, so nothing is
+// picked from a list and nothing opens in a modal: the next Set to log is
+// open, with the last Session's numbers above its fields.
+const SessionCard = ({ workout, movements, session, previous, date, chips, onChanged }: Props) => {
     // A Movement the user opened by hand. Cleared after each save, so the
     // screen goes back to following the Plan order.
     const [picked, setPicked] = useState<string | null>(null);
@@ -31,7 +37,7 @@ const SessionCard = ({ workout, movements, session, previous, date, onChanged }:
     const rows = sessionRows(workout, movements, session);
     const next = nextUp(rows);
     const openId = picked ?? next?.movementId ?? null;
-    const doneCount = rows.filter(r => r.done).length;
+    const slots = rows.map(r => r.slot);
 
     // The Session is created by its first Set or its first skip, so opening
     // Today on a training day writes nothing.
@@ -49,20 +55,16 @@ const SessionCard = ({ workout, movements, session, previous, date, onChanged }:
     };
 
     return (
-        <Section title={workout.name}>
-            <div className="px-3 py-2 border-b border-nier-150/40">
-                <span data-testid="session-progress" className="text-label uppercase tracking-widest text-nier-text-dark/70">
-                    {doneCount} of {rows.length} movements done
-                </span>
-            </div>
+        <Section title="Session">
+            {chips}
             {rows.length === 0 && (
-                <p className="text-label text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">This Workout has no Movement. Add one in Plan.</p>
+                <p className="text-label text-nier-text-dark/35 uppercase tracking-widest px-3 py-3">No Movement. Add one in Plan.</p>
             )}
             {rows.map((row, i) => (
                 <MovementRow
                     key={row.movement._id}
                     row={row}
-                    paired={pairEdge(rows, i)}
+                    paired={pairEdge(slots, i) !== null}
                     open={row.movement._id === openId}
                     previous={previous[row.movement._id]}
                     onToggle={() => setPicked(p => (p === row.movement._id || (p === null && openId === row.movement._id) ? null : row.movement._id))}
@@ -75,18 +77,16 @@ const SessionCard = ({ workout, movements, session, previous, date, onChanged }:
     );
 };
 
-/** Where a row sits in its Pair, so the two can be drawn as one bracket. */
-function pairEdge(rows: Row[], i: number): "first" | "second" | null {
-    const pair = rows[i].slot.pair;
-    if (pair == null) return null;
-    if (rows[i + 1]?.slot.pair === pair) return "first";
-    if (rows[i - 1]?.slot.pair === pair) return "second";
-    return null;
+function rowGlyph({ skipped, done, sets }: Row, open: boolean): string {
+    if (open) return GLYPH.next;
+    if (skipped) return GLYPH.skipped;
+    if (done) return GLYPH.done;
+    return sets.length > 0 ? GLYPH.started : GLYPH.open;
 }
 
 const MovementRow = ({ row, paired, open, previous, onToggle, onSave, onSkip }: {
     row: Row;
-    paired: "first" | "second" | null;
+    paired: boolean;
     open: boolean;
     previous: { date: string; sets: Session["sets"] } | undefined;
     onToggle: () => void;
@@ -94,7 +94,7 @@ const MovementRow = ({ row, paired, open, previous, onToggle, onSave, onSkip }: 
     onSkip: (skipped: boolean) => Promise<void>;
 }) => {
     const { movement, sets, skipped, done } = row;
-    const state = skipped ? "skipped" : done ? "done" : `${sets.length} of ${movement.sets}`;
+    const eyebrow = "w-20 shrink-0 text-eyebrow uppercase tracking-widest text-nier-text-dark/50";
 
     return (
         <div
@@ -105,29 +105,38 @@ const MovementRow = ({ row, paired, open, previous, onToggle, onSave, onSkip }: 
             <button
                 onClick={onToggle}
                 aria-expanded={open}
-                className={`w-full flex items-center justify-between gap-3 px-3 py-3 text-left cursor-pointer transition-colors hover:bg-nier-150/30 ${open ? "bg-nier-150/30" : ""}`}
+                className={`w-full flex items-center gap-3 px-3 min-h-12 text-left cursor-pointer transition-colors hover:bg-nier-150/30 ${open ? "bg-nier-150/30" : ""}`}
             >
-                <span className="flex flex-col min-w-0">
-                    <span className={`text-body truncate ${done && !open ? "text-nier-text-dark/50" : "text-nier-text-dark"}`}>{movement.name}</span>
-                    <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">
-                        {RULE_LABEL[movement.rule]}{paired ? " · pair" : ""}
-                    </span>
+                <span aria-hidden data-testid="mark" className="w-6 shrink-0 text-center text-body leading-none">{rowGlyph(row, open)}</span>
+                <span className={`flex-1 min-w-0 text-body truncate ${done && !open ? "text-nier-text-dark/50" : "text-nier-text-dark"}`}>{movement.name}</span>
+                <span title={RULE_LABEL[movement.rule]} aria-label={RULE_LABEL[movement.rule]} className="text-eyebrow text-nier-text-dark/50 shrink-0">
+                    {RULE_GLYPH[movement.rule]}
                 </span>
-                <span data-testid="state" className="text-label uppercase tracking-widest text-nier-text-dark/70 shrink-0">{state}</span>
+                <span
+                    data-testid="state"
+                    aria-label={skipped ? "Skipped" : `${sets.length} of ${movement.sets} sets`}
+                    className="w-14 shrink-0 text-right text-label tracking-widest text-nier-text-dark/70"
+                >
+                    {skipped ? GLYPH.skipped : setPips(sets.length, movement.sets)}
+                </span>
             </button>
 
             {open && (
-                <div className="px-3 pb-3 flex flex-col gap-3">
+                <div className="pl-12 pr-3 pb-3 flex flex-col gap-2">
                     {previous && (
-                        <p data-testid="last" className="text-label text-nier-text-dark/60">
-                            Last, {shortDate(previous.date)}: {previous.sets.map(s => describeSet(movement, s)).join("  /  ")}
+                        <p data-testid="last" className="flex items-baseline text-label text-nier-text-dark/60 tabular-nums">
+                            <span className={eyebrow}>Last {shortDate(previous.date)}</span>
+                            <span>{previous.sets.map(s => describeSet(movement, s)).join(" / ")}</span>
                         </p>
                     )}
                     {sets.map((s, n) => (
-                        <p key={s.id} className="text-label text-nier-text-dark">Set {n + 1}: {describeSet(movement, s)}</p>
+                        <p key={s.id} className="flex items-baseline text-label text-nier-text-dark tabular-nums">
+                            <span className={eyebrow}>Set {n + 1}</span>
+                            <span>{describeSet(movement, s)}</span>
+                        </p>
                     ))}
                     {skipped ? (
-                        <div><button onClick={() => onSkip(false)} className={smallBtn}>Undo skip</button></div>
+                        <div><GlyphButton glyph={GLYPH.skipped} label="Undo skip" pressed onClick={() => onSkip(false)} /></div>
                     ) : (
                         // Keyed on the Set, so each Set starts from the last
                         // Session's value rather than from what was just typed.
@@ -147,8 +156,9 @@ const MovementRow = ({ row, paired, open, previous, onToggle, onSave, onSkip }: 
     );
 };
 
-// The fields a Set has depend on its Movement (R21): seconds for a hold; full
-// reps otherwise, with partial and assisted reps only past failure.
+// The fields a Set has depend on its Movement (body-plan R21): seconds for a
+// hold; full reps otherwise, with partial and assisted reps only past failure.
+// It is a form, so the Enter key saves as the ➤ control does (body-ui R15).
 const SetForm = ({ movement, setNumber, start, canSkip, onSave, onSkip }: {
     movement: Movement;
     setNumber: number;
@@ -163,7 +173,8 @@ const SetForm = ({ movement, setNumber, start, canSkip, onSave, onSkip }: {
     const [error, setError] = useState("");
     const set = (key: keyof SetFields) => (v: string) => setFields(f => ({ ...f, [key]: v }));
 
-    const save = async () => {
+    const save = async (e: FormEvent) => {
+        e.preventDefault();
         const { values, error: reason } = valuesFromFields(movement, fields);
         if (!values) { setError(reason ?? "Check the numbers"); return; }
         setError("");
@@ -171,32 +182,32 @@ const SetForm = ({ movement, setNumber, start, canSkip, onSave, onSkip }: {
         try { await onSave(values); } finally { setSaving(false); }
     };
 
+    const field = "flex-1 basis-20 min-w-16 max-w-32";
+
     return (
-        <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-2 gap-2 sm:flex sm:items-end sm:gap-3">
+        <form onSubmit={save} className="flex flex-col gap-2">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
                 {hold ? (
-                    <div className="min-w-0 sm:w-32"><NumberField label="Seconds" value={fields.seconds} onChange={set("seconds")} /></div>
+                    <div className={field}><NumberField label="Seconds" value={fields.seconds} onChange={set("seconds")} /></div>
                 ) : (
                     <>
-                        <div className="min-w-0 sm:w-28"><NumberField label="Full" value={fields.full} onChange={set("full")} /></div>
+                        <div className={field}><NumberField label="Full" value={fields.full} onChange={set("full")} /></div>
                         {movement.rule === "pastFailure" && (
                             <>
-                                <div className="min-w-0 sm:w-28"><NumberField label="Partial" value={fields.partial} onChange={set("partial")} /></div>
-                                <div className="min-w-0 sm:w-28"><NumberField label="Assisted" value={fields.assisted} onChange={set("assisted")} /></div>
+                                <div className={field}><NumberField label="Partial" value={fields.partial} onChange={set("partial")} /></div>
+                                <div className={field}><NumberField label="Assisted" value={fields.assisted} onChange={set("assisted")} /></div>
                             </>
                         )}
                     </>
                 )}
                 {movement.loaded && (
-                    <div className="min-w-0 sm:w-28"><NumberField label="Load lb" value={fields.load} onChange={set("load")} decimal /></div>
+                    <div className={field}><NumberField label="Load lb" value={fields.load} onChange={set("load")} decimal /></div>
                 )}
-                <button onClick={save} disabled={saving} className={primaryBtn}>
-                    {saving ? "…" : `Save set ${setNumber}`}
-                </button>
+                <GlyphButton glyph={saving ? "…" : GLYPH.next} label={`Save set ${setNumber}`} type="submit" solid disabled={saving} />
+                {canSkip && <GlyphButton glyph={GLYPH.skipped} label="Skip" onClick={onSkip} className="ml-auto" />}
             </div>
             <ErrorLine error={error} />
-            {canSkip && <div><button onClick={onSkip} className={smallBtn}>Skip</button></div>}
-        </div>
+        </form>
     );
 };
 

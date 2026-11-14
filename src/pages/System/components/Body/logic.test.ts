@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nextUp, prefill, sessionRows, valuesFromFields } from "./session";
-import { addSlot, afterMove, removeSlot, replaceSlot, togglePair } from "./plan";
+import { addSlot, afterMove, nextWorkout, pairEdge, removeSlot, replaceSlot, togglePair } from "./plan";
+import { setPips, stateGlyph } from "./glyphs";
 import { describeRoutineItem, describeSet, heading, signedLb } from "./text";
 import { rollingAverage } from "./progress";
 import type { LoggedSet, Movement, Session, Slot, Workout } from "../../../../types/body";
@@ -182,11 +183,11 @@ describe("text", () => {
     });
 
     it("describes a Set by what its Movement records", () => {
-        expect(describeSet(movements[1], { id: "x", movementId: "push", full: 7, partial: 3, assisted: 2 })).toBe("7 full · 3 partial · 2 assisted");
-        expect(describeSet(movements[3], { id: "x", movementId: "dip", full: 9 })).toBe("9 full");
+        expect(describeSet(movements[1], { id: "x", movementId: "push", full: 7, partial: 3, assisted: 2 })).toBe("7·3·2");
+        expect(describeSet(movements[3], { id: "x", movementId: "dip", full: 9 })).toBe("9");
         expect(describeSet(movements[0], { id: "x", movementId: "hold", seconds: 25 })).toBe("25 s");
         expect(describeSet(reps("shrug", { loaded: true }), { id: "x", movementId: "shrug", full: 12, partial: 0, assisted: 0, load: 70 }))
-            .toBe("12 full · 0 partial · 0 assisted @ 70 lb");
+            .toBe("12·0·0 @ 70");
     });
 
     it("describes a Routine item", () => {
@@ -213,5 +214,40 @@ describe("rollingAverage (R27)", () => {
             { date: "2026-11-07", value: 245 },
             { date: "2026-11-08", value: 243 },
         ]);
+    });
+});
+
+describe("glyphs (body-ui)", () => {
+    it("draws done, started and not done from a count", () => {
+        expect(stateGlyph(0, 4)).toBe("◇");
+        expect(stateGlyph(2, 4)).toBe("◈");
+        expect(stateGlyph(4, 4)).toBe("◆");
+        expect(stateGlyph(0, 0)).toBe("◇");
+    });
+
+    it("draws one glyph for each planned Set (R12)", () => {
+        expect(setPips(0, 2)).toBe("◇◇");
+        expect(setPips(1, 2)).toBe("◆◇");
+        expect(setPips(2, 2)).toBe("◆◆");
+        // A Set logged over the Plan's count adds no glyph.
+        expect(setPips(3, 2)).toBe("◆◆");
+    });
+});
+
+describe("Plan view helpers (body-ui)", () => {
+    const w = (key: string, weekday: number) => ({ key, name: key, weekday, slots: [] }) as never;
+    const week = [w("upperA", 1), w("lowerA", 2), w("upperB", 4), w("lowerB", 5)];
+
+    it("finds the Workout that is due next (R18)", () => {
+        expect(nextWorkout(week, 1, false)).toMatchObject({ key: "upperA" });   // Monday, not done
+        expect(nextWorkout(week, 1, true)).toMatchObject({ key: "lowerA" });    // Monday, done
+        expect(nextWorkout(week, 3, false)).toMatchObject({ key: "upperB" });   // Wednesday: rest
+        expect(nextWorkout(week, 6, false)).toMatchObject({ key: "upperA" });   // Saturday: next Monday
+        expect(nextWorkout([], 1, false)).toBeNull();
+    });
+
+    it("names each half of a Pair (R21)", () => {
+        const slots = [{ movementId: "a", pair: null }, { movementId: "b", pair: 1 }, { movementId: "c", pair: 1 }, { movementId: "d", pair: 2 }, { movementId: "e", pair: 2 }];
+        expect(slots.map((_, i) => pairEdge(slots, i))).toEqual([null, "first", "second", "first", "second"]);
     });
 });

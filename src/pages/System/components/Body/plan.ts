@@ -4,7 +4,7 @@
 // true, because the server refuses a list where it is not.
 
 import { moveItem } from "../../../../utils/reorder";
-import type { Slot } from "../../../../types/body";
+import type { Slot, Workout } from "../../../../types/body";
 
 /** Clear any Pair whose two Movements are no longer next to each other. */
 function dropBrokenPairs(slots: Slot[]): Slot[] {
@@ -46,4 +46,25 @@ export function replaceSlot(slots: Slot[], index: number, movementId: string): S
 
 export function addSlot(slots: Slot[], movementId: string): Slot[] {
     return [...slots, { movementId, pair: null }];
+}
+
+/** Where a slot sits in its Pair, so the two can be drawn as one bracket. */
+export function pairEdge(slots: Slot[], i: number): "first" | "second" | null {
+    const pair = slots[i]?.pair;
+    if (pair == null) return null;
+    if (slots[i + 1]?.pair === pair) return "first";
+    if (slots[i - 1]?.pair === pair) return "second";
+    return null;
+}
+
+/**
+ * The Workout that is due next: today's, unless it is done; else the one on
+ * the nearest later weekday. The Plan view opens on it (body-ui R18).
+ */
+export function nextWorkout(workouts: Workout[], weekday: number, dueDone: boolean): Workout | null {
+    const daysAway = (w: Workout) => {
+        const away = (w.weekday - weekday + 7) % 7;
+        return away === 0 && dueDone ? 7 : away;
+    };
+    return [...workouts].sort((a, b) => daysAway(a) - daysAway(b))[0] ?? null;
 }
