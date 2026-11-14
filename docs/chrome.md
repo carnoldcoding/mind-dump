@@ -184,7 +184,8 @@ state is a glyph and not a word, and each glyph has one meaning in each view.
 | `◈` | started, not done |
 | `◇` | not done |
 | `⊘` | skipped |
-| `➤` | the selected row; also the control that saves it |
+| `➤` | the selected row |
+| `✓` | the control that saves the selected row, or marks it done |
 | `▲▲` | Rule: past failure |
 | `▲` | Rule: failure only |
 | `△` | Rule: no failure |
@@ -195,3 +196,7 @@ state is a glyph and not a word, and each glyph has one meaning in each view.
 A control that shows only a glyph carries its full name in `aria-label` and
 `title` — [`GlyphButton`](../src/pages/System/components/Body/marks.tsx) takes
 the name as a required prop, so one cannot be drawn without it.
+
+The caret and the save control are different glyphs on purpose. `➤` says
+where attention is; `✓` finishes the thing. One glyph for both made a row's
+marker look like a button and its button look like a marker.

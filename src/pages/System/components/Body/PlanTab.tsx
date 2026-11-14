@@ -473,7 +473,7 @@ const PhaseForm = ({ phase, onSave }: { phase: Phase; onSave: (phase: Phase) => 
                 <TextField label="Name" value={name} onChange={setName} />
                 <NumberField label="Start lb" value={start} onChange={setStart} decimal />
                 <NumberField label="Target lb" value={target} onChange={setTarget} decimal />
-                <GlyphButton glyph={GLYPH.next} label="Save phase" type="submit" solid />
+                <GlyphButton glyph={GLYPH.save} label="Save phase" type="submit" solid />
             </div>
             <ErrorLine error={error} />
         </form>

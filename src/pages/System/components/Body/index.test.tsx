@@ -262,6 +262,9 @@ describe("Today: the Session is not a choice (body-today R17–R19)", () => {
 describe("Today: Weight and Stretches (body-today R13, R14)", () => {
     it("saves one Weigh-in for today, with the Enter key", async () => {
         await renderWindow();
+        // The control that saves is a check mark, never the caret of the selected row.
+        expect(screen.getByRole("button", { name: "Save weigh-in" }).textContent).toBe("✓");
+        expect(mark("row-weight")).toBe("➤");
         mocked.setBodyWeighIn.mockResolvedValue({});
         fireEvent.change(screen.getByLabelText("Weight lb"), { target: { value: "241.5" } });
         fireEvent.submit(screen.getByLabelText("Weight lb").closest("form")!);
@@ -289,6 +292,7 @@ describe("Today: Weight and Stretches (body-today R13, R14)", () => {
     it("marks the Stretches done for the date, and clears the mark", async () => {
         await renderWindow(sample({ weighins: [{ date: TODAY, lb: 240 }] }));
         mocked.checkBodyRoutine.mockResolvedValue({});
+        expect(screen.getByRole("button", { name: "Mark stretches done" }).textContent).toBe("✓");
         fireEvent.click(screen.getByRole("button", { name: "Mark stretches done" }));
         await waitFor(() => expect(mocked.checkBodyRoutine).toHaveBeenCalledWith(TODAY, true));
 
@@ -309,6 +313,7 @@ describe("Today: the Session (body-plan R19–R25, body-today R15)", () => {
         const hold = row("Handstand hold");
         expect(within(hold).queryByLabelText("Full")).toBeNull();
         type(hold, "Seconds", "25");
+        expect(within(hold).getByRole("button", { name: "Save set 1" }).textContent).toBe("✓");
         fireEvent.click(within(hold).getByRole("button", { name: "Save set 1" }));
         await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "hold", { seconds: 25 }));
         expect(mocked.startBodySession).toHaveBeenCalledWith(TODAY, "upperA");

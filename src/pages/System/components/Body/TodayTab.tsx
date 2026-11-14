@@ -214,7 +214,7 @@ const WeightDetail = ({ weight, today, onSave, onError }: {
         <form onSubmit={save} className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
                 <div className="w-32"><NumberField label="Weight lb" value={text} onChange={setText} decimal autoFocus /></div>
-                <GlyphButton glyph={saving ? "…" : GLYPH.next} label="Save weigh-in" type="submit" solid disabled={saving} />
+                <GlyphButton glyph={saving ? "…" : GLYPH.save} label="Save weigh-in" type="submit" solid disabled={saving} />
             </div>
             {weight.average != null && (
                 <p className="flex items-baseline text-label text-nier-text-dark/70 tabular-nums">
@@ -247,7 +247,7 @@ const StretchDetail = ({ items, done, onMark }: {
         <div>
             {done
                 ? <GlyphButton glyph={GLYPH.remove} label="Clear the stretches mark" onClick={() => onMark(false)} />
-                : <GlyphButton glyph={GLYPH.next} label="Mark stretches done" solid autoFocus onClick={() => onMark(true)} />}
+                : <GlyphButton glyph={GLYPH.save} label="Mark stretches done" solid autoFocus onClick={() => onMark(true)} />}
         </div>
     </>
 );
@@ -296,7 +296,7 @@ const MovementDetail = ({ row, previous, onSave, onSkip, onError }: {
 
 // The fields a Set has depend on its Movement (body-plan R21): seconds for a
 // hold; full reps otherwise, with partial and assisted reps only past failure.
-// It is a form, so the Enter key saves as the ➤ control does.
+// It is a form, so the Enter key saves as the ✓ control does.
 const SetForm = ({ movement, setNumber, start, canSkip, onSave, onSkip, onError }: {
     movement: Movement;
     setNumber: number;
@@ -339,7 +339,7 @@ const SetForm = ({ movement, setNumber, start, canSkip, onSave, onSkip, onError 
             {movement.loaded && (
                 <div className={field}><NumberField label="Load lb" value={fields.load} onChange={set("load")} decimal /></div>
             )}
-            <GlyphButton glyph={saving ? "…" : GLYPH.next} label={`Save set ${setNumber}`} type="submit" solid disabled={saving} />
+            <GlyphButton glyph={saving ? "…" : GLYPH.save} label={`Save set ${setNumber}`} type="submit" solid disabled={saving} />
             {canSkip && <GlyphButton glyph={GLYPH.skipped} label="Skip" onClick={onSkip} className="ml-auto" />}
         </form>
     );
