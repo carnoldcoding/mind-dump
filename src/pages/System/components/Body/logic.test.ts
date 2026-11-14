@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { nextUp, prefill, sessionRows, valuesFromFields } from "./session";
 import { addSlot, afterMove, nextWorkout, pairEdge, removeSlot, replaceSlot, togglePair } from "./plan";
 import { setPips, stateGlyph } from "./glyphs";
-import { describeRoutineItem, describeSet, heading, signedLb } from "./text";
+import { describeRoutineItem, describeSet, signedLb } from "./text";
+import { STRETCHES, WEIGHT, firstOpen, hintFor } from "./today";
 import { rollingAverage } from "./progress";
 import type { LoggedSet, Movement, Session, Slot, Workout } from "../../../../types/body";
 
@@ -176,12 +177,6 @@ describe("Plan slots (R10)", () => {
 });
 
 describe("text", () => {
-    it("writes the heading from the weekday and the Workout (R13)", () => {
-        expect(heading(1, "Upper A")).toBe("MONDAY — UPPER A");
-        expect(heading(3, null)).toBe("WEDNESDAY — REST");
-        expect(heading(7, null)).toBe("SUNDAY — REST");
-    });
-
     it("describes a Set by what its Movement records", () => {
         expect(describeSet(movements[1], { id: "x", movementId: "push", full: 7, partial: 3, assisted: 2 })).toBe("7·3·2");
         expect(describeSet(movements[3], { id: "x", movementId: "dip", full: 9 })).toBe("9");
@@ -251,3 +246,52 @@ describe("Plan view helpers (body-ui)", () => {
         expect(slots.map((_, i) => pairEdge(slots, i))).toEqual([null, "first", "second", "first", "second"]);
     });
 });
+
+describe("Today's selection (body-today R6, R9, R11)", () => {
+    const day = (weighed: boolean, stretched: boolean, s: Session | null = null) =>
+        ({ weighed, stretched, rows: sessionRows(workout, movements, s) });
+    const all = session([set("hold", 1), set("hold", 2), set("hold", 3), set("push", 1), set("pull", 1), set("push", 2), set("pull", 2), set("dip", 1), set("dip", 2)]);
+
+    it("starts on the Weigh-in, the first thing after waking", () => {
+        expect(firstOpen(day(false, false))).toBe(WEIGHT);
+        // The Stretches being done does not move the Weigh-in out of first place.
+        expect(firstOpen(day(false, true))).toBe(WEIGHT);
+    });
+
+    it("moves to the Stretches, then to the Session in Plan order", () => {
+        expect(firstOpen(day(true, false))).toBe(STRETCHES);
+        expect(firstOpen(day(true, true))).toBe("hold");
+        expect(firstOpen(day(true, true, session([set("hold", 1), set("hold", 2), set("hold", 3), set("push", 1)])))).toBe("pull");
+    });
+
+    it("selects nothing when the day is complete", () => {
+        expect(firstOpen(day(true, true, all))).toBeNull();
+        // A day with no Workout is complete after its two rows.
+        expect(firstOpen({ weighed: true, stretched: true, rows: [] })).toBeNull();
+        expect(firstOpen({ weighed: true, stretched: false, rows: [] })).toBe(STRETCHES);
+    });
+});
+
+describe("Today's hint line (body-today R20, R21)", () => {
+    const rows = (s: Session | null) => sessionRows(workout, movements, s);
+
+    it("describes each kind of row, verb first", () => {
+        const open = { weighed: false, stretched: false, rows: rows(null) };
+        expect(hintFor(WEIGHT, open)).toBe("Records the bodyweight of today.");
+        expect(hintFor(STRETCHES, open)).toBe("Marks the morning stretches done.");
+        expect(hintFor("hold", open)).toBe("Logs set 1 of hold.");
+        expect(hintFor("push", { ...open, rows: rows(session([set("push", 1)])) })).toBe("Logs set 2 of push.");
+    });
+
+    it("describes a row that is done by what a second save does", () => {
+        const done = { weighed: true, stretched: true, rows: rows(session([], ["hold"])) };
+        expect(hintFor(WEIGHT, done)).toBe("Replaces the bodyweight of today.");
+        expect(hintFor(STRETCHES, done)).toBe("Clears the mark on the morning stretches.");
+        expect(hintFor("hold", done)).toBe("Returns hold to the Session.");
+    });
+
+    it("says that the day is complete when nothing is left", () => {
+        expect(hintFor(null, { weighed: true, stretched: true, rows: [] })).toBe("The day is complete.");
+    });
+});
+

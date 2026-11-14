@@ -134,6 +134,11 @@ the name this Review is filed under", not "Here you can set the title". It
 reads as the interface describing itself rather than addressing a reader, which
 is the whole effect.
 
+Body's Today view wears one too, and has no pointer to follow: its hint
+describes the **selected row** — the next thing to log — so it reads the same
+on a phone. A refused save shows its reason there, in place of the line
+(`hintFor` in [`today.ts`](../src/pages/System/components/Body/today.ts)).
+
 Hint copy **never counts**. A line reporting how many Critique sections were
 written would put a figure on a Critique that `CONTEXT.md` is explicit should
 not carry one.
@@ -179,7 +184,7 @@ state is a glyph and not a word, and each glyph has one meaning in each view.
 | `◈` | started, not done |
 | `◇` | not done |
 | `⊘` | skipped |
-| `➤` | the next thing to do; also the control that saves the open Set |
+| `➤` | the selected row; also the control that saves it |
 | `▲▲` | Rule: past failure |
 | `▲` | Rule: failure only |
 | `△` | Rule: no failure |
@@ -190,7 +195,3 @@ state is a glyph and not a word, and each glyph has one meaning in each view.
 A control that shows only a glyph carries its full name in `aria-label` and
 `title` — [`GlyphButton`](../src/pages/System/components/Body/marks.tsx) takes
 the name as a required prop, so one cannot be drawn without it.
-
-A status row can be the control. Today's status bar reports the Routine and
-the Weigh-in and also changes them, on the same row. A report above and a
-control below showed each value twice.

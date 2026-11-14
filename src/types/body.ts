@@ -1,5 +1,5 @@
 // Body — the shapes /api/body returns. Vocabulary in CONTEXT.md (Plan,
-// Workout, Movement, Rule, Pair, Session, Set, Routine, Weigh-in, Phase).
+// Workout, Movement, Rule, Pair, Session, Set, Stretches, Weigh-in, Phase).
 // Every date is ISO YYYY-MM-DD; every weight is pounds.
 
 export type MovementKind = "reps" | "hold";
@@ -31,7 +31,7 @@ export type Workout = {
     slots: Slot[];
 };
 
-/** A Routine item is timed or counted, never both. */
+/** One of the Stretches. It is timed or counted, never both. */
 export type RoutineItem = { name: string; sets: number; seconds?: number; reps?: number };
 
 export type Phase = { name: string; startLb: number; targetLb: number };

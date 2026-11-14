@@ -141,7 +141,7 @@ const WeekGrid = ({ weeks, today }: { weeks: GridWeek[]; today: string }) => {
                             <td className="px-2 py-2 text-label text-nier-text-dark whitespace-nowrap">{shortDate(week.weekStart)}</td>
                             {week.workouts.map(w => cell(w.done, !w.done && week.routine[w.weekday - 1]?.date > today,
                                 `${w.name}, week of ${shortDate(week.weekStart)}`, `grid-${week.weekStart}-${w.key}`))}
-                            {week.routine.map(d => cell(d.done, d.date > today, `Routine, ${shortDate(d.date)}`, `grid-${d.date}`))}
+                            {week.routine.map(d => cell(d.done, d.date > today, `Stretches, ${shortDate(d.date)}`, `grid-${d.date}`))}
                         </tr>
                     ))}
                 </tbody>
@@ -231,7 +231,7 @@ const WeighInList = ({ weighins, onChanged }: { weighins: WeighIn[]; onChanged: 
                 <div key={w.date} data-testid={`weighin-${w.date}`} className="flex items-center justify-between gap-3 pl-3 border-b border-nier-150/30 last:border-0">
                     <span className="text-label text-nier-text-dark/70">{shortDate(w.date)}</span>
                     <span className="text-label text-nier-text-dark tabular-nums ml-auto">{formatLb(w.lb)}</span>
-                    <GlyphButton glyph={GLYPH.remove} label={`Remove the weigh-in of ${shortDate(w.date)}`} onClick={() => remove(w.date)} className="border-0 w-11 h-11" />
+                    <GlyphButton glyph={GLYPH.remove} label={`Remove the weigh-in of ${shortDate(w.date)}`} onClick={() => remove(w.date)} bare />
                 </div>
             ))}
             {error && <div className="px-3 py-2"><ErrorLine error={error} /></div>}

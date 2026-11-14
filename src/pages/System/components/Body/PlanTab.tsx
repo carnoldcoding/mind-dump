@@ -72,7 +72,7 @@ const PlanTab = ({ data, onChanged }: Props) => {
 
     const entries: { id: Shown; label: string }[] = [
         ...byWeekday.map(w => ({ id: w.key as Shown, label: w.name })),
-        { id: "routine", label: "Routine" },
+        { id: "routine", label: "Stretches" },
         { id: "phase", label: "Phase" },
         ...(unused.length > 0 ? [{ id: "unused" as Shown, label: "Unused" }] : []),
     ];
@@ -100,7 +100,7 @@ const PlanTab = ({ data, onChanged }: Props) => {
 
                 {shown === "routine" && (
                     <div data-testid="plan-list-routine">
-                        <AddRow label="New item" onClick={() => open({ kind: "routine", index: null })} first />
+                        <AddRow label="New stretch" onClick={() => open({ kind: "routine", index: null })} first />
                         {plan.routine.items.map((item, i) => (
                             <button
                                 key={`${item.name}-${i}`}
@@ -122,7 +122,7 @@ const PlanTab = ({ data, onChanged }: Props) => {
                     <div key={m._id} data-testid={`unused-${m.name}`} className="flex items-center justify-between gap-3 pl-3 border-b border-nier-150/30 last:border-0">
                         <span className="text-label text-nier-text-dark/70 truncate">{m.name}</span>
                         {/* A Movement with Sets is history; the server refuses to delete it (body-plan D15). */}
-                        <GlyphButton glyph={GLYPH.remove} label={`Delete ${m.name}`} onClick={() => run(() => backend.removeBodyMovement(m._id))} className="border-0 w-11 h-11" />
+                        <GlyphButton glyph={GLYPH.remove} label={`Delete ${m.name}`} onClick={() => run(() => backend.removeBodyMovement(m._id))} bare />
                     </div>
                 ))}
 
@@ -428,7 +428,7 @@ const RoutineModal = ({ open, items, index, onClose, onChanged }: {
     };
 
     return (
-        <EditorModal open={open} title={item ? item.name : "New routine item"} onClose={onClose}>
+        <EditorModal open={open} title={item ? item.name : "New stretch"} onClose={onClose}>
             <TextField label="Name" value={name} onChange={setName} />
             <NumberField label="Sets" value={sets} onChange={setSets} />
             <Toggle
