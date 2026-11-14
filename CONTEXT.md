@@ -101,8 +101,9 @@ One Workout that was done on one date.
 One logged set in a Session. It records full reps, partial reps, and assisted reps, or it records seconds for a hold. It also records the load, if there is one.
 _Avoid_: Entry. A Set belongs to a dated Session; the old Entry was a loose record against a Movement.
 
-**Routine**:
+**Stretches**:
 The morning stretch list. It is logged as one check for each date.
+_Avoid_: Routine. The list is only the stretches, not the whole day. The stored names still say `routine` (the Plan field, the `Body Routine Checks` collection, the `/routine/check` route); a rename there was not worth the risk.
 
 **Weigh-in**:
 One dated bodyweight.
