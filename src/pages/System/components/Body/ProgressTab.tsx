@@ -3,16 +3,18 @@ import { Line } from "react-chartjs-2";
 import { backend } from "../../../../api/backend";
 import { ToolbarRow } from "../../../../components/common/ToolbarRow";
 import { useRetained } from "../../../../hooks/useRetained";
-import { EditorModal, ErrorLine, Section, primaryBtn, secondaryBtn, smallBtn } from "../Finances/ui";
+import { EditorModal, ErrorLine, Section, primaryBtn, secondaryBtn } from "../Finances/ui";
 import { errorText } from "../Finances/errorText";
 import { NumberField, Select } from "./fields";
+import { GLYPH } from "./glyphs";
+import { GlyphButton } from "./marks";
 import MovementChart, { INK, MUTED, chartOptions } from "./MovementChart";
 import { rollingAverage } from "./progress";
 import { fieldsFromSet, valuesFromFields } from "./session";
 import type { SetFields } from "./session";
-import { describeSet, formatLb, shortDate } from "./text";
+import { describeSet, formatLb, shortDate, signedLb } from "./text";
 import type { Ready } from "./TodayTab";
-import type { GridWeek, LoggedSet, Movement, Session, WeighIn } from "../../../../types/body";
+import type { BodySummary, GridWeek, LoggedSet, Movement, Session, WeighIn } from "../../../../types/body";
 
 type Props = { data: Ready; onChanged: () => Promise<void> | void };
 
@@ -43,6 +45,7 @@ const ProgressTab = ({ data, onChanged }: Props) => {
             </Section>
 
             <Section title="Bodyweight">
+                <WeightLine weight={summary.weight} />
                 <WeightChart weighins={weighins} target={summary.weight.targetLb} />
                 <WeighInList weighins={weighins} onChanged={onChanged} />
             </Section>
@@ -71,9 +74,11 @@ const ProgressTab = ({ data, onChanged }: Props) => {
                                         <button
                                             key={set.id}
                                             onClick={() => { setOpenCount(c => c + 1); setEditing({ session, set, movement: selected }); }}
-                                            className="text-left text-label text-nier-text-dark hover:bg-nier-150/30 cursor-pointer transition-colors py-1"
+                                            aria-label={`Set ${n + 1}: ${describeSet(selected, set)}`}
+                                            className="flex items-baseline text-left text-label text-nier-text-dark tabular-nums hover:bg-nier-150/30 cursor-pointer transition-colors py-1"
                                         >
-                                            Set {n + 1}: {describeSet(selected, set)}
+                                            <span className="w-16 shrink-0 text-eyebrow uppercase tracking-widest text-nier-text-dark/50">Set {n + 1}</span>
+                                            {describeSet(selected, set)}
                                         </button>
                                     ))}
                                 </div>
@@ -113,8 +118,10 @@ const WeekGrid = ({ weeks, today }: { weeks: GridWeek[]; today: string }) => {
                 aria-label={`${label}: ${done ? "done" : future ? "not yet" : "not done"}`}
                 data-testid={testId}
                 data-done={done}
-                className={`inline-block w-4 h-4 border border-nier-dark ${done ? "bg-nier-text-dark" : future ? "opacity-25" : ""}`}
-            />
+                className={`text-body leading-none text-nier-text-dark ${!done && future ? "opacity-25" : ""}`}
+            >
+                {done ? GLYPH.done : GLYPH.open}
+            </span>
         </td>
     );
 
@@ -140,6 +147,20 @@ const WeekGrid = ({ weeks, today }: { weeks: GridWeek[]; today: string }) => {
                 </tbody>
             </table>
         </div>
+    );
+};
+
+// The four numbers the chart is read against, on one line (body-ui R24).
+// Today shows only the average and the change; the rest is here.
+const WeightLine = ({ weight }: { weight: BodySummary["weight"] }) => {
+    const term = "text-eyebrow uppercase tracking-widest text-nier-text-dark/50";
+    return (
+        <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1 px-3 py-2 border-b border-nier-150/40 text-label text-nier-text-dark tabular-nums">
+            <div className="flex items-baseline gap-2"><dt className={term}>Start</dt><dd data-testid="weight-start">{weight.startLb.toFixed(1)}</dd></div>
+            <div className="flex items-baseline gap-2"><dt className={term}>Target</dt><dd data-testid="weight-target">{weight.targetLb.toFixed(1)}</dd></div>
+            <div className="flex items-baseline gap-2"><dt className={term}>Avg 7d</dt><dd data-testid="weight-average">{weight.average != null ? weight.average.toFixed(1) : "—"}</dd></div>
+            <div className="flex items-baseline gap-2"><dt className={term}>Change</dt><dd data-testid="weight-change">{weight.change != null ? signedLb(weight.change) : "—"}</dd></div>
+        </dl>
     );
 };
 
@@ -207,10 +228,10 @@ const WeighInList = ({ weighins, onChanged }: { weighins: WeighIn[]; onChanged: 
     return (
         <div className="border-t border-nier-150/40 max-h-48 overflow-y-auto">
             {recent.map(w => (
-                <div key={w.date} data-testid={`weighin-${w.date}`} className="flex items-center justify-between gap-3 px-3 py-2 border-b border-nier-150/30 last:border-0">
+                <div key={w.date} data-testid={`weighin-${w.date}`} className="flex items-center justify-between gap-3 pl-3 border-b border-nier-150/30 last:border-0">
                     <span className="text-label text-nier-text-dark/70">{shortDate(w.date)}</span>
                     <span className="text-label text-nier-text-dark tabular-nums ml-auto">{formatLb(w.lb)}</span>
-                    <button onClick={() => remove(w.date)} className={smallBtn}>Remove</button>
+                    <GlyphButton glyph={GLYPH.remove} label={`Remove the weigh-in of ${shortDate(w.date)}`} onClick={() => remove(w.date)} className="border-0 w-11 h-11" />
                 </div>
             ))}
             {error && <div className="px-3 py-2"><ErrorLine error={error} /></div>}
