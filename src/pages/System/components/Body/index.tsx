@@ -12,8 +12,9 @@ import ProgressTab from "./ProgressTab";
 import type { BodyData } from "../../../../types/body";
 
 // A local run can pin the date, to look at a training day on a rest day:
-// VITE_BODY_TODAY=2026-11-16 in .env.local. A build ignores it.
-const bodyToday = (): string => (import.meta.env.DEV && import.meta.env.VITE_BODY_TODAY) || todayIso();
+// VITE_BODY_TODAY=2026-11-16 in .env.local. Only the dev server reads it: a
+// build ignores it, and so does a test run, which also loads .env.local.
+const bodyToday = (): string => (import.meta.env.MODE === "development" && import.meta.env.VITE_BODY_TODAY) || todayIso();
 
 type ActiveTab = "today" | "plan" | "progress";
 
