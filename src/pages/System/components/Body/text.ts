@@ -7,11 +7,6 @@ export const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
 /** 1 = Monday … 7 = Sunday, as the backend numbers them. */
 export const weekdayName = (weekday: number) => WEEKDAYS[weekday - 1] ?? "";
 
-/** "MONDAY — UPPER A", or "WEDNESDAY — REST" with no Workout due (R13). */
-export function heading(weekday: number, workoutName: string | null): string {
-    return `${weekdayName(weekday)} — ${workoutName ?? "Rest"}`.toUpperCase();
-}
-
 export const RULE_LABEL: Record<Rule, string> = {
     pastFailure: "Past failure",
     failure: "Failure only",

@@ -8,11 +8,13 @@ const floatingLabel =
     "absolute left-4 top-3 text-gray-500 pointer-events-none transition-all peer-focus:top-[-10px] peer-focus:left-2 peer-focus:text-body peer-focus:bg-nier-100-lighter peer-focus:px-1 peer-[:not(:placeholder-shown)]:top-[-10px] peer-[:not(:placeholder-shown)]:left-2 peer-[:not(:placeholder-shown)]:text-body peer-[:not(:placeholder-shown)]:bg-nier-100-lighter peer-[:not(:placeholder-shown)]:px-1";
 
 /** A count or a weight. Text, not type=number, so a phone shows a number pad and nothing spins. */
-export const NumberField = ({ label, value, onChange, decimal = false }: {
+export const NumberField = ({ label, value, onChange, decimal = false, autoFocus = false }: {
     label: string;
     value: string;
     onChange: (v: string) => void;
     decimal?: boolean;
+    /** Takes the keyboard when it appears: the field of the row Today selected. */
+    autoFocus?: boolean;
 }) => {
     const id = useId();
     return (
@@ -21,6 +23,7 @@ export const NumberField = ({ label, value, onChange, decimal = false }: {
                 id={id}
                 type="text"
                 inputMode={decimal ? "decimal" : "numeric"}
+                autoFocus={autoFocus}
                 value={value}
                 onChange={e => onChange(e.target.value)}
                 placeholder=" "
