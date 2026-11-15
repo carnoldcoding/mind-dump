@@ -79,7 +79,8 @@ const PlanTab = ({ data, onChanged }: Props) => {
 
     return (
         <div className="flex flex-col gap-4">
-            <ShadowBox as="section" label="Plan" className="bg-nier-100-lighter border border-nier-150">
+            {/* Narrow, so a name and its value sit near each other (body-flow R25). */}
+            <ShadowBox as="section" label="Plan" wrapperClassName="w-full max-w-[40rem]" className="bg-nier-100-lighter border border-nier-150">
                 <ToolbarRow>
                     {entries.map(e => (
                         <Chip key={e.id} testId={`plan-${e.id}`} active={shown === e.id} onClick={() => setPicked(e.id)}>{e.label}</Chip>
