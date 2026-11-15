@@ -138,8 +138,16 @@ const training = (over: Partial<BodyData> = {}): BodyData =>
 
 const hint = () => screen.getByTestId("today-hint").textContent;
 const mark = (testId: string) => within(screen.getByTestId(testId)).getByTestId("mark").textContent;
+const pane = () => screen.getByTestId("today-pane");
+const list = () => screen.getByTestId("today-list");
+const selected = () => screen.getAllByTestId(/^(row|movement)-/).filter(el => el.getAttribute("data-selected") === "true").map(el => el.getAttribute("data-testid"));
+const number = (label: string) => within(pane()).getByLabelText(label) as HTMLInputElement;
+const press = (name: string) => fireEvent.click(within(pane()).getByRole("button", { name }));
 
-describe("Today: the frame (body-today R1–R5)", () => {
+/** A device with a mouse, where the field takes the keyboard (body-flow R19). */
+const withMouse = () => vi.stubGlobal("matchMedia", (query: string) => ({ matches: query === "(pointer: fine)" }));
+
+describe("Today: the frame (body-today R1–R5, body-flow R1, R5)", () => {
     it("names the weekday and the Workout in the header band", async () => {
         await renderWindow();
         expect(screen.getByTestId("today-weekday").textContent).toBe("Monday");
@@ -157,7 +165,7 @@ describe("Today: the frame (body-today R1–R5)", () => {
 
     it("lists the day in order: Weight, Stretches, then the Movements in Plan order", async () => {
         await renderWindow();
-        const ids = screen.getAllByTestId(/^(row|movement)-/).map(el => el.getAttribute("data-testid"));
+        const ids = within(list()).getAllByTestId(/^(row|movement)-/).map(el => el.getAttribute("data-testid"));
         expect(ids).toEqual(["row-weight", "row-stretches", "movement-Handstand hold", "movement-Deep push-up", "movement-Pull-up", "movement-Dip"]);
     });
 
@@ -172,72 +180,126 @@ describe("Today: the frame (body-today R1–R5)", () => {
         expect(within(screen.getByTestId("row-weight")).getByTestId("state").textContent).toBe("240.0 lb");
     });
 
+    it("keeps each field out of the list: the pane holds them (body-flow R5, R7)", async () => {
+        await renderWindow(training());
+        expect(within(list()).queryAllByRole("textbox")).toHaveLength(0);
+        expect(within(list()).queryByRole("button", { name: /Save/ })).toBeNull();
+        expect(within(pane()).getByLabelText("Seconds")).toBeTruthy();
+    });
+
     it("never says Routine (R23)", async () => {
         await renderWindow();
         expect(screen.queryByText(/routine/i)).toBeNull();
     });
 });
 
-describe("Today: the selection (body-today R6–R12)", () => {
-    it("opens on the Weigh-in on a new day, with the keyboard in its field", async () => {
+describe("Today: the selection (body-flow R19–R23)", () => {
+    it("selects the Weigh-in on a new day, and shows it in the pane", async () => {
         await renderWindow();
-        expect(screen.getByTestId("row-weight").getAttribute("data-open")).toBe("true");
+        expect(selected()).toEqual(["row-weight"]);
         expect(mark("row-weight")).toBe("➤");
-        expect(document.activeElement).toBe(screen.getByLabelText("Weight lb"));
+        expect(within(pane()).getByTestId("pane-title").textContent).toBe("Weight");
         expect(hint()).toBe("Records the bodyweight of today.");
-        // Only the selected row is open.
+        // The pane shows the selected row and no other.
         expect(screen.queryByTestId("stretch-items")).toBeNull();
         expect(screen.queryByLabelText("Seconds")).toBeNull();
     });
 
-    it("opens on the Stretches once the Weigh-in is in", async () => {
+    it("gives the field the keyboard where there is a mouse, and not on a phone (R19)", async () => {
+        await renderWindow();
+        expect(document.activeElement).not.toBe(number("Weight lb"));
+
+        cleanup();
+        withMouse();
+        await renderWindow();
+        expect(document.activeElement).toBe(number("Weight lb"));
+        vi.unstubAllGlobals();
+    });
+
+    it("selects the Stretches once the Weigh-in is in", async () => {
         await renderWindow(sample({ weighins: [{ date: TODAY, lb: 240 }] }));
         expect(mark("row-weight")).toBe("◆");
-        expect(screen.getByTestId("row-weight").getAttribute("data-open")).toBe("false");
-        expect(screen.getByTestId("row-stretches").getAttribute("data-open")).toBe("true");
+        expect(selected()).toEqual(["row-stretches"]);
         expect(within(screen.getByTestId("stretch-items")).getByText("Pancake")).toBeTruthy();
         expect(within(screen.getByTestId("stretch-items")).getByText("2 × 30 s")).toBeTruthy();
         expect(hint()).toBe("Marks the morning stretches done.");
     });
 
-    it("opens on the first Movement once the Weigh-in and the Stretches are done", async () => {
+    it("selects the first Movement once the Weigh-in and the Stretches are done", async () => {
         await renderWindow(training());
         expect(mark("row-stretches")).toBe("◆");
-        // A done row is one line (R16).
-        expect(screen.queryByTestId("stretch-items")).toBeNull();
-        expect(row("Handstand hold").getAttribute("data-open")).toBe("true");
-        expect(document.activeElement).toBe(screen.getByLabelText("Seconds"));
+        expect(selected()).toEqual(["movement-Handstand hold"]);
+        expect(within(pane()).getByTestId("pane-title").textContent).toBe("Handstand hold");
+        expect(within(pane()).getByTestId("pane-at").textContent).toBe("Set 1 / 2");
         expect(hint()).toBe("Logs set 1 of Handstand hold.");
     });
 
-    it("selects nothing when the day is complete, and says so", async () => {
+    it("selects nothing when the day is complete, and says so in the pane and the hint bar (R18)", async () => {
         const sets = [...holdSets, reps("push", 1), reps("pull", 1), reps("push", 2), reps("pull", 2), reps("dip", 1), reps("dip", 2)];
         await renderWindow(training({ sessions: [session(sets)] }));
-        expect(screen.getAllByTestId(/^(row|movement)-/).every(el => el.getAttribute("data-open") === "false")).toBe(true);
+        expect(selected()).toEqual([]);
+        expect(screen.getByTestId("today-complete").textContent).toBe("◆Complete");
         expect(hint()).toBe("The day is complete.");
     });
 
-    it("selects another row on a press, and closes the selected one on a second press (R10)", async () => {
+    it("selects another row on a press; a press on the selected row changes nothing (R23)", async () => {
         await renderWindow(training());
-        fireEvent.click(within(screen.getByTestId("row-weight")).getByRole("button", { expanded: false }));
-        expect(screen.getByTestId("row-weight").getAttribute("data-open")).toBe("true");
-        expect(row("Handstand hold").getAttribute("data-open")).toBe("false");
-        expect((screen.getByLabelText("Weight lb") as HTMLInputElement).value).toBe("240");
+        fireEvent.click(screen.getByTestId("row-weight"));
+        expect(selected()).toEqual(["row-weight"]);
+        expect(number("Weight lb").value).toBe("240");
         expect(hint()).toBe("Replaces the bodyweight of today.");
 
-        fireEvent.click(within(screen.getByTestId("row-weight")).getByRole("button", { expanded: true }));
-        expect(screen.getByTestId("row-weight").getAttribute("data-open")).toBe("false");
+        fireEvent.click(screen.getByTestId("row-weight"));
+        expect(selected()).toEqual(["row-weight"]);
     });
 
-    it("goes back to following the day after a save (R9)", async () => {
-        // The user opens the Weigh-in by hand while a Movement is next.
+    it("stays on the Movement after a Set when the Stretches are not done (the reported bug, R21, R22)", async () => {
+        const data = sample({ weighins: [{ date: TODAY, lb: 240 }] });
+        await renderWindow(data);
+        expect(selected()).toEqual(["row-stretches"]);
+        fireEvent.click(row("Dip"));
+
+        mocked.startBodySession.mockResolvedValue(session([]));
+        mocked.addBodySet.mockResolvedValue(session([]));
+        mocked.getBody.mockResolvedValue({ ...data, sessions: [session([reps("dip", 1)])] });
+        fireEvent.change(number("Reps"), { target: { value: "6" } });
+        press("Save set 1");
+        await waitFor(() => expect(within(pane()).getByTestId("pane-at").textContent).toBe("Set 2 / 2"));
+        expect(selected()).toEqual(["movement-Dip"]);
+        expect(mark("row-stretches")).toBe("◇");
+    });
+
+    it("goes on to the next row below after the last Set, then back up to a row passed over (R21)", async () => {
+        const done = [...holdSets, reps("push", 1), reps("pull", 1), reps("push", 2), reps("pull", 2)];
+        const data = sample({ weighins: [{ date: TODAY, lb: 240 }], sessions: [session([reps("hold", 1)])] });
+        await renderWindow(data);
+        fireEvent.click(row("Handstand hold"));
+
+        mocked.addBodySet.mockResolvedValue(session([]));
+        mocked.getBody.mockResolvedValue({ ...data, sessions: [session(holdSets)] });
+        fireEvent.change(number("Seconds"), { target: { value: "22" } });
+        press("Save set 2");
+        await waitFor(() => expect(selected()).toEqual(["movement-Deep push-up"]));
+
+        // The last Set of the Session: nothing below is open, so the Stretches above are next.
+        cleanup();
+        const last = sample({ weighins: [{ date: TODAY, lb: 240 }], sessions: [session([...done, reps("dip", 1)])] });
+        await renderWindow(last);
+        fireEvent.click(row("Dip"));
+        mocked.getBody.mockResolvedValue({ ...last, sessions: [session([...done, reps("dip", 1), reps("dip", 2)])] });
+        fireEvent.change(number("Reps"), { target: { value: "6" } });
+        press("Save set 2");
+        await waitFor(() => expect(selected()).toEqual(["row-stretches"]));
+    });
+
+    it("moves from the Weigh-in to the next row that is not done after a save", async () => {
         mocked.setBodyWeighIn.mockResolvedValue({});
         await renderWindow(training());
-        fireEvent.click(within(screen.getByTestId("row-weight")).getByRole("button", { expanded: false }));
-        fireEvent.change(screen.getByLabelText("Weight lb"), { target: { value: "239" } });
-        fireEvent.click(screen.getByRole("button", { name: "Save weigh-in" }));
+        fireEvent.click(screen.getByTestId("row-weight"));
+        fireEvent.change(number("Weight lb"), { target: { value: "239" } });
+        press("Save weigh-in");
         await waitFor(() => expect(mocked.setBodyWeighIn).toHaveBeenCalledWith(TODAY, 239));
-        await waitFor(() => expect(row("Handstand hold").getAttribute("data-open")).toBe("true"));
+        await waitFor(() => expect(selected()).toEqual(["movement-Handstand hold"]));
     });
 });
 
@@ -259,31 +321,40 @@ describe("Today: the Session is not a choice (body-today R17–R19)", () => {
     });
 });
 
-describe("Today: Weight and Stretches (body-today R13, R14)", () => {
+describe("Today: Weight and Stretches (body-flow R16, R17)", () => {
     it("saves one Weigh-in for today, with the Enter key", async () => {
         await renderWindow();
         // The control that saves is a check mark, never the caret of the selected row.
-        expect(screen.getByRole("button", { name: "Save weigh-in" }).textContent).toBe("✓");
+        expect(within(pane()).getByRole("button", { name: "Save weigh-in" }).textContent).toBe("✓");
         expect(mark("row-weight")).toBe("➤");
         mocked.setBodyWeighIn.mockResolvedValue({});
-        fireEvent.change(screen.getByLabelText("Weight lb"), { target: { value: "241.5" } });
-        fireEvent.submit(screen.getByLabelText("Weight lb").closest("form")!);
+        fireEvent.change(number("Weight lb"), { target: { value: "241.5" } });
+        fireEvent.submit(number("Weight lb").closest("form")!);
         await waitFor(() => expect(mocked.setBodyWeighIn).toHaveBeenCalledWith(TODAY, 241.5));
         await waitFor(() => expect(mocked.getBody).toHaveBeenCalledTimes(2));
     });
 
-    it("refuses a Weigh-in with no number, in the hint bar (R22)", async () => {
+    it("dims the save control while the field is empty, and shows the last Weigh-in as the placeholder", async () => {
+        const weight = { latest: { date: "2026-11-08", lb: 240.4 }, average: 242.1, count: 7, startLb: 245, targetLb: 216, change: -2.9 };
+        await renderWindow(sample({ summary: summary({ weight }) }));
+        expect((within(pane()).getByRole("button", { name: "Save weigh-in" }) as HTMLButtonElement).disabled).toBe(true);
+        expect(number("Weight lb").value).toBe("");
+        expect(number("Weight lb").placeholder).toBe("240.4");
+    });
+
+    it("refuses a Weigh-in that is not a number, in the hint bar (R22)", async () => {
         await renderWindow();
-        fireEvent.click(screen.getByRole("button", { name: "Save weigh-in" }));
+        fireEvent.change(number("Weight lb"), { target: { value: "heavy" } });
+        fireEvent.submit(number("Weight lb").closest("form")!);
         expect(hint()).toBe("Enter your weight in pounds");
         expect(mocked.setBodyWeighIn).not.toHaveBeenCalled();
     });
 
-    it("shows the 7-day average and the change in the open Weight row only (D6)", async () => {
+    it("shows the 7-day average and the change with the Weight row only (D6)", async () => {
         const weight = { latest: { date: TODAY, lb: 240 }, average: 242.1, count: 7, startLb: 245, targetLb: 216, change: -2.9 };
         await renderWindow(training({ summary: summary({ weight }) }));
         expect(screen.queryByTestId("weight-average")).toBeNull();
-        fireEvent.click(within(screen.getByTestId("row-weight")).getByRole("button", { expanded: false }));
+        fireEvent.click(screen.getByTestId("row-weight"));
         expect(screen.getByTestId("weight-average").textContent).toBe("242.1");
         expect(screen.getByTestId("weight-change").textContent).toBe("-2.9 lb");
         expect(screen.queryByTestId("weight-start")).toBeNull();
@@ -292,81 +363,108 @@ describe("Today: Weight and Stretches (body-today R13, R14)", () => {
     it("marks the Stretches done for the date, and clears the mark", async () => {
         await renderWindow(sample({ weighins: [{ date: TODAY, lb: 240 }] }));
         mocked.checkBodyRoutine.mockResolvedValue({});
-        expect(screen.getByRole("button", { name: "Mark stretches done" }).textContent).toBe("✓");
-        fireEvent.click(screen.getByRole("button", { name: "Mark stretches done" }));
+        expect(within(pane()).getByRole("button", { name: "Mark stretches done" }).textContent).toBe("✓");
+        press("Mark stretches done");
         await waitFor(() => expect(mocked.checkBodyRoutine).toHaveBeenCalledWith(TODAY, true));
 
         cleanup();
         await renderWindow(training());
-        fireEvent.click(within(screen.getByTestId("row-stretches")).getByRole("button", { expanded: false }));
+        fireEvent.click(screen.getByTestId("row-stretches"));
         expect(hint()).toBe("Clears the mark on the morning stretches.");
-        fireEvent.click(screen.getByRole("button", { name: "Clear the stretches mark" }));
+        expect(within(pane()).getByRole("button", { name: "Clear the stretches mark" }).textContent).toBe("×");
+        press("Clear the stretches mark");
         await waitFor(() => expect(mocked.checkBodyRoutine).toHaveBeenCalledWith(TODAY, false));
     });
 });
 
-describe("Today: the Session (body-plan R19–R25, body-today R15)", () => {
+describe("Today: the Session (body-plan R19–R25, body-flow R8–R15)", () => {
     it("logs a hold in seconds, and creates the Session with its first Set", async () => {
         await renderWindow(training());
         mocked.startBodySession.mockResolvedValue(session([]));
         mocked.addBodySet.mockResolvedValue(session([]));
-        const hold = row("Handstand hold");
-        expect(within(hold).queryByLabelText("Reps")).toBeNull();
-        type(hold, "Seconds", "25");
-        expect(within(hold).getByRole("button", { name: "Save set 1" }).textContent).toBe("✓");
-        fireEvent.click(within(hold).getByRole("button", { name: "Save set 1" }));
+        expect(within(pane()).queryByLabelText("Reps")).toBeNull();
+        fireEvent.change(number("Seconds"), { target: { value: "25" } });
+        expect(within(pane()).getByRole("button", { name: "Save set 1" }).textContent).toBe("✓");
+        press("Save set 1");
         await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "hold", { seconds: 25 }));
         expect(mocked.startBodySession).toHaveBeenCalledWith(TODAY, "upperA");
         await waitFor(() => expect(mocked.getBody).toHaveBeenCalledTimes(2));
     });
 
-    it("shows one field past failure, with the last Session above it and its reps filled in", async () => {
+    it("shows the Rule in words and the last Session, and repeats the last Session with one press (R8, R10)", async () => {
         await renderWindow(training({ sessions: [session(holdSets)] }));
         mocked.addBodySet.mockResolvedValue(session([]));
-        const push = row("Deep push-up");
-        expect(push.getAttribute("data-open")).toBe("true");
-        expect(within(push).getByTestId("last").textContent).toBe("Last Nov 59 / 7");
-        expect((within(push).getByLabelText("Reps") as HTMLInputElement).value).toBe("9");
+        expect(selected()).toEqual(["movement-Deep push-up"]);
+        expect(within(pane()).getByTestId("pane-rule").textContent).toBe("▲▲Past failure");
+        expect(within(pane()).getByTestId("last").textContent).toBe("Last Nov 59 / 7");
+        expect(number("Reps").value).toBe("9");
         // Reps after failure are not counted, so they are not fields.
-        expect(within(push).queryByLabelText("Partial")).toBeNull();
-        expect(within(push).queryByLabelText("Assisted")).toBeNull();
-        type(push, "Reps", "10");
-        fireEvent.click(within(push).getByRole("button", { name: "Save set 1" }));
-        await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "push", { full: 10 }));
+        expect(within(pane()).queryByLabelText("Partial")).toBeNull();
+        expect(within(pane()).queryByLabelText("Assisted")).toBeNull();
+        press("Save set 1");
+        await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "push", { full: 9 }));
         // The Session exists already, so it is not started again.
         expect(mocked.startBodySession).not.toHaveBeenCalled();
     });
 
+    it("changes reps by 1 with − and +, and saves the result (R9, R11)", async () => {
+        await renderWindow(training({ sessions: [session(holdSets)] }));
+        mocked.addBodySet.mockResolvedValue(session([]));
+        expect(within(pane()).getByRole("button", { name: "One rep less" }).textContent).toBe("−");
+        expect(within(pane()).getByRole("button", { name: "One rep more" }).textContent).toBe("+");
+        press("One rep more");
+        press("One rep more");
+        expect(number("Reps").value).toBe("11");
+        press("One rep less");
+        expect(number("Reps").value).toBe("10");
+        press("Save set 1");
+        await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "push", { full: 10 }));
+    });
+
+    it("changes seconds by 5, starts an empty number from 0, and stops at 1 (R10, R11)", async () => {
+        await renderWindow(training());
+        expect(number("Seconds").value).toBe("");
+        press("5 seconds less");
+        expect(number("Seconds").value).toBe("");
+        press("5 seconds more");
+        expect(number("Seconds").value).toBe("5");
+        press("5 seconds more");
+        expect(number("Seconds").value).toBe("10");
+        press("5 seconds less");
+        press("5 seconds less");
+        expect(number("Seconds").value).toBe("1");
+    });
+
+    it("dims the save control while the number is empty (R14)", async () => {
+        await renderWindow(training());
+        expect((within(pane()).getByRole("button", { name: "Save set 1" }) as HTMLButtonElement).disabled).toBe(true);
+        fireEvent.change(number("Seconds"), { target: { value: "20" } });
+        expect((within(pane()).getByRole("button", { name: "Save set 1" }) as HTMLButtonElement).disabled).toBe(false);
+    });
+
     it("moves to the other Movement of a Pair after each Set", async () => {
         await renderWindow(training({ sessions: [session([...holdSets, reps("push", 1)])] }));
-        expect(row("Pull-up").getAttribute("data-open")).toBe("true");
+        expect(selected()).toEqual(["movement-Pull-up"]);
         expect(hint()).toBe("Logs set 1 of Pull-up.");
 
         cleanup();
         await renderWindow(training({ sessions: [session([...holdSets, reps("push", 1), reps("pull", 1)])] }));
-        expect(row("Deep push-up").getAttribute("data-open")).toBe("true");
-        expect(within(row("Deep push-up")).getByRole("button", { name: "Save set 2" })).toBeTruthy();
+        expect(selected()).toEqual(["movement-Deep push-up"]);
+        expect(within(pane()).getByRole("button", { name: "Save set 2" })).toBeTruthy();
     });
 
-    it("does not list the Sets logged today under the Movement; the row's glyphs count them", async () => {
+    it("does not show the Sets logged today; the row's glyphs count them (D5)", async () => {
         await renderWindow(training({ sessions: [session([...holdSets, reps("push", 1), reps("pull", 1)])] }));
-        const push = row("Deep push-up");
-        expect(push.getAttribute("data-open")).toBe("true");
-        expect(within(push).getByTestId("state").textContent).toBe("◆◇");
-        expect(within(push).queryByText(/^Set 1/)).toBeNull();
+        expect(selected()).toEqual(["movement-Deep push-up"]);
+        expect(within(row("Deep push-up")).getByTestId("state").textContent).toBe("◆◇");
+        expect(within(pane()).queryByText(/^Set 1/)).toBeNull();
+        expect(within(pane()).queryByText("6")).toBeNull();
     });
 
-    it("shows one field for a Movement that stops at failure", async () => {
-        const sets = [...holdSets, reps("push", 1), reps("pull", 1), reps("push", 2), reps("pull", 2)];
-        await renderWindow(training({ sessions: [session(sets)] }));
-        const dip = row("Dip");
-        expect(dip.getAttribute("data-open")).toBe("true");
-        expect(within(dip).getByLabelText("Reps")).toBeTruthy();
-    });
-
-    it("refuses a Set with no number in the hint bar, and sends nothing (R22)", async () => {
+    it("refuses a Set that is not a whole number in the hint bar, and sends nothing (R22)", async () => {
         await renderWindow(training());
-        fireEvent.click(within(row("Handstand hold")).getByRole("button", { name: "Save set 1" }));
+        fireEvent.change(number("Seconds"), { target: { value: "1.5" } });
+        press("Save set 1");
         expect(hint()).toBe("Enter the seconds");
         expect(mocked.addBodySet).not.toHaveBeenCalled();
     });
@@ -374,16 +472,16 @@ describe("Today: the Session (body-plan R19–R25, body-today R15)", () => {
     it("shows the server's reason in the hint bar when a Set is refused (R22)", async () => {
         await renderWindow(training({ sessions: [session([])] }));
         mocked.addBodySet.mockRejectedValue(new Error("POST /api/body/sessions/add_set failed (400): seconds must be a whole number from 1 to 3600"));
-        type(row("Handstand hold"), "Seconds", "9999");
-        fireEvent.click(within(row("Handstand hold")).getByRole("button", { name: "Save set 1" }));
+        fireEvent.change(number("Seconds"), { target: { value: "9999" } });
+        press("Save set 1");
         await waitFor(() => expect(hint()).toBe("Seconds must be a whole number from 1 to 3600"));
     });
 
-    it("skips a Movement, shows it as skipped, and returns it with the same glyph", async () => {
+    it("skips a Movement, shows it as skipped, and returns it with the same glyph (R15)", async () => {
         await renderWindow(training());
         mocked.startBodySession.mockResolvedValue(session([]));
         mocked.skipBodyMovement.mockResolvedValue(session([]));
-        fireEvent.click(within(row("Handstand hold")).getByRole("button", { name: "Skip" }));
+        press("Skip");
         await waitFor(() => expect(mocked.skipBodyMovement).toHaveBeenCalledWith("sess1", "hold", true));
 
         cleanup();
@@ -392,17 +490,17 @@ describe("Today: the Session (body-plan R19–R25, body-today R15)", () => {
         await renderWindow(training({ sessions: [session([], { skipped: ["hold"] })] }));
         expect(within(row("Handstand hold")).getByTestId("state").textContent).toBe("⊘");
         expect(mark("movement-Handstand hold")).toBe("⊘");
-        expect(row("Deep push-up").getAttribute("data-open")).toBe("true");
-        fireEvent.click(within(row("Handstand hold")).getByRole("button", { expanded: false }));
+        expect(selected()).toEqual(["movement-Deep push-up"]);
+        fireEvent.click(row("Handstand hold"));
         expect(hint()).toBe("Returns Handstand hold to the Session.");
-        fireEvent.click(within(row("Handstand hold")).getByRole("button", { name: "Undo skip" }));
+        press("Undo skip");
         await waitFor(() => expect(mocked.skipBodyMovement).toHaveBeenCalledWith("sess1", "hold", false));
     });
 
     it("offers Skip only before the first Set", async () => {
         await renderWindow(training({ sessions: [session([holdSets[0]])] }));
-        expect(row("Handstand hold").getAttribute("data-open")).toBe("true");
-        expect(within(row("Handstand hold")).queryByRole("button", { name: "Skip" })).toBeNull();
+        expect(selected()).toEqual(["movement-Handstand hold"]);
+        expect(within(pane()).queryByRole("button", { name: "Skip" })).toBeNull();
     });
 
     it("draws a Movement's state, its Rule and its Sets as glyphs", async () => {
@@ -419,13 +517,22 @@ describe("Today: the Session (body-plan R19–R25, body-today R15)", () => {
         expect(within(row("Handstand hold")).getByLabelText("No failure").textContent).toBe("△");
     });
 
-    it("saves the open Set with the Enter key", async () => {
+    it("saves the Set with the Enter key (R14)", async () => {
         await renderWindow(training({ sessions: [session([])] }));
         mocked.addBodySet.mockResolvedValue(session([]));
-        const hold = row("Handstand hold");
-        type(hold, "Seconds", "31");
-        fireEvent.submit(within(hold).getByLabelText("Seconds").closest("form")!);
+        fireEvent.change(number("Seconds"), { target: { value: "31" } });
+        fireEvent.submit(number("Seconds").closest("form")!);
         await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "hold", { seconds: 31 }));
+    });
+
+    it("shows a second field for the load of a loaded Movement (R13)", async () => {
+        const data = training({ sessions: [session(holdSets)] });
+        data.movements = data.movements.map(m => (m._id === "push" ? { ...m, loaded: true } : m));
+        await renderWindow(data);
+        mocked.addBodySet.mockResolvedValue(session([]));
+        fireEvent.change(within(pane()).getByLabelText("Load lb"), { target: { value: "35" } });
+        press("Save set 1");
+        await waitFor(() => expect(mocked.addBodySet).toHaveBeenCalledWith("sess1", "push", { full: 9, load: 35 }));
     });
 });
 
@@ -608,7 +715,7 @@ describe("Plan (R10, R11)", () => {
         mocked.updateBodyWorkout.mockResolvedValue({});
         show("upperB");
         const add = within(screen.getByTestId("workout-upperB")).getByRole("button", { name: "Add movement" });
-        expect(add.textContent).toBe("＋");
+        expect(add.textContent).toBe("+");
         fireEvent.click(add);
         const dialog = await screen.findByRole("dialog");
         fireEvent.change(within(dialog).getByLabelText("Existing movement"), { target: { value: "spare" } });

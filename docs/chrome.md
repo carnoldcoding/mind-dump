@@ -143,6 +143,24 @@ Hint copy **never counts**. A line reporting how many Critique sections were
 written would put a figure on a Critique that `CONTEXT.md` is explicit should
 not carry one.
 
+### List and pane
+
+A list of rows with one shape at the left, and a pane at the right that shows
+the selected row. The reference draws its menus this way. Body's Today view is
+the user ([`TodayTab`](../src/pages/System/components/Body/TodayTab.tsx)).
+
+- **The list only selects.** A row is one line with one height in each state.
+  It never opens, so nothing moves when the selection does.
+- **The pane holds the fields** of the selected row, and its controls. They are
+  in one place for each row, which is what makes them fast to hit.
+- The pane's content has a bounded width. A control is never a screen away
+  from the number it acts on.
+- Below 768px the pane goes under the list. The list scrolls; the pane and the
+  hint bar stay at the bottom of the frame, where a thumb is.
+- A field takes the keyboard on its own only where there is a mouse
+  (`finePointer` in [`today.ts`](../src/pages/System/components/Body/today.ts)).
+  On a phone that would open the keyboard over the list.
+
 ### Controls
 
 A title strip holds its title and nothing else. A button in a title strip
@@ -189,7 +207,8 @@ state is a glyph and not a word, and each glyph has one meaning in each view.
 | `▲▲` | Rule: past failure |
 | `▲` | Rule: failure only |
 | `△` | Rule: no failure |
-| `＋` | add |
+| `+` | add a row to a list (Plan); one more of the number beside it (Today) |
+| `−` | one less of the number beside it |
 | `×` | remove |
 | `☰` | drag (the shared `DragHandle`) |
 
