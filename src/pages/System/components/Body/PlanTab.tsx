@@ -1,74 +1,87 @@
 import { useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import { backend } from "../../../../api/backend";
 import { TextField } from "../../../../components/common/TextField";
 import { DragHandle, SortableList } from "../../../../components/common/Sortable";
 import { useSortableRow } from "../../../../hooks/useSortableRow";
-import { useRetained } from "../../../../hooks/useRetained";
-import { ShadowBox } from "../../../../components/common/ShadowBox";
 import { ToolbarRow } from "../../../../components/common/ToolbarRow";
-import { EditorModal, ErrorLine, primaryBtn, secondaryBtn, smallBtn } from "../Finances/ui";
 import { errorText } from "../Finances/errorText";
 import { NumberField, Select, Toggle } from "./fields";
+import { Frame, ListRow, PaneTitle, Stepper } from "./frame";
+import { BOUND, EYEBROW, rowClass } from "./frameStyle";
 import { GLYPH, RULE_GLYPH } from "./glyphs";
-import { AddRow, Chip, GlyphButton } from "./marks";
+import { Chip, GlyphButton } from "./marks";
 import { addSlot, afterMove, nextWorkout, pairEdge, removeSlot, replaceSlot, togglePair } from "./plan";
-import { RULE_LABEL, WEEKDAYS, describeRoutineItem } from "./text";
+import { RULE_LABEL, WEEKDAYS, describeRoutineItem, weekdayName } from "./text";
 import type { Ready } from "./TodayTab";
 import type { Movement, MovementInput, MovementKind, Phase, RoutineItem, Rule, Slot, Workout, WorkoutKey } from "../../../../types/body";
 
 type Props = { data: Ready; onChanged: () => Promise<void> | void };
 
-// Which editor is open. One at a time, so modals never stack.
-type Editing =
-    | { kind: "slot"; workout: Workout; index: number }
-    | { kind: "add"; workout: Workout }
-    | { kind: "routine"; index: number | null }
-    | null;
-
-// What the Plan view can show. One at a time (body-ui R18): seven lists with
-// the same shape, stacked, were a long scroll for a view opened to change one.
+// What the Plan view can show. One list at a time (body-ui R18): seven lists
+// with the same shape, stacked, were a long scroll for a view opened to change
+// one.
 type Shown = WorkoutKey | "routine" | "phase" | "unused";
 
+// The rows of a list that are not a Movement or a stretch.
+const ADD = "add";
+const DAY = "day";
+const PHASE = "phase";
+const slotId = (movementId: string) => `slot:${movementId}`;
+const stretchId = (index: number) => `stretch:${index}`;
+const unusedId = (movementId: string) => `unused:${movementId}`;
+
 // Every edit to the Plan happens here (body-plan R10), away from the screen
-// used each day. A Workout's Movements, their order and their Pairs are one
-// list, and each change writes that whole list.
+// used each day, in the structure of that screen (body-panes R1–R15): chips
+// choose a list, the list selects a row, and the pane holds the editor of that
+// row. There is no modal: a modal covers the list, and a pane keeps it in
+// view. A Workout's Movements, their order and their Pairs are one list, and
+// each change writes that whole list.
 const PlanTab = ({ data, onChanged }: Props) => {
     const { plan, movements, summary } = data;
-    const [editing, setEditing] = useState<Editing>(null);
-    // Bumped on each open, so an editor remounts with fresh fields.
-    const [openCount, setOpenCount] = useState(0);
     const [error, setError] = useState("");
-
-    const open = (next: NonNullable<Editing>) => { setOpenCount(n => n + 1); setEditing(next); };
-    const close = () => setEditing(null);
-
-    const shownSlot = useRetained(editing?.kind === "slot" ? editing : null);
-    const shownAdd = useRetained(editing?.kind === "add" ? editing : null);
-    const shownRoutine = useRetained(editing?.kind === "routine" ? editing : null);
-
-    const run = async (action: () => Promise<unknown>) => {
-        setError("");
-        try {
-            await action();
-            await onChanged();
-            return true;
-        } catch (e) {
-            setError(errorText(e));
-            return false;
-        }
-    };
+    // Bumped by each write, so the pane starts again from the saved values.
+    const [writes, setWrites] = useState(0);
 
     const inPlan = new Set(plan.workouts.flatMap(w => w.slots.map(s => s.movementId)));
     const unused = movements.filter(m => !inPlan.has(m._id));
     const byWeekday = [...plan.workouts].sort((a, b) => a.weekday - b.weekday);
+    const byId = new Map(movements.map(m => [m._id, m]));
 
     // Opens on the Workout that is due next: the one most likely to be changed.
-    const [picked, setPicked] = useState<Shown | null>(null);
+    const [pickedList, setPickedList] = useState<Shown | null>(null);
     const fallback: Shown = nextWorkout(plan.workouts, summary.today.weekday, summary.today.dueDone)?.key ?? "routine";
     // The last unused Movement can be deleted while its list is open.
-    const shown: Shown = picked === "unused" && unused.length === 0 ? fallback : picked ?? fallback;
+    const shown: Shown = pickedList === "unused" && unused.length === 0 ? fallback : pickedList ?? fallback;
     const workout = plan.workouts.find(w => w.key === shown) ?? null;
+    const items = plan.routine.items;
+
+    // The rows of the shown list, and the one a list opens on: its first
+    // Movement or stretch (R14), or the row that adds one when it has none.
+    const rowIds: string[] = workout ? [ADD, DAY, ...workout.slots.map(s => slotId(s.movementId))]
+        : shown === "routine" ? [ADD, ...items.map((_, i) => stretchId(i))]
+        : shown === "phase" ? [PHASE]
+        : unused.map(m => unusedId(m._id));
+    const first = workout ? rowIds[2] ?? ADD : shown === "routine" ? rowIds[1] ?? ADD : rowIds[0] ?? null;
+    const [pickedRow, setPickedRow] = useState<string | null>(null);
+    const selected = pickedRow !== null && rowIds.includes(pickedRow) ? pickedRow : first;
+
+    const show = (list: Shown) => { setError(""); setPickedRow(null); setPickedList(list); };
+    const select = (id: string) => { setError(""); setPickedRow(id); };
+
+    // Every write goes through here. `then` is the row to select after it: the
+    // same row after a save, the row above after a removal (R13).
+    const run = async (action: () => Promise<unknown>, then?: string | null) => {
+        setError("");
+        try {
+            await action();
+            await onChanged();
+            setWrites(n => n + 1);
+            if (then !== undefined) setPickedRow(then);
+        } catch (e) {
+            setError(errorText(e));
+        }
+    };
 
     const entries: { id: Shown; label: string }[] = [
         ...byWeekday.map(w => ({ id: w.key as Shown, label: w.name })),
@@ -77,148 +90,200 @@ const PlanTab = ({ data, onChanged }: Props) => {
         ...(unused.length > 0 ? [{ id: "unused" as Shown, label: "Unused" }] : []),
     ];
 
+    const slotIndex = workout ? workout.slots.findIndex(s => slotId(s.movementId) === selected) : -1;
+    const slotMovement = workout && slotIndex >= 0 ? byId.get(workout.slots[slotIndex].movementId) : undefined;
+    const stretchIndex = shown === "routine" && selected?.startsWith("stretch:") ? Number(selected.slice(8)) : -1;
+    const unusedMovement = shown === "unused" ? unused.find(m => unusedId(m._id) === selected) : undefined;
+
+    const hint = (): string => {
+        if (workout && selected === ADD) return `Adds a Movement to ${workout.name}.`;
+        if (workout && selected === DAY) return `Moves ${workout.name} to another weekday.`;
+        if (slotMovement) return `Changes ${slotMovement.name} in each Workout that uses it.`;
+        if (shown === "routine" && selected === ADD) return "Adds a stretch to the morning stretches.";
+        if (stretchIndex >= 0 && items[stretchIndex]) return `Changes ${items[stretchIndex].name}.`;
+        if (selected === PHASE) return "Sets the Phase and its two weights.";
+        if (unusedMovement) return `Changes ${unusedMovement.name}, or deletes it.`;
+        return "";
+    };
+
     return (
-        <div className="flex flex-col gap-4">
-            {/* Narrow, so a name and its value sit near each other (body-flow R25). */}
-            <ShadowBox as="section" label="Plan" wrapperClassName="w-full max-w-[40rem]" className="bg-nier-100-lighter border border-nier-150">
+        <Frame
+            id="plan"
+            label="Plan"
+            title="Plan"
+            aside={plan.phase.name}
+            selected={selected}
+            paneKey={`${shown}:${selected}:${writes}`}
+            hint={hint()}
+            error={error}
+            wide
+            toolbar={
                 <ToolbarRow>
                     {entries.map(e => (
-                        <Chip key={e.id} testId={`plan-${e.id}`} active={shown === e.id} onClick={() => setPicked(e.id)}>{e.label}</Chip>
+                        <Chip key={e.id} testId={`plan-${e.id}`} active={shown === e.id} onClick={() => show(e.id)}>{e.label}</Chip>
                     ))}
                 </ToolbarRow>
-
-                {workout && (
-                    <WorkoutList
-                        key={workout.key}
-                        workout={workout}
-                        movements={movements}
-                        onWeekday={weekday => run(() => backend.updateBodyWorkout(workout.key, { weekday }))}
-                        onMove={(from, to) => run(() => backend.updateBodyWorkout(workout.key, { slots: afterMove(workout.slots, from, to) }))}
-                        onOpenSlot={index => open({ kind: "slot", workout, index })}
-                        onAdd={() => open({ kind: "add", workout })}
-                    />
-                )}
-
-                {shown === "routine" && (
-                    <div data-testid="plan-list-routine">
-                        <AddRow label="New stretch" onClick={() => open({ kind: "routine", index: null })} first />
-                        {plan.routine.items.map((item, i) => (
-                            <button
-                                key={`${item.name}-${i}`}
-                                onClick={() => open({ kind: "routine", index: i })}
-                                className="w-full flex items-center justify-between gap-3 px-3 min-h-11 border-b border-nier-150/30 last:border-0 hover:bg-nier-150/30 text-left cursor-pointer transition-colors"
-                            >
-                                <span className="text-label text-nier-text-dark truncate">{item.name}</span>
-                                <span className="text-label text-nier-text-dark/60 shrink-0 tabular-nums">{describeRoutineItem(item)}</span>
-                            </button>
-                        ))}
-                    </div>
-                )}
-
-                {shown === "phase" && (
-                    <PhaseForm key={`${plan.phase.name}:${plan.phase.startLb}:${plan.phase.targetLb}`} phase={plan.phase} onSave={phase => run(() => backend.updateBodyPhase(phase))} />
-                )}
-
-                {shown === "unused" && unused.map(m => (
-                    <div key={m._id} data-testid={`unused-${m.name}`} className="flex items-center justify-between gap-3 pl-3 border-b border-nier-150/30 last:border-0">
-                        <span className="text-label text-nier-text-dark/70 truncate">{m.name}</span>
-                        {/* A Movement with Sets is history; the server refuses to delete it (body-plan D15). */}
-                        <GlyphButton glyph={GLYPH.remove} label={`Delete ${m.name}`} onClick={() => run(() => backend.removeBodyMovement(m._id))} bare />
-                    </div>
-                ))}
-
-                {error && <div className="px-3 py-2"><ErrorLine error={error} /></div>}
-            </ShadowBox>
-
-            {shownSlot && (
-                <SlotModal
-                    key={`slot-${openCount}`}
-                    open={editing?.kind === "slot"}
-                    workout={shownSlot.workout}
-                    index={shownSlot.index}
-                    data={data}
-                    onClose={close}
-                    onChanged={onChanged}
-                />
-            )}
-            {shownAdd && (
-                <AddSlotModal
-                    key={`add-${openCount}`}
-                    open={editing?.kind === "add"}
-                    workout={shownAdd.workout}
-                    movements={movements}
-                    onClose={close}
-                    onChanged={onChanged}
-                />
-            )}
-            {shownRoutine && (
-                <RoutineModal
-                    key={`routine-${openCount}`}
-                    open={editing?.kind === "routine"}
-                    items={plan.routine.items}
-                    index={shownRoutine.index}
-                    onClose={close}
-                    onChanged={onChanged}
-                />
-            )}
-        </div>
-    );
-};
-
-const WorkoutList = ({ workout, movements, onWeekday, onMove, onOpenSlot, onAdd }: {
-    workout: Workout;
-    movements: Movement[];
-    onWeekday: (weekday: number) => void;
-    onMove: (from: number, to: number) => void;
-    onOpenSlot: (index: number) => void;
-    onAdd: () => void;
-}) => {
-    const byId = new Map(movements.map(m => [m._id, m]));
-    return (
-        <div data-testid={`workout-${workout.key}`}>
-            {/* The weekday changes the Plan, so it sits with the Workout it moves, not in the toolbar. */}
-            <div className="px-3 py-3 border-b border-nier-150/30 sm:w-64">
-                <Select
-                    label={`${workout.name} weekday`}
-                    value={String(workout.weekday)}
-                    onChange={v => onWeekday(Number(v))}
-                    options={WEEKDAYS.map((name, i) => ({ value: String(i + 1), label: name }))}
-                />
-            </div>
-            <SortableList onMove={onMove}>
-                {workout.slots.map((slot, i) => {
-                    const movement = byId.get(slot.movementId);
-                    if (!movement) return null;
-                    return <SlotRow key={slot.movementId} edge={pairEdge(workout.slots, i)} movement={movement} index={i} onOpen={() => onOpenSlot(i)} />;
-                })}
-            </SortableList>
-            <AddRow label="Add movement" onClick={onAdd} />
-        </div>
+            }
+            list={
+                <>
+                    {workout && (
+                        <div data-testid={`workout-${workout.key}`}>
+                            <ListRow id={ADD} name="" label="Add movement" glyph={GLYPH.add} selected={selected === ADD} onSelect={select} />
+                            <ListRow id={DAY} name="Day" glyph="" value={weekdayName(workout.weekday)} selected={selected === DAY} onSelect={select} />
+                            <SortableList onMove={(from, to) => run(() => backend.updateBodyWorkout(workout.key, { slots: afterMove(workout.slots, from, to) }))}>
+                                {workout.slots.map((slot, i) => {
+                                    const movement = byId.get(slot.movementId);
+                                    if (!movement) return null;
+                                    return (
+                                        <SlotRow
+                                            key={slot.movementId}
+                                            edge={pairEdge(workout.slots, i)}
+                                            movement={movement}
+                                            index={i}
+                                            selected={selected === slotId(movement._id)}
+                                            onSelect={() => select(slotId(movement._id))}
+                                        />
+                                    );
+                                })}
+                            </SortableList>
+                        </div>
+                    )}
+                    {shown === "routine" && (
+                        <div data-testid="plan-list-routine">
+                            <ListRow id={ADD} name="" label="New stretch" glyph={GLYPH.add} selected={selected === ADD} onSelect={select} />
+                            {items.map((item, i) => (
+                                <ListRow
+                                    key={`${item.name}-${i}`}
+                                    id={stretchId(i)}
+                                    testId={`stretch-${item.name}`}
+                                    name={item.name}
+                                    glyph=""
+                                    value={describeRoutineItem(item)}
+                                    selected={selected === stretchId(i)}
+                                    onSelect={select}
+                                />
+                            ))}
+                        </div>
+                    )}
+                    {shown === "phase" && (
+                        <ListRow id={PHASE} name={plan.phase.name} glyph="" value={`${plan.phase.startLb} → ${plan.phase.targetLb}`} selected onSelect={select} />
+                    )}
+                    {shown === "unused" && unused.map(m => (
+                        <ListRow
+                            key={m._id}
+                            id={unusedId(m._id)}
+                            testId={`unused-${m.name}`}
+                            name={m.name}
+                            glyph=""
+                            value={`${m.sets} × ${RULE_GLYPH[m.rule]}`}
+                            selected={selected === unusedId(m._id)}
+                            onSelect={select}
+                        />
+                    ))}
+                </>
+            }
+            pane={
+                <div className={BOUND}>
+                    {workout && selected === ADD && (
+                        <AddPane
+                            workout={workout}
+                            movements={movements}
+                            onAdd={movementId => run(async () => {
+                                const id = await movementId();
+                                await backend.updateBodyWorkout(workout.key, { slots: addSlot(workout.slots, id) });
+                                setPickedRow(slotId(id));
+                            })}
+                            onError={setError}
+                        />
+                    )}
+                    {workout && selected === DAY && (
+                        <DayPane
+                            workout={workout}
+                            workouts={plan.workouts}
+                            onPick={weekday => run(() => backend.updateBodyWorkout(workout.key, { weekday }))}
+                        />
+                    )}
+                    {workout && slotMovement && (
+                        <SlotPane
+                            workout={workout}
+                            index={slotIndex}
+                            movement={slotMovement}
+                            data={data}
+                            onSave={input => run(() => backend.updateBodyMovement(slotMovement._id, input))}
+                            onSlots={(slots, then) => run(() => backend.updateBodyWorkout(workout.key, { slots }), then)}
+                            onError={setError}
+                        />
+                    )}
+                    {shown === "routine" && (selected === ADD || items[stretchIndex]) && (
+                        <StretchPane
+                            item={items[stretchIndex]}
+                            onSave={next => run(
+                                () => backend.updateBodyRoutine(stretchIndex >= 0 ? items.map((it, i) => (i === stretchIndex ? next : it)) : [...items, next]),
+                                stretchIndex >= 0 ? undefined : stretchId(items.length),
+                            )}
+                            onRemove={() => run(
+                                () => backend.updateBodyRoutine(items.filter((_, i) => i !== stretchIndex)),
+                                stretchIndex > 0 ? stretchId(stretchIndex - 1) : null,
+                            )}
+                            onError={setError}
+                        />
+                    )}
+                    {selected === PHASE && <PhasePane phase={plan.phase} onSave={phase => run(() => backend.updateBodyPhase(phase))} onError={setError} />}
+                    {unusedMovement && (
+                        <UnusedPane
+                            movement={unusedMovement}
+                            onSave={input => run(() => backend.updateBodyMovement(unusedMovement._id, input))}
+                            // A Movement with Sets is history; the server refuses to delete it (body-plan D15).
+                            onDelete={() => run(() => backend.removeBodyMovement(unusedMovement._id), null)}
+                            onError={setError}
+                        />
+                    )}
+                </div>
+            }
+        />
     );
 };
 
 // The two rows of a Pair end in the two halves of one bracket.
 const BRACKET = { first: "┐", second: "┘" } as const;
 
-const SlotRow = ({ edge, movement, index, onOpen }: { edge: "first" | "second" | null; movement: Movement; index: number; onOpen: () => void }) => {
+// A Movement of a Workout. Not the shared ListRow: it is a drag target with a
+// handle inside it, and a button cannot hold a button.
+const SlotRow = ({ edge, movement, index, selected, onSelect }: {
+    edge: "first" | "second" | null;
+    movement: Movement;
+    index: number;
+    selected: boolean;
+    onSelect: () => void;
+}) => {
     const { ref, handleRef, isDragging } = useSortableRow(movement._id, index);
     return (
         <div
             ref={ref}
-            onClick={onOpen}
+            onClick={onSelect}
             data-testid={`slot-${movement.name}`}
             data-pair={edge ?? undefined}
-            className={`flex items-center gap-1 border-b border-nier-150/30 hover:bg-nier-150/30 cursor-pointer transition-colors ${isDragging ? "bg-nier-150/50" : ""}`}
+            data-selected={selected}
+            aria-current={selected ? "true" : undefined}
+            className={`${rowClass(selected)} gap-1 px-0 pr-3 ${isDragging ? "bg-nier-150/50" : ""}`}
         >
-            <DragHandle handleRef={handleRef} label={`Reorder ${movement.name}`} className="text-nier-text-dark/50" />
-            <span className="flex-1 min-w-0 text-label text-nier-text-dark truncate">{movement.name}</span>
-            <span title={RULE_LABEL[movement.rule]} className="text-label text-nier-text-dark/70 shrink-0 tabular-nums">
+            <DragHandle handleRef={handleRef} label={`Reorder ${movement.name}`} className={selected ? "text-nier-text-light/60" : "text-nier-text-dark/50"} />
+            <span className="flex-1 min-w-0 text-body truncate">{movement.name}</span>
+            <span title={RULE_LABEL[movement.rule]} className="text-label shrink-0 tabular-nums opacity-80">
                 {movement.sets} × {RULE_GLYPH[movement.rule]}
             </span>
-            <span aria-label={edge ? "Pair" : undefined} className="w-6 shrink-0 text-body text-nier-text-dark/50 leading-none">{edge ? BRACKET[edge] : ""}</span>
+            <span aria-label={edge ? "Pair" : undefined} className="w-4 shrink-0 text-body leading-none opacity-60">{edge ? BRACKET[edge] : ""}</span>
         </div>
     );
 };
+
+/** A line of a pane: what the control is for, then the control. */
+const Line = ({ label, children }: { label: string; children: ReactNode }) => (
+    <div className="flex items-center gap-3">
+        <span className={`${EYEBROW} w-20 shrink-0`}>{label}</span>
+        {children}
+    </div>
+);
 
 type MovementDraft = { name: string; kind: MovementKind; rule: Rule; sets: string; loaded: boolean };
 
@@ -253,7 +318,9 @@ const MovementFields = ({ draft, onChange }: { draft: MovementDraft; onChange: (
                 onChange={rule => onChange({ ...draft, rule: rule as Rule })}
                 options={rules.map(r => ({ value: r, label: RULE_LABEL[r] }))}
             />
-            <NumberField label="Sets" value={draft.sets} onChange={sets => onChange({ ...draft, sets })} />
+            <Line label="Sets">
+                <Stepper label="Sets" value={draft.sets} onChange={sets => onChange({ ...draft, sets })} less="One set less" more="One set more" focus={false} />
+            </Line>
             <Toggle
                 label="Load"
                 value={draft.loaded ? "yes" : "no"}
@@ -267,57 +334,54 @@ const MovementFields = ({ draft, onChange }: { draft: MovementDraft; onChange: (
 // One Movement in one Workout. The top half edits the Movement record, which
 // every Workout that uses it shares; the bottom half changes only this
 // Workout's list.
-const SlotModal = ({ open, workout, index, data, onClose, onChanged }: {
-    open: boolean;
+const SlotPane = ({ workout, index, movement, data, onSave, onSlots, onError }: {
     workout: Workout;
     index: number;
+    movement: Movement;
     data: Ready;
-    onClose: () => void;
-    onChanged: () => Promise<void> | void;
+    onSave: (input: MovementInput) => void;
+    /** Write the Workout's list; `then` is the row to select after it. */
+    onSlots: (slots: Slot[], then?: string | null) => void;
+    onError: (reason: string) => void;
 }) => {
     const slot = workout.slots[index];
-    const movement = data.movements.find(m => m._id === slot?.movementId);
     const [draft, setDraft] = useState<MovementDraft>(draftOf(movement));
     const [replacement, setReplacement] = useState("");
-    const [error, setError] = useState("");
-
-    if (!slot || !movement) return null;
 
     const sharedWith = data.plan.workouts.filter(w => w.key !== workout.key && w.slots.some(s => s.movementId === movement._id));
     const candidates = data.movements.filter(m => !workout.slots.some(s => s.movementId === m._id));
     const below = workout.slots[index + 1];
     const canPair = slot.pair != null || (below != null && below.pair == null);
+    const above = workout.slots[index - 1];
 
-    const run = async (action: () => Promise<unknown>) => {
-        setError("");
-        try {
-            await action();
-            await onChanged();
-            onClose();
-        } catch (e) { setError(errorText(e)); }
-    };
-
-    const save = () => {
+    const save = (e: FormEvent) => {
+        e.preventDefault();
         const { input, error: reason } = inputOf(draft);
-        if (!input) { setError(reason ?? "Check the fields"); return; }
-        run(() => backend.updateBodyMovement(movement._id, input));
+        if (!input) { onError(reason ?? "Check the fields"); return; }
+        onSave(input);
     };
-    const writeSlots = (slots: Slot[]) => run(() => backend.updateBodyWorkout(workout.key, { slots }));
 
     return (
-        <EditorModal open={open} title={movement.name} onClose={onClose}>
-            <MovementFields draft={draft} onChange={setDraft} />
-            {sharedWith.length > 0 && (
-                <p className="text-label text-nier-text-dark/60">
-                    Also in {sharedWith.map(w => w.name).join(", ")}. These fields change it there too.
-                </p>
-            )}
-            <button onClick={save} className={primaryBtn}>Save</button>
+        <>
+            <PaneTitle name={movement.name} at={sharedWith.length > 0 ? `Also in ${sharedWith.map(w => w.name).join(", ")}` : undefined} />
+            <form onSubmit={save} className="flex flex-col gap-3">
+                <MovementFields draft={draft} onChange={setDraft} />
+                <div><GlyphButton glyph={GLYPH.save} label="Save movement" type="submit" solid /></div>
+            </form>
 
-            <div className="border-t border-nier-150/40 pt-4 flex flex-col gap-3">
-                <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">In {workout.name}</span>
+            <div className="border-t border-nier-150/40 pt-3 flex flex-col gap-3">
+                <span className={EYEBROW}>In {workout.name}</span>
+                <Line label="Pair">
+                    <GlyphButton
+                        glyph={slot.pair != null ? BRACKET.second : BRACKET.first}
+                        label={slot.pair != null ? "Clear pair" : "Pair with next"}
+                        pressed={slot.pair != null}
+                        disabled={!canPair}
+                        onClick={() => onSlots(togglePair(workout.slots, index))}
+                    />
+                </Line>
                 {candidates.length > 0 && (
-                    <div className="flex gap-2">
+                    <Line label="Replace">
                         <Select
                             label="Replace with"
                             value={replacement}
@@ -325,57 +389,82 @@ const SlotModal = ({ open, workout, index, data, onClose, onChanged }: {
                             placeholder="Replace with…"
                             options={candidates.map(m => ({ value: m._id, label: m.name }))}
                         />
-                        <button onClick={() => replacement && writeSlots(replaceSlot(workout.slots, index, replacement))} disabled={!replacement} className={secondaryBtn}>
-                            Replace
-                        </button>
-                    </div>
+                        <GlyphButton
+                            glyph={GLYPH.save}
+                            label="Replace"
+                            disabled={!replacement}
+                            onClick={() => onSlots(replaceSlot(workout.slots, index, replacement), slotId(replacement))}
+                        />
+                    </Line>
                 )}
-                <div className="flex flex-wrap gap-2">
-                    <button onClick={() => writeSlots(togglePair(workout.slots, index))} disabled={!canPair} className={smallBtn}>
-                        {slot.pair != null ? "Clear pair" : "Pair with next"}
-                    </button>
-                    <button onClick={() => writeSlots(removeSlot(workout.slots, index))} className={smallBtn}>
-                        Remove from {workout.name}
-                    </button>
-                </div>
+                <Line label="Remove">
+                    <GlyphButton
+                        glyph={GLYPH.remove}
+                        label={`Remove from ${workout.name}`}
+                        onClick={() => onSlots(removeSlot(workout.slots, index), above ? slotId(above.movementId) : null)}
+                    />
+                </Line>
             </div>
-            <ErrorLine error={error} />
-        </EditorModal>
+        </>
     );
 };
 
-const AddSlotModal = ({ open, workout, movements, onClose, onChanged }: {
-    open: boolean;
+// The weekday of a Workout: seven days, the Workout's own inverted. A day
+// that another Workout uses is dimmed and keeps its place (docs/chrome.md,
+// "Dimmed"): two Workouts cannot share a day, and the dimmed day says whose it is.
+const DayPane = ({ workout, workouts, onPick }: { workout: Workout; workouts: Workout[]; onPick: (weekday: number) => void }) => (
+    <>
+        <PaneTitle name={workout.name} at="Day" />
+        <div role="group" aria-label={`${workout.name} weekday`} className="flex flex-wrap gap-1">
+            {WEEKDAYS.map((name, i) => {
+                const weekday = i + 1;
+                const own = workout.weekday === weekday;
+                const taken = workouts.find(w => w.key !== workout.key && w.weekday === weekday);
+                return (
+                    <button
+                        key={name}
+                        type="button"
+                        aria-label={name}
+                        aria-pressed={own}
+                        title={taken ? `${name}: ${taken.name}` : name}
+                        disabled={Boolean(taken)}
+                        onClick={() => { if (!own) onPick(weekday); }}
+                        className={`w-12 h-12 text-label uppercase tracking-widest border border-nier-dark cursor-pointer transition-colors disabled:opacity-35 disabled:cursor-default ${
+                            own ? "bg-nier-dark text-nier-text-light" : "text-nier-text-dark hover:bg-nier-150/50"
+                        }`}
+                    >
+                        {name.slice(0, 3)}
+                    </button>
+                );
+            })}
+        </div>
+    </>
+);
+
+const AddPane = ({ workout, movements, onAdd, onError }: {
     workout: Workout;
     movements: Movement[];
-    onClose: () => void;
-    onChanged: () => Promise<void> | void;
+    /** Adds the Movement whose id the callback gives; a new one is created first. */
+    onAdd: (movementId: () => Promise<string>) => void;
+    onError: (reason: string) => void;
 }) => {
     const candidates = movements.filter(m => !workout.slots.some(s => s.movementId === m._id));
     const [existing, setExisting] = useState("");
     const [draft, setDraft] = useState<MovementDraft>(draftOf());
-    const [error, setError] = useState("");
 
-    const add = async (movementId: () => Promise<string>) => {
-        setError("");
-        try {
-            await backend.updateBodyWorkout(workout.key, { slots: addSlot(workout.slots, await movementId()) });
-            await onChanged();
-            onClose();
-        } catch (e) { setError(errorText(e)); }
-    };
-
-    const create = () => {
+    const create = (e: FormEvent) => {
+        e.preventDefault();
         const { input, error: reason } = inputOf(draft);
-        if (!input) { setError(reason ?? "Check the fields"); return; }
-        add(async () => (await backend.addBodyMovement(input))._id);
+        if (!input) { onError(reason ?? "Check the fields"); return; }
+        onAdd(async () => (await backend.addBodyMovement(input))._id);
     };
 
     return (
-        <EditorModal open={open} title={`Add to ${workout.name}`} onClose={onClose}>
+        <>
+            <PaneTitle name={`Add to ${workout.name}`} />
             {candidates.length > 0 && (
                 <>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-3">
                         <Select
                             label="Existing movement"
                             value={existing}
@@ -383,101 +472,118 @@ const AddSlotModal = ({ open, workout, movements, onClose, onChanged }: {
                             placeholder="An existing movement…"
                             options={candidates.map(m => ({ value: m._id, label: m.name }))}
                         />
-                        <button onClick={() => existing && add(async () => existing)} disabled={!existing} className={secondaryBtn}>Add</button>
+                        <GlyphButton glyph={GLYPH.save} label="Add" solid disabled={!existing} onClick={() => onAdd(async () => existing)} />
                     </div>
-                    <span className="text-eyebrow uppercase tracking-widest text-nier-text-dark/50">Or a new one</span>
+                    <span className={EYEBROW}>Or a new one</span>
                 </>
             )}
-            <MovementFields draft={draft} onChange={setDraft} />
-            <button onClick={create} className={primaryBtn}>Create and add</button>
-            <ErrorLine error={error} />
-        </EditorModal>
+            <form onSubmit={create} className="flex flex-col gap-3">
+                <MovementFields draft={draft} onChange={setDraft} />
+                <div><GlyphButton glyph={GLYPH.save} label="Create and add" type="submit" solid /></div>
+            </form>
+        </>
     );
 };
 
-const RoutineModal = ({ open, items, index, onClose, onChanged }: {
-    open: boolean;
-    items: RoutineItem[];
-    /** The item being edited, or null for a new one. */
-    index: number | null;
-    onClose: () => void;
-    onChanged: () => Promise<void> | void;
+/** One of the Stretches, or a new one when `item` is absent. */
+const StretchPane = ({ item, onSave, onRemove, onError }: {
+    item: RoutineItem | undefined;
+    onSave: (item: RoutineItem) => void;
+    onRemove: () => void;
+    onError: (reason: string) => void;
 }) => {
-    const item = index != null ? items[index] : undefined;
     const [name, setName] = useState(item?.name ?? "");
     const [sets, setSets] = useState(String(item?.sets ?? 2));
     const [unit, setUnit] = useState<"seconds" | "reps">(item?.reps != null ? "reps" : "seconds");
     const [amount, setAmount] = useState(String(item?.seconds ?? item?.reps ?? 30));
-    const [error, setError] = useState("");
 
-    const write = async (next: RoutineItem[]) => {
-        setError("");
-        try {
-            await backend.updateBodyRoutine(next);
-            await onChanged();
-            onClose();
-        } catch (e) { setError(errorText(e)); }
-    };
-
-    const save = () => {
+    const save = (e: FormEvent) => {
+        e.preventDefault();
         const n = Number(sets.trim());
         const a = Number(amount.trim());
-        if (!name.trim()) { setError("Enter a name"); return; }
-        if (!Number.isInteger(n) || n < 1 || !Number.isInteger(a) || a < 1) { setError("Sets and the amount are whole numbers"); return; }
-        const next: RoutineItem = { name: name.trim(), sets: n, [unit]: a };
-        write(index != null ? items.map((it, i) => (i === index ? next : it)) : [...items, next]);
+        if (!name.trim()) { onError("Enter a name"); return; }
+        if (!Number.isInteger(n) || n < 1 || !Number.isInteger(a) || a < 1) { onError("Sets and the amount are whole numbers"); return; }
+        onSave({ name: name.trim(), sets: n, [unit]: a } as RoutineItem);
     };
 
     return (
-        <EditorModal open={open} title={item ? item.name : "New stretch"} onClose={onClose}>
-            <TextField label="Name" value={name} onChange={setName} />
-            <NumberField label="Sets" value={sets} onChange={setSets} />
-            <Toggle
-                label="Unit"
-                value={unit}
-                onChange={setUnit}
-                options={[{ value: "seconds", label: "Seconds" }, { value: "reps", label: "Reps" }]}
-            />
-            <NumberField label={unit === "seconds" ? "Seconds" : "Reps"} value={amount} onChange={setAmount} />
-            <div className="flex gap-2">
-                <button onClick={save} className={primaryBtn}>Save</button>
-                {index != null && (
-                    <button onClick={() => write(items.filter((_, i) => i !== index))} className={secondaryBtn}>Remove</button>
-                )}
-            </div>
-            <ErrorLine error={error} />
-        </EditorModal>
+        <>
+            <PaneTitle name={item ? item.name : "New stretch"} />
+            <form onSubmit={save} className="flex flex-col gap-3">
+                <TextField label="Name" value={name} onChange={setName} />
+                <NumberField label="Sets" value={sets} onChange={setSets} />
+                <Toggle
+                    label="Unit"
+                    value={unit}
+                    onChange={setUnit}
+                    options={[{ value: "seconds", label: "Seconds" }, { value: "reps", label: "Reps" }]}
+                />
+                <NumberField label={unit === "seconds" ? "Seconds" : "Reps"} value={amount} onChange={setAmount} />
+                <div className="flex items-center gap-3">
+                    <GlyphButton glyph={GLYPH.save} label="Save stretch" type="submit" solid />
+                    {item && <GlyphButton glyph={GLYPH.remove} label="Remove stretch" onClick={onRemove} className="ml-auto" />}
+                </div>
+            </form>
+        </>
     );
 };
 
-const PhaseForm = ({ phase, onSave }: { phase: Phase; onSave: (phase: Phase) => Promise<boolean> }) => {
+const PhasePane = ({ phase, onSave, onError }: { phase: Phase; onSave: (phase: Phase) => void; onError: (reason: string) => void }) => {
     const [name, setName] = useState(phase.name);
     const [start, setStart] = useState(String(phase.startLb));
     const [target, setTarget] = useState(String(phase.targetLb));
-    const [error, setError] = useState("");
 
     const save = (e: FormEvent) => {
         e.preventDefault();
         const startLb = Number(start.trim());
         const targetLb = Number(target.trim());
         if (!name.trim() || !Number.isFinite(startLb) || !Number.isFinite(targetLb) || startLb <= 0 || targetLb <= 0) {
-            setError("Enter a name and two weights in pounds");
+            onError("Enter a name and two weights in pounds");
             return;
         }
-        setError("");
         onSave({ name: name.trim(), startLb, targetLb });
     };
 
     return (
-        <form onSubmit={save} data-testid="plan-list-phase" className="p-3 flex flex-col gap-3">
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-3">
+        <>
+            <PaneTitle name="Phase" />
+            <form onSubmit={save} data-testid="plan-list-phase" className="flex flex-col gap-3">
                 <TextField label="Name" value={name} onChange={setName} />
                 <NumberField label="Start lb" value={start} onChange={setStart} decimal />
                 <NumberField label="Target lb" value={target} onChange={setTarget} decimal />
-                <GlyphButton glyph={GLYPH.save} label="Save phase" type="submit" solid />
-            </div>
-            <ErrorLine error={error} />
-        </form>
+                <div><GlyphButton glyph={GLYPH.save} label="Save phase" type="submit" solid /></div>
+            </form>
+        </>
+    );
+};
+
+/** A Movement that is in no Workout: its fields, and the control that deletes it. */
+const UnusedPane = ({ movement, onSave, onDelete, onError }: {
+    movement: Movement;
+    onSave: (input: MovementInput) => void;
+    onDelete: () => void;
+    onError: (reason: string) => void;
+}) => {
+    const [draft, setDraft] = useState<MovementDraft>(draftOf(movement));
+
+    const save = (e: FormEvent) => {
+        e.preventDefault();
+        const { input, error: reason } = inputOf(draft);
+        if (!input) { onError(reason ?? "Check the fields"); return; }
+        onSave(input);
+    };
+
+    return (
+        <>
+            <PaneTitle name={movement.name} />
+            <form onSubmit={save} className="flex flex-col gap-3">
+                <MovementFields draft={draft} onChange={setDraft} />
+                <div className="flex items-center gap-3">
+                    <GlyphButton glyph={GLYPH.save} label="Save movement" type="submit" solid />
+                    <GlyphButton glyph={GLYPH.remove} label={`Delete ${movement.name}`} onClick={onDelete} className="ml-auto" />
+                </div>
+            </form>
+        </>
     );
 };
 

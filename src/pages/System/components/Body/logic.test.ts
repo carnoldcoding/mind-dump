@@ -4,7 +4,7 @@ import { addSlot, afterMove, nextWorkout, pairEdge, removeSlot, replaceSlot, tog
 import { setPips, stateGlyph } from "./glyphs";
 import { describeRoutineItem, describeSet, signedLb } from "./text";
 import { STRETCHES, WEIGHT, firstOpen, hintFor, nextAfter } from "./today";
-import { rollingAverage } from "./progress";
+import { inRange, progressHint, progressOrder, rollingAverage } from "./progress";
 import type { LoggedSet, Movement, Session, Slot, Workout } from "../../../../types/body";
 
 const reps = (id: string, over: Partial<Movement> = {}): Movement =>
@@ -375,3 +375,41 @@ describe("Today's hint line (body-today R20, R21)", () => {
     });
 });
 
+
+describe("Progress helpers (body-panes R17, R32)", () => {
+    const plan = {
+        workouts: [
+            { key: "lowerA" as const, name: "Lower A", weekday: 2, slots: [{ movementId: "dip", pair: null }, { movementId: "push", pair: null }] },
+            workout,
+        ],
+        routine: { items: [] },
+        phase: { name: "Phase 1", startLb: 245, targetLb: 216 },
+    };
+    const stat = (sets: number) => ({ best: null, series: [], first: [], total: [], load: [], sessions: 0, sets, sum: 0, trend: null, records: [] });
+
+    it("orders the Movements by weekday, then by slot, each one time", () => {
+        // Upper A is Monday, so it comes before Lower A; push and dip are in both.
+        expect(progressOrder(plan, movements, {}).map(m => m._id)).toEqual(["hold", "push", "pull", "dip"]);
+    });
+
+    it("adds a Movement that is in no Workout only when it has a Set", () => {
+        const all = [...movements, reps("old"), reps("never")];
+        expect(progressOrder(plan, all, { old: stat(3), never: stat(0) }).map(m => m._id)).toEqual(["hold", "push", "pull", "dip", "old"]);
+    });
+
+    it("keeps the Weigh-ins of the last 28 or 84 days, today included", () => {
+        const w = (date: string) => ({ date, lb: 240 });
+        // From 2026-11-22: 10-26 is 27 days back, 10-25 is 28, 08-31 is 83, 08-30 is 84.
+        const all = [w("2026-11-22"), w("2026-10-26"), w("2026-10-25"), w("2026-08-31"), w("2026-08-30")];
+        expect(inRange(all, "2026-11-22", "4w").map(x => x.date)).toEqual(["2026-11-22", "2026-10-26"]);
+        expect(inRange(all, "2026-11-22", "12w").map(x => x.date)).toEqual(["2026-11-22", "2026-10-26", "2026-10-25", "2026-08-31"]);
+        expect(inRange(all, "2026-11-22", "all")).toHaveLength(5);
+    });
+
+    it("describes the selected row of Progress", () => {
+        expect(progressHint("overview", undefined)).toBe("Shows where the Phase is now.");
+        expect(progressHint("weeks", undefined)).toBe("Shows each week of the Plan.");
+        expect(progressHint("weight", undefined)).toBe("Shows the bodyweight against the target.");
+        expect(progressHint("push", movements[1])).toBe("Shows each Session of push.");
+    });
+});

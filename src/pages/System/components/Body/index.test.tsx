@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import BodyWindow from "./index";
 import { backend } from "../../../../api/backend";
-import type { BodyData, BodySummary, LoggedSet, Session } from "../../../../types/body";
+import type { BodyData, BodySummary, LoggedSet, MovementStats, Session } from "../../../../types/body";
 
 // The app's one boundary to the server; faking it lets these tests drive the
 // window as a user would. What is due, the grid and the averages are the
@@ -40,6 +40,12 @@ const mocked = vi.mocked(backend);
 // 2026-11-09 is a Monday.
 const TODAY = "2026-11-09";
 
+const noPace = { lowest: null, toGo: null, pace: null, eta: null };
+
+/** What the server sends of one Movement; a test names only what it reads. */
+const stats = (over: Partial<MovementStats> = {}): MovementStats =>
+    ({ best: null, series: [], first: [], total: [], load: [], sessions: 0, sets: 0, sum: 0, trend: null, records: [], ...over });
+
 const summary = (over: Partial<BodySummary> = {}): BodySummary => ({
     today: { date: TODAY, weekday: 1, due: "upperA", dueDone: false, missed: [] },
     grid: [{
@@ -52,8 +58,11 @@ const summary = (over: Partial<BodySummary> = {}): BodySummary => ({
         ],
         routine: ["09", "10", "11", "12", "13", "14", "15"].map(d => ({ date: `2026-11-${d}`, done: false })),
     }],
-    weight: { latest: null, average: null, count: 0, startLb: 245, targetLb: 216, change: null },
+    weight: { latest: null, average: null, count: 0, startLb: 245, targetLb: 216, change: null, ...noPace },
     bests: {},
+    adherence: { workouts: { done: 0, planned: 0 }, stretches: { done: 0, days: 0 }, byWorkout: { upperA: { done: 0, planned: 0 }, lowerA: { done: 0, planned: 0 }, upperB: { done: 0, planned: 0 }, lowerB: { done: 0, planned: 0 } } },
+    totals: { sessions: 0, sets: 0 },
+    records: [],
     previous: { push: { date: "2026-11-05", sets: [{ id: "p1", movementId: "push", full: 9 }, { id: "p2", movementId: "push", full: 7 }] } },
     ...over,
 });
@@ -105,8 +114,6 @@ const renderWindow = async (data = sample()) => {
 };
 
 const row = (name: string) => screen.getByTestId(`movement-${name}`);
-const type = (scope: HTMLElement, label: string, value: string) =>
-    fireEvent.change(within(scope).getByLabelText(label), { target: { value } });
 
 beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -335,7 +342,7 @@ describe("Today: Weight and Stretches (body-flow R16, R17)", () => {
     });
 
     it("dims the save control while the field is empty, and shows the last Weigh-in as the placeholder", async () => {
-        const weight = { latest: { date: "2026-11-08", lb: 240.4 }, average: 242.1, count: 7, startLb: 245, targetLb: 216, change: -2.9 };
+        const weight = { latest: { date: "2026-11-08", lb: 240.4 }, average: 242.1, count: 7, startLb: 245, targetLb: 216, change: -2.9, ...noPace };
         await renderWindow(sample({ summary: summary({ weight }) }));
         expect((within(pane()).getByRole("button", { name: "Save weigh-in" }) as HTMLButtonElement).disabled).toBe(true);
         expect(number("Weight lb").value).toBe("");
@@ -351,7 +358,7 @@ describe("Today: Weight and Stretches (body-flow R16, R17)", () => {
     });
 
     it("shows the 7-day average and the change with the Weight row only (D6)", async () => {
-        const weight = { latest: { date: TODAY, lb: 240 }, average: 242.1, count: 7, startLb: 245, targetLb: 216, change: -2.9 };
+        const weight = { latest: { date: TODAY, lb: 240 }, average: 242.1, count: 7, startLb: 245, targetLb: 216, change: -2.9, ...noPace };
         await renderWindow(training({ summary: summary({ weight }) }));
         expect(screen.queryByTestId("weight-average")).toBeNull();
         fireEvent.click(screen.getByTestId("row-weight"));
@@ -536,49 +543,137 @@ describe("Today: the Session (body-plan R19–R25, body-flow R8–R15)", () => {
     });
 });
 
-describe("Progress (R26–R29)", () => {
-    const done = () => {
+const within2 = (id: string) => within(screen.getByTestId(id));
+const text = (id: string) => screen.getByTestId(id).textContent;
+const chosen = (scope: string) => within2(scope).getAllByTestId(/^(row|movement|slot|stretch|unused)-/).filter(el => el.getAttribute("data-selected") === "true").map(el => el.getAttribute("data-testid"));
+
+describe("Progress (body-panes R16–R38)", () => {
+    const pushStats = stats({
+        best: { date: TODAY, value: 9 },
+        series: [{ date: "2026-11-02", value: 5 }, { date: "2026-11-05", value: 7 }, { date: TODAY, value: 9 }],
+        first: [{ date: "2026-11-02", value: 5 }, { date: "2026-11-05", value: 7 }, { date: TODAY, value: 9 }],
+        total: [{ date: "2026-11-02", value: 9 }, { date: "2026-11-05", value: 12 }, { date: TODAY, value: 15 }],
+        sessions: 3, sets: 6, sum: 36, trend: "up", records: ["2026-11-05", TODAY],
+    });
+    const full = () => {
         const s = summary();
         s.grid[0].workouts[0] = { ...s.grid[0].workouts[0], done: true, date: TODAY };
         s.grid[0].routine[0] = { date: TODAY, done: true };
-        s.bests = { push: { best: { date: TODAY, value: 6 }, series: [{ date: TODAY, value: 6 }] } };
-        return sample({ sessions: [session([reps("push", 1)])], weighins: [{ date: TODAY, lb: 244 }], summary: s });
+        s.bests = { push: pushStats, hold: stats({ best: { date: TODAY, value: 22 }, series: [{ date: TODAY, value: 22 }], sessions: 1, sets: 2, sum: 42 }) };
+        s.adherence = { workouts: { done: 7, planned: 8 }, stretches: { done: 20, days: 28 }, byWorkout: { upperA: { done: 5, planned: 6 }, lowerA: { done: 2, planned: 2 }, upperB: { done: 0, planned: 1 }, lowerB: { done: 0, planned: 1 } } };
+        s.totals = { sessions: 9, sets: 61 };
+        s.records = [{ movementId: "push", date: TODAY, value: 9 }, { movementId: "push", date: "2026-11-05", value: 7 }];
+        s.weight = { latest: { date: TODAY, lb: 237 }, average: 237, count: 1, startLb: 245, targetLb: 216, change: -8, lowest: { date: "2026-11-08", lb: 236.4 }, toGo: 21, pace: -1, eta: "2027-04-18" };
+        const older = { _id: "sess0", date: "2026-11-05", workoutKey: "upperA" as const, sets: [{ id: "o1", movementId: "push", full: 7 }, { id: "o2", movementId: "push", full: 5 }], skipped: [] };
+        return sample({
+            sessions: [session([{ id: "push1", movementId: "push", full: 9 }, { id: "push2", movementId: "push", full: 6 }, ...holdSets]), older],
+            weighins: [{ date: TODAY, lb: 237 }, { date: "2026-10-01", lb: 243 }, { date: "2026-07-01", lb: 250 }],
+            summary: s,
+        });
     };
-    const open = async () => {
-        await renderWindow(done());
+    const open = async (data = full()) => {
+        await renderWindow(data);
         fireEvent.click(screen.getByRole("button", { name: "Progress" }));
-        await screen.findByTestId(`grid-${TODAY}-upperA`);
+        await screen.findByTestId("progress-list");
     };
+    const pick = (testId: string) => fireEvent.click(within2("progress-list").getByTestId(testId));
+    const inPane = () => within2("progress-pane");
 
-    it("marks each Workout and each Routine day done or not done, with no streak count", async () => {
+    it("lists Overview, Weeks and Weight, then the Movements in Plan order, each one time (R16, R17)", async () => {
         await open();
-        expect(screen.getByTestId(`grid-${TODAY}-upperA`).getAttribute("data-done")).toBe("true");
-        expect(screen.getByTestId(`grid-${TODAY}-lowerA`).getAttribute("data-done")).toBe("false");
-        expect(screen.getByTestId(`grid-${TODAY}`).getAttribute("data-done")).toBe("true");
-        expect(screen.getByTestId("grid-2026-11-10").getAttribute("data-done")).toBe("false");
+        const ids = within2("progress-list").getAllByTestId(/^(row|movement)-/).map(el => el.getAttribute("data-testid"));
+        expect(ids).toEqual(["row-overview", "row-weeks", "row-weight", "movement-Handstand hold", "movement-Deep push-up", "movement-Pull-up", "movement-Dip", "movement-Squat"]);
+    });
+
+    it("lists a Movement that is in no Workout only when it has a Set (R17)", async () => {
+        const data = full();
+        data.summary!.bests.spare = stats({ best: { date: TODAY, value: 4 }, series: [{ date: TODAY, value: 4 }], sessions: 1, sets: 1, sum: 4 });
+        await open(data);
+        const ids = within2("progress-list").getAllByTestId(/^movement-/).map(el => el.getAttribute("data-testid"));
+        expect(ids[ids.length - 1]).toBe("movement-Spare");
+    });
+
+    it("shows a Movement's best, its trend, and a record as glyphs (R18–R20)", async () => {
+        await open();
+        const push = within(screen.getByTestId("movement-Deep push-up"));
+        expect(push.getByTestId("state").textContent).toBe("9");
+        expect(push.getByTestId("trend").textContent).toBe("↗");
+        expect(push.getByTestId("mark").textContent).toBe("◆");
+        // One Session: a best, no trend, and no record.
+        const hold = within(screen.getByTestId("movement-Handstand hold"));
+        expect(hold.getByTestId("state").textContent).toBe("22 s");
+        expect(hold.queryByTestId("trend")).toBeNull();
+        expect(hold.getByTestId("mark").textContent).toBe("◇");
+        expect(within(screen.getByTestId("movement-Dip")).getByTestId("state").textContent).toBe("—");
+    });
+
+    it("opens on Overview: this week, done against planned, the weight, the totals (R21–R25)", async () => {
+        await open();
+        expect(chosen("progress-list")).toEqual(["row-overview"]);
+        expect(text("progress-hint")).toBe("Shows where the Phase is now.");
+        expect(screen.getByTestId("week-upperA").getAttribute("data-done")).toBe("true");
+        expect(screen.getByTestId("week-lowerA").getAttribute("data-done")).toBe("false");
+        expect(screen.getByTestId(`week-${TODAY}`).textContent).toBe("◆");
+        expect(text("stat-workouts")).toBe("7 / 8");
+        expect(text("stat-stretches")).toBe("20 / 28");
+        expect(text("stat-weight")).toBe("237.0");
+        expect(text("stat-pace")).toBe("-1.0 lb");
+        expect(text("stat-sessions")).toBe("9");
+        expect(text("stat-sets")).toBe("61");
         expect(screen.queryByText(/streak/i)).toBeNull();
     });
 
-    it("lists the past Sets of a Movement, and edits one", async () => {
+    it("lists the records, and a press on one selects its Movement (R26)", async () => {
         await open();
-        mocked.updateBodySet.mockResolvedValue(session([]));
-        fireEvent.click(within(screen.getByTestId("past-sets")).getByRole("button", { name: "Set 1: 6" }));
-        const dialog = await screen.findByRole("dialog");
-        type(dialog, "Reps", "8");
-        fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
-        await waitFor(() => expect(mocked.updateBodySet).toHaveBeenCalledWith("sess1", "push1", { full: 8 }));
+        const records = within(screen.getByTestId("records")).getAllByRole("button");
+        expect(records.map(r => r.textContent)).toEqual(["Nov 9Deep push-up9", "Nov 5Deep push-up7"]);
+        fireEvent.click(records[0]);
+        expect(chosen("progress-list")).toEqual(["movement-Deep push-up"]);
+        expect(inPane().getByTestId("pane-title").textContent).toBe("Deep push-up");
     });
 
-    it("deletes a past Set", async () => {
+    it("shows the grid of weeks and each Workout over all weeks (R27–R29)", async () => {
         await open();
-        mocked.removeBodySet.mockResolvedValue(session([]));
-        fireEvent.click(within(screen.getByTestId("past-sets")).getByRole("button", { name: /^Set 1/ }));
-        fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Delete set" }));
-        await waitFor(() => expect(mocked.removeBodySet).toHaveBeenCalledWith("sess1", "push1"));
+        pick("row-weeks");
+        expect(text("progress-hint")).toBe("Shows each week of the Plan.");
+        expect(screen.getByTestId(`grid-${TODAY}-upperA`).textContent).toBe("◆");
+        expect(screen.getByTestId(`grid-${TODAY}-lowerA`).textContent).toBe("◇");
+        expect(screen.getByTestId(`grid-${TODAY}`).getAttribute("data-done")).toBe("true");
+        expect(screen.getByTestId("grid-2026-11-10").getAttribute("data-done")).toBe("false");
+        expect(text("weeks-upperA")).toBe("5 / 6");
+        expect(text("weeks-lowerB")).toBe("0 / 1");
+        expect(screen.queryByText(/streak/i)).toBeNull();
+    });
+
+    it("shows the bodyweight numbers, the pace and the projected date (R30)", async () => {
+        await open();
+        pick("row-weight");
+        expect(text("weight-average")).toBe("237.0");
+        expect(text("weight-start")).toBe("245.0");
+        expect(text("weight-target")).toBe("216.0");
+        expect(text("weight-change")).toBe("-8.0 lb");
+        expect(text("weight-togo")).toBe("21.0 lb");
+        expect(text("weight-pace")).toBe("-1.0 lb");
+        expect(text("weight-lowest")).toBe("236.4");
+        expect(text("weight-eta")).toBe("Apr 18, 2027");
+    });
+
+    it("limits the chart and the list of Weigh-ins to the range, 12 weeks at first (R32, R33)", async () => {
+        await open();
+        pick("row-weight");
+        const dates = () => within2("weighins").getAllByTestId(/^weighin-/).map(el => el.getAttribute("data-testid"));
+        // 2026-10-01 is 39 days back; 2026-07-01 is 131 days back.
+        expect(screen.getByTestId("range-12w").getAttribute("aria-pressed")).toBe("true");
+        expect(dates()).toEqual([`weighin-${TODAY}`, "weighin-2026-10-01"]);
+        fireEvent.click(screen.getByTestId("range-4w"));
+        expect(dates()).toEqual([`weighin-${TODAY}`]);
+        fireEvent.click(screen.getByTestId("range-all"));
+        expect(dates()).toEqual([`weighin-${TODAY}`, "weighin-2026-10-01", "weighin-2026-07-01"]);
     });
 
     it("removes a Weigh-in", async () => {
         await open();
+        pick("row-weight");
         mocked.removeBodyWeighIn.mockResolvedValue({});
         const remove = within(screen.getByTestId(`weighin-${TODAY}`)).getByRole("button", { name: "Remove the weigh-in of Nov 9" });
         expect(remove.textContent).toBe("×");
@@ -586,39 +681,123 @@ describe("Progress (R26–R29)", () => {
         await waitFor(() => expect(mocked.removeBodyWeighIn).toHaveBeenCalledWith(TODAY));
     });
 
-    it("draws the grid cells as glyphs (body-ui R23)", async () => {
+    it("shows the numbers of a Movement (R34, R35)", async () => {
         await open();
-        expect(screen.getByTestId(`grid-${TODAY}-upperA`).textContent).toBe("◆");
-        expect(screen.getByTestId(`grid-${TODAY}-lowerA`).textContent).toBe("◇");
+        pick("movement-Deep push-up");
+        expect(text("progress-hint")).toBe("Shows each Session of Deep push-up.");
+        expect(inPane().getByTestId("pane-at").textContent).toBe("2 × ▲▲");
+        expect(text("stat-best")).toBe("9");
+        expect(text("stat-last")).toBe("9 / 6");
+        expect(text("stat-span")).toBe("5 → 9");
+        expect(text("stat-sessions")).toBe("3");
+        expect(text("stat-sets")).toBe("6");
+        expect(text("stat-total")).toBe("36");
     });
 
-    it("shows the start, the target, the average and the change on one line (body-ui R24)", async () => {
-        const data = done();
-        data.summary!.weight = { latest: { date: TODAY, lb: 244 }, average: 244.5, count: 2, startLb: 245, targetLb: 216, change: -0.5 };
-        await renderWindow(data);
-        fireEvent.click(screen.getByRole("button", { name: "Progress" }));
-        expect((await screen.findByTestId("weight-start")).textContent).toBe("245.0");
-        expect(screen.getByTestId("weight-target").textContent).toBe("216.0");
-        expect(screen.getByTestId("weight-average").textContent).toBe("244.5");
-        expect(screen.getByTestId("weight-change").textContent).toBe("-0.5 lb");
+    it("draws one chart, and the measure control says which (R36)", async () => {
+        await open();
+        pick("movement-Deep push-up");
+        expect(screen.getByTestId("measure-best").getAttribute("aria-pressed")).toBe("true");
+        expect(screen.getByTestId("chart-best")).toBeTruthy();
+        fireEvent.click(screen.getByTestId("measure-total"));
+        expect(screen.getByTestId("chart-total")).toBeTruthy();
+        expect(screen.queryByTestId("chart-best")).toBeNull();
+        fireEvent.click(screen.getByTestId("measure-first"));
+        expect(screen.getByTestId("chart-first")).toBeTruthy();
+        // A load is a measure of a loaded Movement only.
+        expect(screen.queryByTestId("measure-load")).toBeNull();
+    });
+
+    it("offers the load as a measure of a loaded Movement (R36)", async () => {
+        const data = full();
+        data.movements = data.movements.map(m => (m._id === "push" ? { ...m, loaded: true } : m));
+        data.summary!.bests.push = { ...pushStats, load: [{ date: TODAY, value: 35 }] };
+        await open(data);
+        pick("movement-Deep push-up");
+        fireEvent.click(screen.getByTestId("measure-load"));
+        expect(screen.getByTestId("chart-load")).toBeTruthy();
+    });
+
+    it("lists the Sessions newest first, and marks a record (R37)", async () => {
+        await open();
+        pick("movement-Deep push-up");
+        const lines = within2("past-sets").getAllByTestId(/^session-/);
+        expect(lines.map(l => l.getAttribute("data-testid"))).toEqual([`session-${TODAY}`, "session-2026-11-05"]);
+        expect(lines.map(l => l.getAttribute("data-record"))).toEqual(["true", "true"]);
+        expect(within(lines[0]).getByLabelText("Record").textContent).toBe("◆");
+    });
+
+    it("edits a past Set on its own line, with no modal (R38)", async () => {
+        await open();
+        pick("movement-Deep push-up");
+        mocked.updateBodySet.mockResolvedValue(session([]));
+        fireEvent.click(within2("past-sets").getByRole("button", { name: "Set 1: 9" }));
+        expect(screen.queryByRole("dialog")).toBeNull();
+        const editor = within(screen.getByTestId("set-editor"));
+        expect((editor.getByLabelText("Reps") as HTMLInputElement).value).toBe("9");
+        fireEvent.click(editor.getByRole("button", { name: "One rep less" }));
+        fireEvent.click(editor.getByRole("button", { name: "Save set" }));
+        await waitFor(() => expect(mocked.updateBodySet).toHaveBeenCalledWith("sess1", "push1", { full: 8 }));
+        await waitFor(() => expect(screen.queryByTestId("set-editor")).toBeNull());
+    });
+
+    it("deletes a past Set", async () => {
+        await open();
+        pick("movement-Deep push-up");
+        mocked.removeBodySet.mockResolvedValue(session([]));
+        fireEvent.click(within2("past-sets").getByRole("button", { name: /^Set 2: 6/ }));
+        fireEvent.click(within(screen.getByTestId("set-editor")).getByRole("button", { name: "Delete set" }));
+        await waitFor(() => expect(mocked.removeBodySet).toHaveBeenCalledWith("sess1", "push2"));
+    });
+
+    it("shows the server's reason in the hint bar when a Set is refused", async () => {
+        await open();
+        pick("movement-Deep push-up");
+        mocked.updateBodySet.mockRejectedValue(new Error("POST /api/body/sessions/update_set failed (400): full must be a whole number from 1 to 1000"));
+        fireEvent.click(within2("past-sets").getByRole("button", { name: "Set 1: 9" }));
+        fireEvent.click(within(screen.getByTestId("set-editor")).getByRole("button", { name: "Save set" }));
+        await waitFor(() => expect(text("progress-hint")).toBe("Full must be a whole number from 1 to 1000"));
+    });
+
+    it("shows a dash where a number has no data, and no chart (acceptance 9)", async () => {
+        await open(sample());
+        expect(text("stat-weight")).toBe("—");
+        expect(text("stat-pace")).toBe("—");
+        expect(within(screen.getByTestId("records")).queryAllByRole("button")).toHaveLength(0);
+        pick("row-weight");
+        expect(text("weight-average")).toBe("—");
+        expect(text("weight-eta")).toBe("—");
+        expect(screen.getByTestId("no-chart")).toBeTruthy();
+        pick("movement-Dip");
+        expect(text("stat-best")).toBe("—");
+        expect(text("stat-span")).toBe("—");
+        expect(text("stat-total")).toBe("—");
+        expect(screen.getByTestId("no-chart")).toBeTruthy();
     });
 });
 
-describe("Plan (R10, R11)", () => {
-    const open = async () => {
-        await renderWindow();
+describe("Plan (body-panes R1–R15)", () => {
+    const open = async (data = sample()) => {
+        await renderWindow(data);
         fireEvent.click(screen.getByRole("button", { name: "Plan" }));
-        await screen.findByTestId("workout-upperA");
+        await screen.findByTestId("plan-list");
     };
-
     const show = (id: string) => fireEvent.click(screen.getByTestId(`plan-${id}`));
+    const pick = (testId: string) => fireEvent.click(within2("plan-list").getByTestId(testId));
+    const inPane = () => within2("plan-pane");
+    const pressIn = (name: string) => fireEvent.click(inPane().getByRole("button", { name }));
 
-    it("shows one list at a time, and opens on the Workout that is due next (body-ui R18)", async () => {
+    afterEach(() => {
+        // No modal in Body (D2): no test of Plan may leave one open.
+        expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("shows one list at a time, and opens on the Workout that is due next (R2)", async () => {
         await open();
+        expect(text("plan-aside")).toBe("Phase 1");
         expect(screen.getByTestId("plan-upperA").getAttribute("aria-pressed")).toBe("true");
         expect(screen.queryByTestId("workout-lowerA")).toBeNull();
         expect(screen.queryByTestId("plan-list-routine")).toBeNull();
-        expect(screen.queryByTestId("plan-list-phase")).toBeNull();
 
         show("lowerA");
         expect(screen.getByTestId("workout-lowerA")).toBeTruthy();
@@ -627,33 +806,40 @@ describe("Plan (R10, R11)", () => {
         show("routine");
         expect(screen.getByTestId("plan-routine").textContent).toBe("Stretches");
         expect(within(screen.getByTestId("plan-list-routine")).getByText("Pancake")).toBeTruthy();
-        expect(screen.queryByTestId("workout-lowerA")).toBeNull();
 
         show("phase");
         expect(screen.getByTestId("plan-list-phase")).toBeTruthy();
         expect(screen.queryByTestId("plan-list-routine")).toBeNull();
     });
 
-    it("opens on the next Workout when today's is done (body-ui R18)", async () => {
-        await renderWindow(sample({ summary: summary({ today: { date: TODAY, weekday: 1, due: "upperA", dueDone: true, missed: [] } }) }));
-        fireEvent.click(screen.getByRole("button", { name: "Plan" }));
-        expect((await screen.findByTestId("plan-lowerA")).getAttribute("aria-pressed")).toBe("true");
+    it("opens on the next Workout when today's is done", async () => {
+        await open(sample({ summary: summary({ today: { date: TODAY, weekday: 1, due: "upperA", dueDone: true, missed: [] } }) }));
+        expect(screen.getByTestId("plan-lowerA").getAttribute("aria-pressed")).toBe("true");
     });
 
-    it("offers Unused only when a Movement is in no Workout (body-ui R19)", async () => {
+    it("offers Unused only when a Movement is in no Workout", async () => {
         await open();
         expect(screen.getByTestId("plan-unused")).toBeTruthy();
 
         cleanup();
         const data = sample();
         data.movements = data.movements.filter(m => m._id !== "spare");
-        await renderWindow(data);
-        fireEvent.click(screen.getByRole("button", { name: "Plan" }));
-        await screen.findByTestId("plan-upperA");
+        await open(data);
         expect(screen.queryByTestId("plan-unused")).toBeNull();
     });
 
-    it("shows a Movement's Sets and Rule as a glyph, and a Pair as one bracket (body-ui R21)", async () => {
+    it("lists the add row, the day, then the Movements, with the first Movement selected (R3, R14)", async () => {
+        await open();
+        const ids = within2("plan-list").getAllByTestId(/^(row|slot)-/).map(el => el.getAttribute("data-testid"));
+        expect(ids).toEqual(["row-add", "row-day", "slot-Handstand hold", "slot-Deep push-up", "slot-Pull-up", "slot-Dip"]);
+        expect(chosen("plan-list")).toEqual(["slot-Handstand hold"]);
+        expect(inPane().getByTestId("pane-title").textContent).toBe("Handstand hold");
+        expect(text("plan-hint")).toBe("Changes Handstand hold in each Workout that uses it.");
+        expect(within(screen.getByTestId("row-add")).getByTestId("mark").textContent).toBe("+");
+        expect(within(screen.getByTestId("row-day")).getByTestId("state").textContent).toBe("Monday");
+    });
+
+    it("shows a Movement's Sets and Rule as a glyph, and a Pair as one bracket (R4)", async () => {
         await open();
         expect(within(screen.getByTestId("slot-Deep push-up")).getByText("2 × ▲▲")).toBeTruthy();
         expect(within(screen.getByTestId("slot-Handstand hold")).getByText("2 × △")).toBeTruthy();
@@ -662,21 +848,52 @@ describe("Plan (R10, R11)", () => {
         expect(screen.getByTestId("slot-Dip").getAttribute("data-pair")).toBeNull();
     });
 
-    it("moves a Workout to another weekday", async () => {
+    it("moves a Workout to a free weekday; a day of another Workout is dimmed (R7)", async () => {
         await open();
         show("upperB");
+        pick("row-day");
+        expect(text("plan-hint")).toBe("Moves Upper B to another weekday.");
+        const day = (name: string) => inPane().getByRole("button", { name }) as HTMLButtonElement;
+        expect(day("Thursday").getAttribute("aria-pressed")).toBe("true");
+        // Monday is Upper A's, Tuesday Lower A's, Friday Lower B's.
+        expect(["Monday", "Tuesday", "Friday"].map(d => day(d).disabled)).toEqual([true, true, true]);
+        expect(["Wednesday", "Saturday", "Sunday"].map(d => day(d).disabled)).toEqual([false, false, false]);
         mocked.updateBodyWorkout.mockResolvedValue({});
-        fireEvent.change(screen.getByLabelText("Upper B weekday"), { target: { value: "3" } });
+        fireEvent.click(day("Wednesday"));
         await waitFor(() => expect(mocked.updateBodyWorkout).toHaveBeenCalledWith("upperB", { weekday: 3 }));
+    });
+
+    it("changes a Movement's Rule and its Sets with the stepper, and keeps the row selected (R5, R6, R13)", async () => {
+        await open();
+        mocked.updateBodyMovement.mockResolvedValue({} as never);
+        pick("slot-Dip");
+        expect((inPane().getByLabelText("Sets") as HTMLInputElement).value).toBe("2");
+        pressIn("One set more");
+        expect((inPane().getByLabelText("Sets") as HTMLInputElement).value).toBe("3");
+        fireEvent.change(inPane().getByLabelText("Rule"), { target: { value: "pastFailure" } });
+        expect(inPane().getByRole("button", { name: "Save movement" }).textContent).toBe("✓");
+        pressIn("Save movement");
+        await waitFor(() => expect(mocked.updateBodyMovement).toHaveBeenCalledWith("dip", {
+            name: "Dip", kind: "reps", rule: "pastFailure", sets: 3, loaded: false,
+        }));
+        await waitFor(() => expect(mocked.getBody).toHaveBeenCalledTimes(2));
+        expect(chosen("plan-list")).toEqual(["slot-Dip"]);
+    });
+
+    it("refuses a Movement with no name, in the hint bar", async () => {
+        await open();
+        fireEvent.change(inPane().getByLabelText("Name"), { target: { value: " " } });
+        pressIn("Save movement");
+        expect(text("plan-hint")).toBe("Enter a name");
+        expect(mocked.updateBodyMovement).not.toHaveBeenCalled();
     });
 
     it("replaces a Movement in a Workout and keeps its Pair", async () => {
         await open();
         mocked.updateBodyWorkout.mockResolvedValue({});
-        fireEvent.click(within(screen.getByTestId("workout-upperA")).getByTestId("slot-Deep push-up"));
-        const dialog = await screen.findByRole("dialog");
-        fireEvent.change(within(dialog).getByLabelText("Replace with"), { target: { value: "spare" } });
-        fireEvent.click(within(dialog).getByRole("button", { name: "Replace" }));
+        pick("slot-Deep push-up");
+        fireEvent.change(inPane().getByLabelText("Replace with"), { target: { value: "spare" } });
+        pressIn("Replace");
         await waitFor(() => expect(mocked.updateBodyWorkout).toHaveBeenCalledWith("upperA", { slots: [
             { movementId: "hold", pair: null },
             { movementId: "spare", pair: 1 },
@@ -685,58 +902,99 @@ describe("Plan (R10, R11)", () => {
         ] }));
     });
 
-    it("removes a Movement from a Workout and clears its partner's Pair", async () => {
+    it("removes a Movement from a Workout, clears its partner's Pair, and selects the row above (R13)", async () => {
         await open();
         mocked.updateBodyWorkout.mockResolvedValue({});
-        fireEvent.click(within(screen.getByTestId("workout-upperA")).getByTestId("slot-Deep push-up"));
-        fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Remove from Upper A" }));
+        pick("slot-Deep push-up");
+        expect(inPane().getByRole("button", { name: "Remove from Upper A" }).textContent).toBe("×");
+        pressIn("Remove from Upper A");
         await waitFor(() => expect(mocked.updateBodyWorkout).toHaveBeenCalledWith("upperA", { slots: [
             { movementId: "hold", pair: null },
             { movementId: "pull", pair: null },
             { movementId: "dip", pair: null },
         ] }));
+        await waitFor(() => expect(chosen("plan-list")).toEqual(["slot-Handstand hold"]));
     });
 
-    it("changes a Movement's Rule and set count", async () => {
+    it("pairs a Movement with the next one, and clears a Pair", async () => {
         await open();
-        mocked.updateBodyMovement.mockResolvedValue({} as never);
-        fireEvent.click(within(screen.getByTestId("workout-upperA")).getByTestId("slot-Dip"));
-        const dialog = await screen.findByRole("dialog");
-        fireEvent.change(within(dialog).getByLabelText("Sets"), { target: { value: "3" } });
-        fireEvent.change(within(dialog).getByLabelText("Rule"), { target: { value: "pastFailure" } });
-        fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
-        await waitFor(() => expect(mocked.updateBodyMovement).toHaveBeenCalledWith("dip", {
-            name: "Dip", kind: "reps", rule: "pastFailure", sets: 3, loaded: false,
-        }));
+        mocked.updateBodyWorkout.mockResolvedValue({});
+        pick("slot-Deep push-up");
+        pressIn("Clear pair");
+        await waitFor(() => expect(mocked.updateBodyWorkout).toHaveBeenCalledWith("upperA", { slots: [
+            { movementId: "hold", pair: null },
+            { movementId: "push", pair: null },
+            { movementId: "pull", pair: null },
+            { movementId: "dip", pair: null },
+        ] }));
+        // Dip is last: there is no Movement below it to pair with.
+        pick("slot-Dip");
+        expect((inPane().getByRole("button", { name: "Pair with next" }) as HTMLButtonElement).disabled).toBe(true);
     });
 
-    it("adds an existing Movement to a Workout", async () => {
+    it("adds an existing Movement to a Workout from the add row (R8)", async () => {
         await open();
         mocked.updateBodyWorkout.mockResolvedValue({});
         show("upperB");
-        const add = within(screen.getByTestId("workout-upperB")).getByRole("button", { name: "Add movement" });
-        expect(add.textContent).toBe("+");
-        fireEvent.click(add);
-        const dialog = await screen.findByRole("dialog");
-        fireEvent.change(within(dialog).getByLabelText("Existing movement"), { target: { value: "spare" } });
-        fireEvent.click(within(dialog).getByRole("button", { name: "Add" }));
+        // A Workout with no Movement opens on the row that adds one.
+        expect(chosen("plan-list")).toEqual(["row-add"]);
+        expect(text("plan-hint")).toBe("Adds a Movement to Upper B.");
+        fireEvent.change(inPane().getByLabelText("Existing movement"), { target: { value: "spare" } });
+        pressIn("Add");
         await waitFor(() => expect(mocked.updateBodyWorkout).toHaveBeenCalledWith("upperB", { slots: [{ movementId: "spare", pair: null }] }));
     });
 
-    it("shows the server's reason when a Movement with Sets cannot be deleted (D15)", async () => {
+    it("creates a Movement and adds it (R8)", async () => {
+        await open();
+        mocked.addBodyMovement.mockResolvedValue({ _id: "new1" } as never);
+        mocked.updateBodyWorkout.mockResolvedValue({});
+        show("upperB");
+        fireEvent.change(inPane().getByLabelText("Name"), { target: { value: "Ring row" } });
+        pressIn("Create and add");
+        await waitFor(() => expect(mocked.addBodyMovement).toHaveBeenCalledWith({ name: "Ring row", kind: "reps", rule: "pastFailure", sets: 2, loaded: false }));
+        await waitFor(() => expect(mocked.updateBodyWorkout).toHaveBeenCalledWith("upperB", { slots: [{ movementId: "new1", pair: null }] }));
+    });
+
+    it("changes, removes and adds a stretch (R9)", async () => {
+        await open();
+        mocked.updateBodyRoutine.mockResolvedValue({});
+        show("routine");
+        expect(chosen("plan-list")).toEqual(["stretch-Pancake"]);
+        expect(within(screen.getByTestId("stretch-Wall angels")).getByTestId("state").textContent).toBe("10 reps");
+        fireEvent.change(inPane().getByLabelText("Seconds"), { target: { value: "45" } });
+        pressIn("Save stretch");
+        await waitFor(() => expect(mocked.updateBodyRoutine).toHaveBeenCalledWith([{ name: "Pancake", sets: 2, seconds: 45 }, { name: "Wall angels", sets: 1, reps: 10 }]));
+
+        pick("stretch-Wall angels");
+        pressIn("Remove stretch");
+        await waitFor(() => expect(mocked.updateBodyRoutine).toHaveBeenCalledWith([{ name: "Pancake", sets: 2, seconds: 30 }]));
+        await waitFor(() => expect(chosen("plan-list")).toEqual(["stretch-Pancake"]));
+
+        pick("row-add");
+        expect(text("plan-hint")).toBe("Adds a stretch to the morning stretches.");
+        expect(inPane().queryByRole("button", { name: "Remove stretch" })).toBeNull();
+        fireEvent.change(inPane().getByLabelText("Name"), { target: { value: "Cat cow" } });
+        pressIn("Save stretch");
+        await waitFor(() => expect(mocked.updateBodyRoutine).toHaveBeenCalledWith([
+            { name: "Pancake", sets: 2, seconds: 30 }, { name: "Wall angels", sets: 1, reps: 10 }, { name: "Cat cow", sets: 2, seconds: 30 },
+        ]));
+    });
+
+    it("shows the server's reason in the hint bar when a Movement with Sets cannot be deleted (D15)", async () => {
         await open();
         mocked.removeBodyMovement.mockRejectedValue(new Error("POST /api/body/movements/remove failed (409): This Movement has logged Sets and cannot be deleted"));
         show("unused");
-        fireEvent.click(within(screen.getByTestId("unused-Spare")).getByRole("button", { name: "Delete Spare" }));
-        expect(await screen.findByText("This Movement has logged Sets and cannot be deleted")).toBeTruthy();
+        expect(chosen("plan-list")).toEqual(["unused-Spare"]);
+        pressIn("Delete Spare");
+        await waitFor(() => expect(text("plan-hint")).toBe("This Movement has logged Sets and cannot be deleted"));
     });
 
-    it("saves the Phase target", async () => {
+    it("saves the Phase target (R10)", async () => {
         await open();
         mocked.updateBodyPhase.mockResolvedValue({});
         show("phase");
-        fireEvent.change(screen.getByLabelText("Target lb"), { target: { value: "209" } });
-        fireEvent.click(screen.getByRole("button", { name: "Save phase" }));
+        fireEvent.change(inPane().getByLabelText("Target lb"), { target: { value: "209" } });
+        pressIn("Save phase");
         await waitFor(() => expect(mocked.updateBodyPhase).toHaveBeenCalledWith({ name: "Phase 1", startLb: 245, targetLb: 209 }));
     });
 });
