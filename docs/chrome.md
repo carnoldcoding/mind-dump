@@ -146,8 +146,10 @@ not carry one.
 ### List and pane
 
 A list of rows with one shape at the left, and a pane at the right that shows
-the selected row. The reference draws its menus this way. Body's Today view is
-the user ([`TodayTab`](../src/pages/System/components/Body/TodayTab.tsx)).
+the selected row. The reference draws its menus this way. The three Body views
+are the users, and they share one set of parts
+([`frame.tsx`](../src/pages/System/components/Body/frame.tsx)): `Frame`,
+`ListRow`, `PaneTitle`, `BigNumber`, `Stepper`, `Stat`.
 
 - **The list only selects.** A row is one line with one height in each state.
   It never opens, so nothing moves when the selection does.
@@ -157,6 +159,12 @@ the user ([`TodayTab`](../src/pages/System/components/Body/TodayTab.tsx)).
   from the number it acts on.
 - Below 768px the pane goes under the list. The list scrolls; the pane and the
   hint bar stay at the bottom of the frame, where a thumb is.
+- **No modal.** A modal covers the list; a pane keeps it in view. An editor is
+  the pane of the row it edits. Where a list has more lists above it (Plan has
+  four Workouts, the Stretches and the Phase), a toolbar row of chips chooses
+  the list.
+- A pane that exists to be read (Progress) lays its numbers out as a grid of
+  `Stat` cells, then a chart at the full width of the pane.
 - A field takes the keyboard on its own only where there is a mouse
   (`finePointer` in [`today.ts`](../src/pages/System/components/Body/today.ts)).
   On a phone that would open the keyboard over the list.
@@ -211,6 +219,7 @@ state is a glyph and not a word, and each glyph has one meaning in each view.
 | `−` | one less of the number beside it |
 | `×` | remove |
 | `☰` | drag (the shared `DragHandle`) |
+| `↗` `↘` `→` | trend: the last Session against the one before it (Progress). Arrows, because `▲` and `△` already mean a Rule |
 
 A control that shows only a glyph carries its full name in `aria-label` and
 `title` — [`GlyphButton`](../src/pages/System/components/Body/marks.tsx) takes

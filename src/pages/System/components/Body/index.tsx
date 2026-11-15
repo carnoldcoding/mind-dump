@@ -32,8 +32,8 @@ const BodyWindow = () => {
     // Mind's split (docs/motion.md): the frame Wipes and the chrome — the tab
     // strip — Cascades once, on open. Only the tab content Cascades again, when
     // the data first lands and on a tab change. A reload after a save animates
-    // nothing; the numbers change in place. Today fills the height and
-    // scrolls its own list; the other two tabs grow, and the tab scrolls.
+    // nothing; the numbers change in place. Each tab is one frame that fills
+    // the height and scrolls its own list and pane.
     const scope = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -82,7 +82,7 @@ const BodyWindow = () => {
                             </span>
                         </div>
                     ) : (
-                        <div ref={contentRef} data-reveal-own className={`flex flex-col gap-4 ${activeTab === "today" ? "flex-1 min-h-0" : ""}`}>
+                        <div ref={contentRef} data-reveal-own className="flex flex-col gap-4 flex-1 min-h-0">
                             {activeTab === "today" && <TodayTab data={ready} onChanged={refresh} />}
                             {activeTab === "plan" && <PlanTab data={ready} onChanged={refresh} />}
                             {activeTab === "progress" && <ProgressTab data={ready} onChanged={refresh} />}

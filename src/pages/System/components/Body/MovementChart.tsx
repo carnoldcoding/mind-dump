@@ -51,20 +51,22 @@ export function chartOptions(unit: string) {
 }
 
 type Props = {
-    /** The best value of each Session, oldest first. */
+    /** One point for each Session, oldest first. */
     series: Point[];
-    /** What a value counts: full reps, or seconds for a hold. */
-    hold: boolean;
+    /** What a point is, for the legend and the tooltip. */
+    label: string;
+    /** Follows each value: "reps", "s", "lb". */
+    unit: string;
 };
 
-// One line: the best full reps of each Session, or the longest hold (spec
-// R28). There is no target line. A Set that goes past failure has no rep
-// target; the number to beat is the last point on this line.
-const MovementChart = ({ series, hold }: Props) => {
+// One line over the Sessions of a Movement (spec R28, panes R36). There is no
+// target line. A Set that goes past failure has no rep target; the number to
+// beat is the last point on this line.
+const MovementChart = ({ series, label, unit }: Props) => {
     const data = {
         labels: series.map(p => shortDate(p.date)),
         datasets: [{
-            label: hold ? "Longest hold" : "Best full reps",
+            label,
             data: series.map(p => p.value),
             borderColor: INK,
             backgroundColor: "rgba(72, 72, 61, 0.08)",
@@ -80,8 +82,8 @@ const MovementChart = ({ series, hold }: Props) => {
     // data-reveal-own: a chart draws itself; a Cascade steps over it rather
     // than animating a canvas.
     return (
-        <div data-reveal-own className="w-full h-56 px-4 pt-2 pb-3">
-            <Line data={data} options={chartOptions(hold ? "s" : "reps")} />
+        <div data-reveal-own className="w-full h-56">
+            <Line data={data} options={chartOptions(unit)} />
         </div>
     );
 };

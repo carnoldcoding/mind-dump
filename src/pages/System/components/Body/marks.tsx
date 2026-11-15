@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { GLYPH } from "./glyphs";
 
 // The controls the Body views share. Each shows a glyph where the old views
 // showed a word, so each carries its full name for a screen reader and for a
@@ -60,18 +59,5 @@ export const Chip = ({ children, active, onClick, testId }: {
         }`}
     >
         {children}
-    </button>
-);
-
-/** The row that adds one more item to the list it sits in. */
-export const AddRow = ({ label, onClick, first = false }: { label: string; onClick: () => void; first?: boolean }) => (
-    <button
-        type="button"
-        onClick={onClick}
-        aria-label={label}
-        title={label}
-        className={`w-full min-h-11 px-3 text-left text-body text-nier-text-dark/60 ${first ? "border-b" : "border-t"} border-nier-150/30 hover:bg-nier-150/30 hover:text-nier-text-dark cursor-pointer transition-colors`}
-    >
-        {GLYPH.add}
     </button>
 );

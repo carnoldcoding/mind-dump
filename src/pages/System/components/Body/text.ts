@@ -35,3 +35,12 @@ export function shortDate(date: string): string {
     const [y, m, d] = date.split("-").map(Number);
     return new Date(y, m - 1, d).toLocaleDateString([], { month: "short", day: "numeric" });
 }
+
+/** "2027-04-18" → "Apr 18, 2027": a date far enough away to need its year. */
+export function longDate(date: string): string {
+    const [y, m, d] = date.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+/** A value of a Movement with its unit: "9" for reps, "23 s" for a hold. */
+export const valueText = (movement: Movement, value: number): string => (movement.kind === "hold" ? `${value} s` : `${value}`);

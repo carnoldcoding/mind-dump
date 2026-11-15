@@ -2,7 +2,7 @@
 // "Body glyphs"). A state is a glyph, not a word, and each glyph has one
 // meaning wherever it appears.
 
-import type { Rule } from "../../../../types/body";
+import type { Rule, Trend } from "../../../../types/body";
 
 export const GLYPH = {
     done: "◆",
@@ -25,6 +25,9 @@ export const RULE_GLYPH: Record<Rule, string> = {
     failure: "▲",
     noFailure: "△",
 };
+
+/** Arrows, because ▲ and △ already mean a Rule. */
+export const TREND_GLYPH: Record<Trend, string> = { up: "↗", down: "↘", same: "→" };
 
 /** Done, started or not done, from a count against its total. */
 export function stateGlyph(count: number, total: number): string {
