@@ -55,11 +55,23 @@ export function prefill(movement: Movement, previous: { date?: string; sets: Log
     return value == null ? "" : String(value);
 }
 
+const WHOLE = /^\d+$/;
+
+/**
+ * The number of a Set after a press on − or +. An empty field counts from 0,
+ * and the number does not go below 1 (body-flow R10, R11). Text that is not a
+ * whole number is left for the save to refuse.
+ */
+export function stepped(text: string, by: number): string {
+    const t = text.trim();
+    if (t !== "" && !WHOLE.test(t)) return text;
+    if (t === "" && by < 0) return text;
+    return String(Math.max((t === "" ? 0 : Number(t)) + by, 1));
+}
+
 export type SetFields = { full: string; seconds: string; load: string };
 
 export const blankFields: SetFields = { full: "", seconds: "", load: "" };
-
-const WHOLE = /^\d+$/;
 
 function whole(text: string): number | null {
     const t = text.trim();

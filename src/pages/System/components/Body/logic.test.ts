@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { nextUp, prefill, sessionRows, valuesFromFields } from "./session";
+import { nextUp, prefill, sessionRows, stepped, valuesFromFields } from "./session";
 import { addSlot, afterMove, nextWorkout, pairEdge, removeSlot, replaceSlot, togglePair } from "./plan";
 import { setPips, stateGlyph } from "./glyphs";
 import { describeRoutineItem, describeSet, signedLb } from "./text";
-import { STRETCHES, WEIGHT, firstOpen, hintFor } from "./today";
+import { STRETCHES, WEIGHT, firstOpen, hintFor, nextAfter } from "./today";
 import { rollingAverage } from "./progress";
 import type { LoggedSet, Movement, Session, Slot, Workout } from "../../../../types/body";
 
@@ -129,6 +129,30 @@ describe("valuesFromFields (R21)", () => {
         expect(valuesFromFields(movements[1], { ...blank, full: "seven" }).error).toBeTruthy();
         expect(valuesFromFields(movements[0], { ...blank, seconds: "0" }).error).toBeTruthy();
         expect(valuesFromFields(movements[1], { ...blank, full: "0" }).error).toBeTruthy();
+    });
+});
+
+describe("stepped (body-flow R10, R11)", () => {
+    it("adds and takes away from the number", () => {
+        expect(stepped("9", 1)).toBe("10");
+        expect(stepped("9", -1)).toBe("8");
+        expect(stepped("30", 5)).toBe("35");
+    });
+
+    it("counts an empty field from 0, and leaves it empty on a press of less", () => {
+        expect(stepped("", 1)).toBe("1");
+        expect(stepped("", 5)).toBe("5");
+        expect(stepped("", -1)).toBe("");
+    });
+
+    it("does not go below 1", () => {
+        expect(stepped("1", -1)).toBe("1");
+        expect(stepped("3", -5)).toBe("1");
+    });
+
+    it("leaves text that is not a whole number for the save to refuse", () => {
+        expect(stepped("1.5", 1)).toBe("1.5");
+        expect(stepped("abc", 1)).toBe("abc");
     });
 });
 
@@ -271,6 +295,60 @@ describe("Today's selection (body-today R6, R9, R11)", () => {
         // A day with no Workout is complete after its two rows.
         expect(firstOpen({ weighed: true, stretched: true, rows: [] })).toBeNull();
         expect(firstOpen({ weighed: true, stretched: false, rows: [] })).toBe(STRETCHES);
+    });
+});
+
+describe("Today's selection after a save (body-flow R21, R22)", () => {
+    const day = (weighed: boolean, stretched: boolean, s: Session | null = null) =>
+        ({ weighed, stretched, rows: sessionRows(workout, movements, s) });
+    const holds = [set("hold", 1), set("hold", 2), set("hold", 3)];
+
+    it("stays on the same Movement while it has a planned Set left", () => {
+        expect(nextAfter("hold", day(true, true, session([set("hold", 1)])))).toBe("hold");
+        expect(nextAfter("dip", day(true, true, session([set("dip", 1)])))).toBe("dip");
+    });
+
+    it("does not go back to Stretches that the user passed over (the reported bug)", () => {
+        expect(nextAfter("hold", day(true, false, session([set("hold", 1)])))).toBe("hold");
+        expect(nextAfter("hold", day(false, false, session(holds)))).toBe("push");
+    });
+
+    it("alternates inside a Pair", () => {
+        expect(nextAfter("push", day(true, true, session([set("push", 1)])))).toBe("pull");
+        expect(nextAfter("pull", day(true, true, session([set("push", 1), set("pull", 1)])))).toBe("push");
+        // One of the two is done: the other takes the rest.
+        expect(nextAfter("push", day(true, true, session([set("push", 1), set("push", 2)])))).toBe("pull");
+    });
+
+    it("goes to the next row below that is not done", () => {
+        expect(nextAfter(WEIGHT, day(true, false))).toBe(STRETCHES);
+        expect(nextAfter(WEIGHT, day(true, true))).toBe("hold");
+        expect(nextAfter(STRETCHES, day(false, true))).toBe("hold");
+        // A done row between the two is passed.
+        expect(nextAfter("hold", day(true, true, session([...holds, set("push", 1), set("push", 2), set("pull", 1), set("pull", 2)])))).toBe("dip");
+    });
+
+    it("enters a Pair below on the Movement with fewer Sets", () => {
+        expect(nextAfter("hold", day(true, true, session([...holds, set("push", 1)])))).toBe("pull");
+    });
+
+    it("goes to the first row above that is not done when none is below", () => {
+        const rest = [...holds, set("push", 1), set("pull", 1), set("push", 2), set("pull", 2), set("dip", 1), set("dip", 2)];
+        expect(nextAfter("dip", day(false, false, session(rest)))).toBe(WEIGHT);
+        expect(nextAfter("dip", day(true, false, session(rest)))).toBe(STRETCHES);
+        expect(nextAfter("dip", day(true, true, session(rest.filter(s => s.movementId !== "hold"))))).toBe("hold");
+    });
+
+    it("selects nothing when each row is done", () => {
+        const rest = [...holds, set("push", 1), set("pull", 1), set("push", 2), set("pull", 2), set("dip", 1), set("dip", 2)];
+        expect(nextAfter("dip", day(true, true, session(rest)))).toBeNull();
+        expect(nextAfter(STRETCHES, { weighed: true, stretched: true, rows: [] })).toBeNull();
+    });
+
+    it("stays on a row that the save left not done", () => {
+        // The mark on the Stretches was cleared; a skip was taken back.
+        expect(nextAfter(STRETCHES, day(true, false))).toBe(STRETCHES);
+        expect(nextAfter("hold", day(true, true, session([])))).toBe("hold");
     });
 });
 

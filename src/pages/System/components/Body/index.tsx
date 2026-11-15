@@ -32,7 +32,8 @@ const BodyWindow = () => {
     // Mind's split (docs/motion.md): the frame Wipes and the chrome — the tab
     // strip — Cascades once, on open. Only the tab content Cascades again, when
     // the data first lands and on a tab change. A reload after a save animates
-    // nothing; the numbers change in place.
+    // nothing; the numbers change in place. Today fills the height and
+    // scrolls its own list; the other two tabs grow, and the tab scrolls.
     const scope = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
@@ -69,7 +70,7 @@ const BodyWindow = () => {
             <div className="flex flex-col h-full min-h-0">
                 <TabStrip tabs={TABS} active={activeTab} onChange={setActiveTab} />
 
-                <div className="p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
+                <div className="p-2 md:p-4 flex flex-col gap-4 flex-1 overflow-y-auto min-h-0">
                     {ready === null ? (
                         <div className="h-64 bg-nier-100-lighter border border-nier-150 flex items-center justify-center px-4 text-center">
                             <span className="text-nier-text-dark/40 text-label uppercase tracking-widest">
@@ -81,7 +82,7 @@ const BodyWindow = () => {
                             </span>
                         </div>
                     ) : (
-                        <div ref={contentRef} data-reveal-own className="flex flex-col gap-4">
+                        <div ref={contentRef} data-reveal-own className={`flex flex-col gap-4 ${activeTab === "today" ? "flex-1 min-h-0" : ""}`}>
                             {activeTab === "today" && <TodayTab data={ready} onChanged={refresh} />}
                             {activeTab === "plan" && <PlanTab data={ready} onChanged={refresh} />}
                             {activeTab === "progress" && <ProgressTab data={ready} onChanged={refresh} />}

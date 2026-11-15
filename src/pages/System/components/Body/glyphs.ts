@@ -13,7 +13,10 @@ export const GLYPH = {
     next: "➤",
     /** The control that saves or marks done. Not the caret: one says where, the other says finish. */
     save: "✓",
-    add: "＋",
+    /** One less and one more of the number beside them. */
+    less: "−",
+    more: "+",
+    add: "+",
     remove: "×",
 } as const;
 
