@@ -150,14 +150,14 @@ const withMouse = () => vi.stubGlobal("matchMedia", (query: string) => ({ matche
 describe("Today: the frame (body-today R1–R5, body-flow R1, R5)", () => {
     it("names the weekday and the Workout in the header band", async () => {
         await renderWindow();
-        expect(screen.getByTestId("today-weekday").textContent).toBe("Monday");
-        expect(screen.getByTestId("today-workout").textContent).toBe("Upper A");
+        expect(screen.getByTestId("today-title").textContent).toBe("Monday");
+        expect(screen.getByTestId("today-aside").textContent).toBe("Upper A");
     });
 
     it("shows Rest on a day with no Workout, with two rows", async () => {
         await renderWindow(sample({ summary: summary({ today: { date: TODAY, weekday: 3, due: null, dueDone: false, missed: [] } }) }));
-        expect(screen.getByTestId("today-weekday").textContent).toBe("Wednesday");
-        expect(screen.getByTestId("today-workout").textContent).toBe("Rest");
+        expect(screen.getByTestId("today-title").textContent).toBe("Wednesday");
+        expect(screen.getByTestId("today-aside").textContent).toBe("Rest");
         expect(screen.getByTestId("row-weight")).toBeTruthy();
         expect(screen.getByTestId("row-stretches")).toBeTruthy();
         expect(screen.queryAllByTestId(/^movement-/)).toHaveLength(0);
@@ -306,7 +306,7 @@ describe("Today: the selection (body-flow R19–R23)", () => {
 describe("Today: the Session is not a choice (body-today R17–R19)", () => {
     it("offers no missed Workout and no control that changes the Workout", async () => {
         await renderWindow(sample({ summary: summary({ today: { date: TODAY, weekday: 6, due: null, dueDone: false, missed: ["upperA", "lowerA", "upperB", "lowerB"] } }) }));
-        expect(screen.getByTestId("today-workout").textContent).toBe("Rest");
+        expect(screen.getByTestId("today-aside").textContent).toBe("Rest");
         expect(screen.queryAllByTestId(/^movement-/)).toHaveLength(0);
         expect(screen.queryByText("Upper A")).toBeNull();
         expect(screen.queryByText("Lower B")).toBeNull();

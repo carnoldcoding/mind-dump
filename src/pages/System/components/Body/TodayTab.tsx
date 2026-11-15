@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { FormEvent } from "react";
 import { backend } from "../../../../api/backend";
 import { errorText } from "../Finances/errorText";
-import { ShadowBox } from "../../../../components/common/ShadowBox";
 import { NumberField } from "./fields";
+import { BigNumber, Frame, ListRow, PaneTitle, Stepper } from "./frame";
+import { BOUND, EYEBROW, FACT } from "./frameStyle";
 import { GLYPH, RULE_GLYPH, setPips } from "./glyphs";
 import { GlyphButton } from "./marks";
 import { pairEdge } from "./plan";
-import { blankFields, prefill, sessionRows, stepped, valuesFromFields } from "./session";
+import { blankFields, prefill, sessionRows, valuesFromFields } from "./session";
 import type { Row, SetFields } from "./session";
 import { RULE_LABEL, describeRoutineItem, describeSet, formatLb, shortDate, signedLb, weekdayName } from "./text";
 import { STRETCHES, WEIGHT, finePointer, firstOpen, hintFor, nextAfter } from "./today";
@@ -72,26 +73,19 @@ const TodayTab = ({ data, onChanged }: Props) => {
 
     const row = rows.find(r => r.movement._id === selected);
 
-    // On a phone the list is short and scrolls; the selected row stays in sight.
-    const listRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        listRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView?.({ block: "nearest" });
-    }, [selected]);
-
     return (
-        <ShadowBox
-            as="section"
+        <Frame
+            id="today"
             label="Today"
-            wrapperClassName="flex-1 min-h-0 flex flex-col"
-            className="flex-1 min-h-0 flex flex-col bg-nier-100-lighter border border-nier-150"
-        >
-            <header data-testid="today-heading" className="min-h-10 shrink-0 bg-nier-150 flex items-center justify-between gap-3 px-3 py-1 uppercase tracking-widest text-nier-text-dark">
-                <h2 data-testid="today-weekday" className="text-title tracking-wide">{weekdayName(t.weekday)}</h2>
-                <span data-testid="today-workout" className="text-body">{workout?.name ?? "Rest"}</span>
-            </header>
-
-            <div className="flex-1 min-h-0 flex flex-col md:flex-row">
-                <div ref={listRef} data-testid="today-list" className="flex-1 min-h-0 overflow-y-auto md:flex-none md:w-96 md:border-r md:border-nier-150">
+            title={weekdayName(t.weekday)}
+            aside={workout?.name ?? "Rest"}
+            selected={selected}
+            // Keyed on the row and its Sets, so each Set starts from the last Session's value.
+            paneKey={`${selected}:${row?.sets.length ?? ""}`}
+            hint={hintFor(selected, day)}
+            error={error}
+            list={
+                <>
                     <ListRow
                         id={WEIGHT}
                         name="Weight"
@@ -115,7 +109,11 @@ const TodayTab = ({ data, onChanged }: Props) => {
                             testId={`movement-${r.movement.name}`}
                             name={r.movement.name}
                             glyph={rowGlyph(r)}
-                            rule={r.movement}
+                            mid={
+                                <span title={RULE_LABEL[r.movement.rule]} aria-label={RULE_LABEL[r.movement.rule]} className="text-eyebrow opacity-60 shrink-0">
+                                    {RULE_GLYPH[r.movement.rule]}
+                                </span>
+                            }
                             value={r.skipped ? GLYPH.skipped : setPips(r.sets.length, r.movement.sets)}
                             valueLabel={r.skipped ? "Skipped" : `${r.sets.length} of ${r.movement.sets} sets`}
                             paired={pairEdge(slots, i) !== null}
@@ -123,16 +121,10 @@ const TodayTab = ({ data, onChanged }: Props) => {
                             onSelect={select}
                         />
                     ))}
-                </div>
-
-                {/* Keyed on the row and its Sets, so each Set starts from the last Session's value. */}
-                <div
-                    key={`${selected}:${row?.sets.length ?? ""}`}
-                    data-testid="today-pane"
-                    className="shrink-0 max-h-[60%] overflow-y-auto border-t border-nier-150 md:border-t-0 md:flex-1 md:max-h-none p-3 md:p-6"
-                >
-                    {/* A column of bounded width, so a control is never far from what it acts on. */}
-                    <div className="w-full max-w-lg flex flex-col gap-3">
+                </>
+            }
+            pane={
+                <div className={BOUND}>
                     {selected === null && (
                         <p data-testid="today-complete" className="text-heading uppercase tracking-widest text-nier-text-dark">
                             <span aria-hidden className="mr-3">{GLYPH.done}</span>Complete
@@ -158,18 +150,9 @@ const TodayTab = ({ data, onChanged }: Props) => {
                             onError={setError}
                         />
                     )}
-                    </div>
                 </div>
-            </div>
-
-            <footer
-                data-testid="today-hint"
-                role={error ? "alert" : undefined}
-                className={`min-h-10 shrink-0 flex items-center px-3 py-2 border-t border-nier-150 bg-nier-100 text-label ${error ? "text-red-800" : "text-nier-text-dark/70"}`}
-            >
-                {error || hintFor(selected, day)}
-            </footer>
-        </ShadowBox>
+            }
+        />
     );
 };
 
@@ -178,80 +161,6 @@ function rowGlyph({ skipped, done, sets }: Row): string {
     if (done) return GLYPH.done;
     return sets.length > 0 ? GLYPH.started : GLYPH.open;
 }
-
-// Every row of Today has this one shape and this one height: a state glyph, a
-// name, a value. The selected row is inverted and carries the caret in place
-// of its glyph. Its fields are in the pane, not under it.
-const ListRow = ({ id, name, glyph, value, valueLabel, rule, paired = false, selected, onSelect, testId }: {
-    id: RowId;
-    name: string;
-    glyph: string;
-    value: string;
-    /** The value in words, when the value is glyphs. */
-    valueLabel?: string;
-    /** The Movement whose Rule glyph the row shows. */
-    rule?: Movement;
-    paired?: boolean;
-    selected: boolean;
-    onSelect: (id: RowId) => void;
-    testId?: string;
-}) => (
-    <button
-        type="button"
-        data-testid={testId ?? `row-${id}`}
-        data-selected={selected}
-        aria-current={selected ? "true" : undefined}
-        onClick={() => onSelect(id)}
-        className={`w-full flex items-center gap-3 px-3 h-11 text-left cursor-pointer transition-colors border-b border-nier-150/30 ${
-            paired ? "border-l-4 border-l-nier-150" : ""
-        } ${selected ? "bg-nier-dark text-nier-text-light" : "text-nier-text-dark hover:bg-nier-150/40"}`}
-    >
-        <span aria-hidden data-testid="mark" className="w-6 shrink-0 text-center text-body leading-none">{selected ? GLYPH.next : glyph}</span>
-        <span className="flex-1 min-w-0 text-body truncate">{name}</span>
-        {rule && (
-            <span title={RULE_LABEL[rule.rule]} aria-label={RULE_LABEL[rule.rule]} className="text-eyebrow opacity-60 shrink-0">
-                {RULE_GLYPH[rule.rule]}
-            </span>
-        )}
-        <span data-testid="state" aria-label={valueLabel} className="min-w-14 shrink-0 text-right text-label tracking-widest tabular-nums">{value}</span>
-    </button>
-);
-
-const EYEBROW = "text-eyebrow uppercase tracking-widest text-nier-text-dark/50";
-const FACT = "flex items-baseline gap-3 text-label text-nier-text-dark/70 tabular-nums";
-
-/** The first line of the pane: what is selected, and where in it the user is. */
-const PaneTitle = ({ name, at }: { name: string; at?: string }) => (
-    <div className="flex items-baseline justify-between gap-3">
-        <h3 data-testid="pane-title" className="text-heading uppercase tracking-widest text-nier-text-dark truncate">{name}</h3>
-        {at && <span data-testid="pane-at" className={`${EYEBROW} shrink-0`}>{at}</span>}
-    </div>
-);
-
-/**
- * The one large number of the pane. It is a field, so it can be typed into,
- * but it takes the keyboard on its own only where there is a mouse: on a
- * phone the keyboard stays shut until the number is pressed (body-flow R19).
- */
-const BigNumber = ({ label, value, onChange, decimal = false, placeholder, wide = false }: {
-    label: string;
-    value: string;
-    onChange: (v: string) => void;
-    decimal?: boolean;
-    placeholder?: string;
-    wide?: boolean;
-}) => (
-    <input
-        type="text"
-        inputMode={decimal ? "decimal" : "numeric"}
-        aria-label={label}
-        autoFocus={finePointer()}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`${wide ? "w-40" : "w-16 md:w-24"} h-12 min-w-0 bg-transparent text-center text-display tabular-nums text-nier-text-dark placeholder:text-nier-text-dark/25 border-b border-nier-dark focus:outline-none focus:border-b-2`}
-    />
-);
 
 // One Weigh-in for the date; saving again replaces it (body-plan R17). The
 // trend is read off the 7-day average, not the latest value (body-plan R18).
@@ -384,15 +293,16 @@ const SetForm = ({ movement, setNumber, start, canSkip, onSave, onSkip, onError 
         try { await onSave(values); } finally { setSaving(false); }
     };
 
-    const size = hold ? 5 : 1;
-    const unit = hold ? "seconds" : "rep";
-    const step = (by: number) => setFields(f => ({ ...f, [key]: stepped(f[key], by) }));
-
     return (
         <form onSubmit={save} className="flex flex-wrap items-center gap-2 md:gap-3 pt-2">
-            <GlyphButton glyph={GLYPH.less} label={hold ? `${size} ${unit} less` : `One ${unit} less`} onClick={() => step(-size)} />
-            <BigNumber label={hold ? "Seconds" : "Reps"} value={fields[key]} onChange={set(key)} />
-            <GlyphButton glyph={GLYPH.more} label={hold ? `${size} ${unit} more` : `One ${unit} more`} onClick={() => step(size)} />
+            <Stepper
+                label={hold ? "Seconds" : "Reps"}
+                value={fields[key]}
+                onChange={set(key)}
+                size={hold ? 5 : 1}
+                less={hold ? "5 seconds less" : "One rep less"}
+                more={hold ? "5 seconds more" : "One rep more"}
+            />
             {movement.loaded && (
                 <div className="w-28"><NumberField label="Load lb" value={fields.load} onChange={set("load")} decimal /></div>
             )}
