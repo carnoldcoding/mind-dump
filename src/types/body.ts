@@ -73,6 +73,32 @@ export type GridWeek = {
 
 export type Point = { date: string; value: number };
 
+/** The best of the last Session against the best of the Session before it. */
+export type Trend = "up" | "down" | "same";
+
+/** What Progress shows of one Movement. Each series has one point for each Session, oldest first. */
+export type MovementStats = {
+    best: Point | null;
+    /** The best Set of each Session. */
+    series: Point[];
+    /** Set 1 of each Session. */
+    first: Point[];
+    /** The sum of the Sets of each Session. */
+    total: Point[];
+    /** The highest load of each Session that has one. */
+    load: Point[];
+    sessions: number;
+    sets: number;
+    /** The sum of every Set. */
+    sum: number;
+    /** Null with fewer than two Sessions. */
+    trend: Trend | null;
+    /** The dates of the Sessions that beat each earlier Session. The first Session is not one. */
+    records: string[];
+};
+
+export type Count = { done: number; planned: number };
+
 export type BodySummary = {
     today: {
         date: string;
@@ -92,8 +118,26 @@ export type BodySummary = {
         targetLb: number;
         /** Average minus start. */
         change: number | null;
+        lowest: WeighIn | null;
+        /** Average minus target. */
+        toGo: number | null;
+        /** Pounds for each week, over the last 28 days. Null with too few Weigh-ins. */
+        pace: number | null;
+        /** The date the average reaches the target at the pace. Null when the pace does not lead there. */
+        eta: string | null;
     };
-    bests: Record<string, { best: Point | null; series: Point[] }>;
+    bests: Record<string, MovementStats>;
+    adherence: {
+        /** The 4 newest weeks. */
+        workouts: Count;
+        /** The last 28 days, from the first record. */
+        stretches: { done: number; days: number };
+        /** Every week. */
+        byWorkout: Record<WorkoutKey, Count>;
+    };
+    totals: { sessions: number; sets: number };
+    /** The last 10 records of all Movements, newest first. */
+    records: { movementId: string; date: string; value: number }[];
     /** For each Movement, the Sets of its last Session before today. */
     previous: Record<string, { date: string; sets: LoggedSet[] }>;
 };

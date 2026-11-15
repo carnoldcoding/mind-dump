@@ -177,14 +177,14 @@ export const Stepper = ({ label, value, onChange, size = 1, less, more, focus = 
 
 /** A labelled number, one cell of a grid of them. */
 export const Stat = ({ label, value, sub, testId }: { label: string; value: string; sub?: string; testId?: string }) => (
-    <div className="bg-nier-100-lighter px-3 py-2 flex flex-col gap-1 min-w-0">
+    <div className="px-3 py-2 flex flex-col gap-1 min-w-0 border-r border-b border-nier-150/50">
         <span className={EYEBROW}>{label}</span>
-        <span data-testid={testId} className="text-heading text-nier-text-dark tabular-nums truncate">{value}</span>
+        <span data-testid={testId} className="text-heading text-nier-text-dark tabular-nums break-words">{value}</span>
         {sub && <span className="text-eyebrow text-nier-text-dark/50 tabular-nums truncate">{sub}</span>}
     </div>
 );
 
-/** The grid the Stats sit in: hairlines between the cells, one border around. */
+/** The grid the Stats sit in: a hairline around each cell. A last row that is not full stays plain. */
 export const Stats = ({ children }: { children: ReactNode }) => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-px bg-nier-150/50 border border-nier-150/50">{children}</div>
+    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 border-l border-t border-nier-150/50">{children}</div>
 );
