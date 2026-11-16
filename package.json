@@ -9,7 +9,6 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "migrate:body": "esbuild scripts/migrate-body.ts --bundle --format=esm --platform=node --outfile=node_modules/.cache/migrate-body.mjs && node node_modules/.cache/migrate-body.mjs",
     "migrate:dates": "esbuild scripts/migrate-dates.ts --bundle --format=esm --platform=node --outfile=node_modules/.cache/migrate-dates.mjs && node node_modules/.cache/migrate-dates.mjs"
   },
   "dependencies": {

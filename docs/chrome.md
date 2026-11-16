@@ -134,9 +134,40 @@ the name this Review is filed under", not "Here you can set the title". It
 reads as the interface describing itself rather than addressing a reader, which
 is the whole effect.
 
+Body's Today view wears one too, and has no pointer to follow: its hint
+describes the **selected row** — the next thing to log — so it reads the same
+on a phone. A refused save shows its reason there, in place of the line
+(`hintFor` in [`today.ts`](../src/pages/System/components/Body/today.ts)).
+
 Hint copy **never counts**. A line reporting how many Critique sections were
 written would put a figure on a Critique that `CONTEXT.md` is explicit should
 not carry one.
+
+### List and pane
+
+A list of rows with one shape at the left, and a pane at the right that shows
+the selected row. The reference draws its menus this way. The three Body views
+are the users, and they share one set of parts
+([`frame.tsx`](../src/pages/System/components/Body/frame.tsx)): `Frame`,
+`ListRow`, `PaneTitle`, `BigNumber`, `Stepper`, `Stat`.
+
+- **The list only selects.** A row is one line with one height in each state.
+  It never opens, so nothing moves when the selection does.
+- **The pane holds the fields** of the selected row, and its controls. They are
+  in one place for each row, which is what makes them fast to hit.
+- The pane's content has a bounded width. A control is never a screen away
+  from the number it acts on.
+- Below 768px the pane goes under the list. The list scrolls; the pane and the
+  hint bar stay at the bottom of the frame, where a thumb is.
+- **No modal.** A modal covers the list; a pane keeps it in view. An editor is
+  the pane of the row it edits. Where a list has more lists above it (Plan has
+  four Workouts, the Stretches and the Phase), a toolbar row of chips chooses
+  the list.
+- A pane that exists to be read (Progress) lays its numbers out as a grid of
+  `Stat` cells, then a chart at the full width of the pane.
+- A field takes the keyboard on its own only where there is a mouse
+  (`finePointer` in [`today.ts`](../src/pages/System/components/Body/today.ts)).
+  On a phone that would open the keyboard over the list.
 
 ### Controls
 
@@ -149,8 +180,8 @@ Every other control goes in one of two places. One test decides which:
 - A **view control** changes only what is shown: a filter, a sort, a search,
   a month picker, a switch between views of the same data. It goes in a
   **toolbar row** — a bordered row directly under the title strip, inside the
-  section ([`ToolbarRow`](../src/components/common/ToolbarRow.tsx)). Body's
-  tag filter is the model.
+  section ([`ToolbarRow`](../src/components/common/ToolbarRow.tsx)). The
+  Movement picker on Body's Progress view is the model.
 - An **action** creates, assigns or edits data. It sits next to the thing it
   acts on: "Fund targets" beside the Unassigned amount, "New Envelope" as the
   first row of the Envelope list. It is the first row, not the last, because
@@ -166,3 +197,34 @@ A geometric mark per Critique section, in `SECTION_GLYPH`
 ([`critique.ts`](../src/utils/critique.ts)). Shared between the Review detail's
 tabs and anywhere else a section is named, so one section looks the same
 wherever it appears.
+
+### Body glyphs
+
+The marks the Body views draw with, in `GLYPH` and `RULE_GLYPH`
+([`glyphs.ts`](../src/pages/System/components/Body/glyphs.ts)). In Body a
+state is a glyph and not a word, and each glyph has one meaning in each view.
+
+| Glyph | Meaning |
+|---|---|
+| `◆` | done |
+| `◈` | started, not done |
+| `◇` | not done |
+| `⊘` | skipped |
+| `➤` | the selected row |
+| `✓` | the control that saves the selected row, or marks it done |
+| `▲▲` | Rule: past failure |
+| `▲` | Rule: failure only |
+| `△` | Rule: no failure |
+| `+` | add a row to a list (Plan); one more of the number beside it (Today) |
+| `−` | one less of the number beside it |
+| `×` | remove |
+| `☰` | drag (the shared `DragHandle`) |
+| `↗` `↘` `→` | trend: the last Session against the one before it (Progress). Arrows, because `▲` and `△` already mean a Rule |
+
+A control that shows only a glyph carries its full name in `aria-label` and
+`title` — [`GlyphButton`](../src/pages/System/components/Body/marks.tsx) takes
+the name as a required prop, so one cannot be drawn without it.
+
+The caret and the save control are different glyphs on purpose. `➤` says
+where attention is; `✓` finishes the thing. One glyph for both made a row's
+marker look like a button and its button look like a marker.

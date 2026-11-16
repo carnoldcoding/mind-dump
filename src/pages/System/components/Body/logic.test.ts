@@ -1,0 +1,415 @@
+import { describe, expect, it } from "vitest";
+import { nextUp, prefill, sessionRows, stepped, valuesFromFields } from "./session";
+import { addSlot, afterMove, nextWorkout, pairEdge, removeSlot, replaceSlot, togglePair } from "./plan";
+import { setPips, stateGlyph } from "./glyphs";
+import { describeRoutineItem, describeSet, signedLb } from "./text";
+import { STRETCHES, WEIGHT, firstOpen, hintFor, nextAfter } from "./today";
+import { inRange, progressHint, progressOrder, rollingAverage } from "./progress";
+import type { LoggedSet, Movement, Session, Slot, Workout } from "../../../../types/body";
+
+const reps = (id: string, over: Partial<Movement> = {}): Movement =>
+    ({ _id: id, name: id, kind: "reps", rule: "pastFailure", sets: 2, loaded: false, ...over });
+
+const movements: Movement[] = [
+    reps("hold", { kind: "hold", rule: "noFailure", sets: 3 }),
+    reps("push"),
+    reps("pull"),
+    reps("dip", { rule: "failure" }),
+];
+
+const workout: Workout = {
+    key: "upperA", name: "Upper A", weekday: 1,
+    slots: [
+        { movementId: "hold", pair: null },
+        { movementId: "push", pair: 1 },
+        { movementId: "pull", pair: 1 },
+        { movementId: "dip", pair: null },
+    ],
+};
+
+const set = (movementId: string, n: number): LoggedSet => ({ id: `${movementId}${n}`, movementId, full: 5 });
+const session = (sets: LoggedSet[], skipped: string[] = []): Session =>
+    ({ _id: "s", date: "2026-11-09", workoutKey: "upperA", sets, skipped });
+
+const up = (s: Session | null) => nextUp(sessionRows(workout, movements, s));
+
+describe("nextUp (R20, R23)", () => {
+    it("opens the first Movement when nothing is logged", () => {
+        expect(up(null)).toEqual({ movementId: "hold", setNumber: 1 });
+    });
+
+    it("stays on a Movement until it has its Sets", () => {
+        expect(up(session([set("hold", 1)]))).toEqual({ movementId: "hold", setNumber: 2 });
+    });
+
+    it("alternates the two Movements of a Pair", () => {
+        const done = [set("hold", 1), set("hold", 2), set("hold", 3)];
+        expect(up(session(done))).toEqual({ movementId: "push", setNumber: 1 });
+        expect(up(session([...done, set("push", 1)]))).toEqual({ movementId: "pull", setNumber: 1 });
+        expect(up(session([...done, set("push", 1), set("pull", 1)]))).toEqual({ movementId: "push", setNumber: 2 });
+        expect(up(session([...done, set("push", 1), set("pull", 1), set("push", 2)]))).toEqual({ movementId: "pull", setNumber: 2 });
+    });
+
+    it("moves past a Pair once both Movements have their Sets", () => {
+        const sets = [set("hold", 1), set("hold", 2), set("hold", 3), set("push", 1), set("pull", 1), set("push", 2), set("pull", 2)];
+        expect(up(session(sets))).toEqual({ movementId: "dip", setNumber: 1 });
+    });
+
+    it("steps over a skipped Movement, and leaves its Pair partner alone", () => {
+        expect(up(session([], ["hold"]))).toEqual({ movementId: "push", setNumber: 1 });
+        expect(up(session([set("pull", 1)], ["hold", "push"]))).toEqual({ movementId: "pull", setNumber: 2 });
+    });
+
+    it("has nothing next when each Movement is done or skipped", () => {
+        const sets = [set("hold", 1), set("hold", 2), set("hold", 3), set("push", 1), set("pull", 1), set("push", 2), set("pull", 2)];
+        expect(up(session(sets, ["dip"]))).toBeNull();
+    });
+});
+
+describe("sessionRows (R25)", () => {
+    it("marks a Movement done at its set count, and a skipped one done", () => {
+        const rows = sessionRows(workout, movements, session([set("push", 1), set("push", 2)], ["dip"]));
+        expect(rows.map(r => [r.movement._id, r.sets.length, r.done, r.skipped])).toEqual([
+            ["hold", 0, false, false],
+            ["push", 2, true, false],
+            ["pull", 0, false, false],
+            ["dip", 0, true, true],
+        ]);
+    });
+
+    it("leaves out a slot whose Movement is gone", () => {
+        const broken = { ...workout, slots: [...workout.slots, { movementId: "ghost", pair: null }] };
+        expect(sessionRows(broken, movements, null)).toHaveLength(4);
+    });
+});
+
+describe("prefill (R22)", () => {
+    const previous = { date: "2026-11-05", sets: [{ id: "a", movementId: "push", full: 9 }, { id: "b", movementId: "push", full: 7 }] };
+
+    it("starts a Set's field with the same Set of the last Session", () => {
+        expect(prefill(movements[1], previous, 1)).toBe("9");
+        expect(prefill(movements[1], previous, 2)).toBe("7");
+    });
+
+    it("uses the last Set when the last Session had fewer", () => {
+        expect(prefill(movements[1], previous, 3)).toBe("7");
+    });
+
+    it("uses seconds for a hold, and is empty with no last Session", () => {
+        expect(prefill(movements[0], { date: "2026-11-05", sets: [{ id: "h", movementId: "hold", seconds: 25 }] }, 1)).toBe("25");
+        expect(prefill(movements[1], undefined, 1)).toBe("");
+    });
+});
+
+describe("valuesFromFields (R21)", () => {
+    const blank = { full: "", seconds: "", load: "" };
+
+    it("reads full reps alone, whatever the Rule", () => {
+        expect(valuesFromFields(movements[1], { ...blank, full: "7" })).toEqual({ values: { full: 7 } });
+        expect(valuesFromFields(movements[3], { ...blank, full: "9" })).toEqual({ values: { full: 9 } });
+    });
+
+    it("refuses a Set of no reps, whatever the Rule", () => {
+        expect(valuesFromFields(movements[1], { ...blank, full: "0" }).error).toBe("A Set needs one rep or more");
+        expect(valuesFromFields(movements[3], { ...blank, full: "0" }).error).toBe("A Set needs one rep or more");
+    });
+
+    it("reads seconds for a hold", () => {
+        expect(valuesFromFields(movements[0], { ...blank, seconds: "25" })).toEqual({ values: { seconds: 25 } });
+    });
+
+    it("reads a load on a loaded Movement only", () => {
+        const shrug = reps("shrug", { loaded: true });
+        expect(valuesFromFields(shrug, { ...blank, full: "12", load: "52.5" })).toEqual({ values: { full: 12, load: 52.5 } });
+        expect(valuesFromFields(movements[1], { ...blank, full: "12", load: "52.5" })).toEqual({ values: { full: 12 } });
+    });
+
+    it("refuses a blank or a non-number", () => {
+        expect(valuesFromFields(movements[1], blank).error).toBeTruthy();
+        expect(valuesFromFields(movements[1], { ...blank, full: "seven" }).error).toBeTruthy();
+        expect(valuesFromFields(movements[0], { ...blank, seconds: "0" }).error).toBeTruthy();
+        expect(valuesFromFields(movements[1], { ...blank, full: "0" }).error).toBeTruthy();
+    });
+});
+
+describe("stepped (body-flow R10, R11)", () => {
+    it("adds and takes away from the number", () => {
+        expect(stepped("9", 1)).toBe("10");
+        expect(stepped("9", -1)).toBe("8");
+        expect(stepped("30", 5)).toBe("35");
+    });
+
+    it("counts an empty field from 0, and leaves it empty on a press of less", () => {
+        expect(stepped("", 1)).toBe("1");
+        expect(stepped("", 5)).toBe("5");
+        expect(stepped("", -1)).toBe("");
+    });
+
+    it("does not go below 1", () => {
+        expect(stepped("1", -1)).toBe("1");
+        expect(stepped("3", -5)).toBe("1");
+    });
+
+    it("leaves text that is not a whole number for the save to refuse", () => {
+        expect(stepped("1.5", 1)).toBe("1.5");
+        expect(stepped("abc", 1)).toBe("abc");
+    });
+});
+
+describe("Plan slots (R10)", () => {
+    const slots: Slot[] = [
+        { movementId: "a", pair: null },
+        { movementId: "b", pair: 1 },
+        { movementId: "c", pair: 1 },
+        { movementId: "d", pair: null },
+    ];
+
+    it("pairs a Movement with the one below it", () => {
+        expect(togglePair(slots, 0)).toEqual(slots);                       // b is already in a Pair
+        const freed = togglePair(slots, 1);
+        expect(freed.map(s => s.pair)).toEqual([null, null, null, null]);  // clears both halves
+        expect(togglePair(freed, 2).map(s => s.pair)).toEqual([null, null, 1, 1]);
+    });
+
+    it("does not pair the last Movement", () => {
+        expect(togglePair(slots, 3)).toEqual(slots);
+    });
+
+    it("numbers a new Pair above the ones that exist", () => {
+        const two: Slot[] = [...slots, { movementId: "e", pair: null }];
+        expect(togglePair(two, 3).map(s => s.pair)).toEqual([null, 1, 1, 2, 2]);
+    });
+
+    it("keeps a Pair that moves together and drops one that is split", () => {
+        // d moves to the top: b and c stay neighbours.
+        expect(afterMove(slots, 3, 0).map(s => [s.movementId, s.pair])).toEqual([["d", null], ["a", null], ["b", 1], ["c", 1]]);
+        // a moves between b and c: the Pair is split.
+        expect(afterMove(slots, 0, 1).map(s => [s.movementId, s.pair])).toEqual([["b", null], ["a", null], ["c", null], ["d", null]]);
+    });
+
+    it("clears the partner's Pair when a Movement is removed", () => {
+        expect(removeSlot(slots, 1)).toEqual([
+            { movementId: "a", pair: null }, { movementId: "c", pair: null }, { movementId: "d", pair: null },
+        ]);
+    });
+
+    it("replaces a Movement in place and keeps its Pair", () => {
+        expect(replaceSlot(slots, 1, "x")[1]).toEqual({ movementId: "x", pair: 1 });
+    });
+
+    it("adds a Movement at the end", () => {
+        expect(addSlot(slots, "e")[4]).toEqual({ movementId: "e", pair: null });
+    });
+});
+
+describe("text", () => {
+    it("describes a Set by what its Movement records", () => {
+        expect(describeSet(movements[1], { id: "x", movementId: "push", full: 7 })).toBe("7");
+        expect(describeSet(movements[3], { id: "x", movementId: "dip", full: 9 })).toBe("9");
+        expect(describeSet(movements[0], { id: "x", movementId: "hold", seconds: 25 })).toBe("25 s");
+        expect(describeSet(reps("shrug", { loaded: true }), { id: "x", movementId: "shrug", full: 12, load: 70 }))
+            .toBe("12 @ 70");
+    });
+
+    it("describes a Routine item", () => {
+        expect(describeRoutineItem({ name: "Pancake", sets: 2, seconds: 30 })).toBe("2 × 30 s");
+        expect(describeRoutineItem({ name: "Wall angels", sets: 1, reps: 10 })).toBe("10 reps");
+    });
+
+    it("signs a change in pounds", () => {
+        expect(signedLb(-3.5)).toBe("-3.5 lb");
+        expect(signedLb(1)).toBe("+1.0 lb");
+        expect(signedLb(0)).toBe("0.0 lb");
+    });
+});
+
+describe("rollingAverage (R27)", () => {
+    it("averages each Weigh-in with the ones of the 6 days before it", () => {
+        const weighins = [
+            { date: "2026-11-01", lb: 246 },
+            { date: "2026-11-07", lb: 244 },   // 01 is 6 days back: (246 + 244) / 2
+            { date: "2026-11-08", lb: 242 },   // 01 is 7 days back: (244 + 242) / 2
+        ];
+        expect(rollingAverage(weighins)).toEqual([
+            { date: "2026-11-01", value: 246 },
+            { date: "2026-11-07", value: 245 },
+            { date: "2026-11-08", value: 243 },
+        ]);
+    });
+});
+
+describe("glyphs (body-ui)", () => {
+    it("draws done, started and not done from a count", () => {
+        expect(stateGlyph(0, 4)).toBe("◇");
+        expect(stateGlyph(2, 4)).toBe("◈");
+        expect(stateGlyph(4, 4)).toBe("◆");
+        expect(stateGlyph(0, 0)).toBe("◇");
+    });
+
+    it("draws one glyph for each planned Set (R12)", () => {
+        expect(setPips(0, 2)).toBe("◇◇");
+        expect(setPips(1, 2)).toBe("◆◇");
+        expect(setPips(2, 2)).toBe("◆◆");
+        // A Set logged over the Plan's count adds no glyph.
+        expect(setPips(3, 2)).toBe("◆◆");
+    });
+});
+
+describe("Plan view helpers (body-ui)", () => {
+    const w = (key: string, weekday: number) => ({ key, name: key, weekday, slots: [] }) as never;
+    const week = [w("upperA", 1), w("lowerA", 2), w("upperB", 4), w("lowerB", 5)];
+
+    it("finds the Workout that is due next (R18)", () => {
+        expect(nextWorkout(week, 1, false)).toMatchObject({ key: "upperA" });   // Monday, not done
+        expect(nextWorkout(week, 1, true)).toMatchObject({ key: "lowerA" });    // Monday, done
+        expect(nextWorkout(week, 3, false)).toMatchObject({ key: "upperB" });   // Wednesday: rest
+        expect(nextWorkout(week, 6, false)).toMatchObject({ key: "upperA" });   // Saturday: next Monday
+        expect(nextWorkout([], 1, false)).toBeNull();
+    });
+
+    it("names each half of a Pair (R21)", () => {
+        const slots = [{ movementId: "a", pair: null }, { movementId: "b", pair: 1 }, { movementId: "c", pair: 1 }, { movementId: "d", pair: 2 }, { movementId: "e", pair: 2 }];
+        expect(slots.map((_, i) => pairEdge(slots, i))).toEqual([null, "first", "second", "first", "second"]);
+    });
+});
+
+describe("Today's selection (body-today R6, R9, R11)", () => {
+    const day = (weighed: boolean, stretched: boolean, s: Session | null = null) =>
+        ({ weighed, stretched, rows: sessionRows(workout, movements, s) });
+    const all = session([set("hold", 1), set("hold", 2), set("hold", 3), set("push", 1), set("pull", 1), set("push", 2), set("pull", 2), set("dip", 1), set("dip", 2)]);
+
+    it("starts on the Weigh-in, the first thing after waking", () => {
+        expect(firstOpen(day(false, false))).toBe(WEIGHT);
+        // The Stretches being done does not move the Weigh-in out of first place.
+        expect(firstOpen(day(false, true))).toBe(WEIGHT);
+    });
+
+    it("moves to the Stretches, then to the Session in Plan order", () => {
+        expect(firstOpen(day(true, false))).toBe(STRETCHES);
+        expect(firstOpen(day(true, true))).toBe("hold");
+        expect(firstOpen(day(true, true, session([set("hold", 1), set("hold", 2), set("hold", 3), set("push", 1)])))).toBe("pull");
+    });
+
+    it("selects nothing when the day is complete", () => {
+        expect(firstOpen(day(true, true, all))).toBeNull();
+        // A day with no Workout is complete after its two rows.
+        expect(firstOpen({ weighed: true, stretched: true, rows: [] })).toBeNull();
+        expect(firstOpen({ weighed: true, stretched: false, rows: [] })).toBe(STRETCHES);
+    });
+});
+
+describe("Today's selection after a save (body-flow R21, R22)", () => {
+    const day = (weighed: boolean, stretched: boolean, s: Session | null = null) =>
+        ({ weighed, stretched, rows: sessionRows(workout, movements, s) });
+    const holds = [set("hold", 1), set("hold", 2), set("hold", 3)];
+
+    it("stays on the same Movement while it has a planned Set left", () => {
+        expect(nextAfter("hold", day(true, true, session([set("hold", 1)])))).toBe("hold");
+        expect(nextAfter("dip", day(true, true, session([set("dip", 1)])))).toBe("dip");
+    });
+
+    it("does not go back to Stretches that the user passed over (the reported bug)", () => {
+        expect(nextAfter("hold", day(true, false, session([set("hold", 1)])))).toBe("hold");
+        expect(nextAfter("hold", day(false, false, session(holds)))).toBe("push");
+    });
+
+    it("alternates inside a Pair", () => {
+        expect(nextAfter("push", day(true, true, session([set("push", 1)])))).toBe("pull");
+        expect(nextAfter("pull", day(true, true, session([set("push", 1), set("pull", 1)])))).toBe("push");
+        // One of the two is done: the other takes the rest.
+        expect(nextAfter("push", day(true, true, session([set("push", 1), set("push", 2)])))).toBe("pull");
+    });
+
+    it("goes to the next row below that is not done", () => {
+        expect(nextAfter(WEIGHT, day(true, false))).toBe(STRETCHES);
+        expect(nextAfter(WEIGHT, day(true, true))).toBe("hold");
+        expect(nextAfter(STRETCHES, day(false, true))).toBe("hold");
+        // A done row between the two is passed.
+        expect(nextAfter("hold", day(true, true, session([...holds, set("push", 1), set("push", 2), set("pull", 1), set("pull", 2)])))).toBe("dip");
+    });
+
+    it("enters a Pair below on the Movement with fewer Sets", () => {
+        expect(nextAfter("hold", day(true, true, session([...holds, set("push", 1)])))).toBe("pull");
+    });
+
+    it("goes to the first row above that is not done when none is below", () => {
+        const rest = [...holds, set("push", 1), set("pull", 1), set("push", 2), set("pull", 2), set("dip", 1), set("dip", 2)];
+        expect(nextAfter("dip", day(false, false, session(rest)))).toBe(WEIGHT);
+        expect(nextAfter("dip", day(true, false, session(rest)))).toBe(STRETCHES);
+        expect(nextAfter("dip", day(true, true, session(rest.filter(s => s.movementId !== "hold"))))).toBe("hold");
+    });
+
+    it("selects nothing when each row is done", () => {
+        const rest = [...holds, set("push", 1), set("pull", 1), set("push", 2), set("pull", 2), set("dip", 1), set("dip", 2)];
+        expect(nextAfter("dip", day(true, true, session(rest)))).toBeNull();
+        expect(nextAfter(STRETCHES, { weighed: true, stretched: true, rows: [] })).toBeNull();
+    });
+
+    it("stays on a row that the save left not done", () => {
+        // The mark on the Stretches was cleared; a skip was taken back.
+        expect(nextAfter(STRETCHES, day(true, false))).toBe(STRETCHES);
+        expect(nextAfter("hold", day(true, true, session([])))).toBe("hold");
+    });
+});
+
+describe("Today's hint line (body-today R20, R21)", () => {
+    const rows = (s: Session | null) => sessionRows(workout, movements, s);
+
+    it("describes each kind of row, verb first", () => {
+        const open = { weighed: false, stretched: false, rows: rows(null) };
+        expect(hintFor(WEIGHT, open)).toBe("Records the bodyweight of today.");
+        expect(hintFor(STRETCHES, open)).toBe("Marks the morning stretches done.");
+        expect(hintFor("hold", open)).toBe("Logs set 1 of hold.");
+        expect(hintFor("push", { ...open, rows: rows(session([set("push", 1)])) })).toBe("Logs set 2 of push.");
+    });
+
+    it("describes a row that is done by what a second save does", () => {
+        const done = { weighed: true, stretched: true, rows: rows(session([], ["hold"])) };
+        expect(hintFor(WEIGHT, done)).toBe("Replaces the bodyweight of today.");
+        expect(hintFor(STRETCHES, done)).toBe("Clears the mark on the morning stretches.");
+        expect(hintFor("hold", done)).toBe("Returns hold to the Session.");
+    });
+
+    it("says that the day is complete when nothing is left", () => {
+        expect(hintFor(null, { weighed: true, stretched: true, rows: [] })).toBe("The day is complete.");
+    });
+});
+
+
+describe("Progress helpers (body-panes R17, R32)", () => {
+    const plan = {
+        workouts: [
+            { key: "lowerA" as const, name: "Lower A", weekday: 2, slots: [{ movementId: "dip", pair: null }, { movementId: "push", pair: null }] },
+            workout,
+        ],
+        routine: { items: [] },
+        phase: { name: "Phase 1", startLb: 245, targetLb: 216 },
+    };
+    const stat = (sets: number) => ({ best: null, series: [], first: [], total: [], load: [], sessions: 0, sets, sum: 0, trend: null, records: [] });
+
+    it("orders the Movements by weekday, then by slot, each one time", () => {
+        // Upper A is Monday, so it comes before Lower A; push and dip are in both.
+        expect(progressOrder(plan, movements, {}).map(m => m._id)).toEqual(["hold", "push", "pull", "dip"]);
+    });
+
+    it("adds a Movement that is in no Workout only when it has a Set", () => {
+        const all = [...movements, reps("old"), reps("never")];
+        expect(progressOrder(plan, all, { old: stat(3), never: stat(0) }).map(m => m._id)).toEqual(["hold", "push", "pull", "dip", "old"]);
+    });
+
+    it("keeps the Weigh-ins of the last 28 or 84 days, today included", () => {
+        const w = (date: string) => ({ date, lb: 240 });
+        // From 2026-11-22: 10-26 is 27 days back, 10-25 is 28, 08-31 is 83, 08-30 is 84.
+        const all = [w("2026-11-22"), w("2026-10-26"), w("2026-10-25"), w("2026-08-31"), w("2026-08-30")];
+        expect(inRange(all, "2026-11-22", "4w").map(x => x.date)).toEqual(["2026-11-22", "2026-10-26"]);
+        expect(inRange(all, "2026-11-22", "12w").map(x => x.date)).toEqual(["2026-11-22", "2026-10-26", "2026-10-25", "2026-08-31"]);
+        expect(inRange(all, "2026-11-22", "all")).toHaveLength(5);
+    });
+
+    it("describes the selected row of Progress", () => {
+        expect(progressHint("overview", undefined)).toBe("Shows where the Phase is now.");
+        expect(progressHint("weeks", undefined)).toBe("Shows each week of the Plan.");
+        expect(progressHint("weight", undefined)).toBe("Shows the bodyweight against the target.");
+        expect(progressHint("push", movements[1])).toBe("Shows each Session of push.");
+    });
+});

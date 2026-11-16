@@ -24,7 +24,7 @@ The test for one vocabulary is not "one library". It is that these three do not
 overlap and none of them escapes the seam.
 
 **Drag is the one motion none of the three owns.** When a list is reordered by
-dragging (Envelopes, Body's Movements), dnd-kit moves the rows: the rows below
+dragging (Envelopes, a Workout's Movements in Body's Plan view), dnd-kit moves the rows: the rows below
 slide aside, and the dropped row settles into its place. dnd-kit computes those
 positions from the pointer, so no timeline could own them. It animates with
 inline styles, which the `motion-off` class does not reach, so
@@ -283,8 +283,8 @@ until their beat, so the bars arrive with the frame rather than popping.
 
 **Every surface reveals this way** — the frame's stable Wipe plus one
 `cascade(frame)` over its content, keyed on what its content depends on (a
-Category shelf on `[loading, category, visibleGenres]`, a Body window on its docs
-and selection, an editor on `open`). This replaced a marker-driven grammar that
+Category shelf on `[loading, category, visibleGenres]`, a Body window on its data
+and its view, an editor on `open`). This replaced a marker-driven grammar that
 revealed only the elements it was told to (ADR-0011) and so left everything
 untagged to pop. Its primitives and markers survive; its per-section split
 timelines do not.

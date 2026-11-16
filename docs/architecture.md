@@ -7,7 +7,7 @@ How the frontend is put together. For domain vocabulary (Review, Movement, Entry
 - **React 19** + **TypeScript**, built with **Vite 7**
 - **Tailwind CSS v4**, configured CSS-first via `@theme` in `src/index.css` (not a `tailwind.config.js`) — defines the custom "nier" color palette (a NieR:Automata-inspired retro-terminal look, hence the naming)
 - **react-router v7** for routing (`createBrowserRouter`, `RouterProvider`)
-- **chart.js** / **react-chartjs-2** for the Body section's movement charts
+- **chart.js** / **react-chartjs-2** for the Body section's Movement and bodyweight charts, and the Finances report
 - **zustand** holds the Review collection in `src/store/reviews.ts` — fetched once per page-session, read by every surface, invalidated when System writes. It sits *above* the backend seam, not inside it. Contexts (`BootSequenceContext`, `TrustedDeviceContext`) remain for ambient state never written from a page; the store is for domain data. See [ADR-0005](./adr/0005-zustand-store-for-reviews.md).
 - **Vitest** (+ jsdom, `@testing-library/react`) is the test runner, added for `src/utils/animations.ts` and `src/hooks/usePanelReveal.ts`. Coverage is thin — most modules still have no tests.
 
@@ -19,7 +19,6 @@ How the frontend is put together. For domain vocabulary (Review, Movement, Entry
 - `npm run lint` — ESLint (flat config, `eslint.config.js`)
 - `npm run preview` — serve the production build locally
 - `npm run test` — Vitest (`vitest run`)
-- `npm run migrate:body` — one-time Body data migration, dry-run by default; `-- --apply` performs it. Point it at the tailnet hostname, since `/api/body` is gated. See [ADR-0002](./adr/0002-goal-as-movement-state.md)
 - `npm run migrate:dates` — one-time Review date migration to canonical ISO, dry-run by default; `-- --apply` performs it. Defaults to `date_completed`; `-- --field release_date` migrates the other one. Needs `--api <url>` or `POSTS_API_URI` — there is no default target. Point it at the tailnet hostname: reads are public, but `/api/posts/update_post` is gated. Both fields were applied against production on 2026-08-01 and the script is idempotent, so a re-run reports nothing to do
 
 ## Routing (`src/routes/index.tsx`)
@@ -43,8 +42,8 @@ There's no per-feature permission model — a trusted device can do everything.
 The API is a separate repo (`mind-dump-backend`, Express) — not covered by this repo's docs. The frontend only knows it as an HTTP boundary:
 
 - Base URL comes from `src/config.ts` (`VITE_API_URI` env var, defaults to the production API)
-- Confirmed endpoints in use: `GET /api/posts` (all Reviews, or filtered by `?slug=`), `GET /api/body`, `POST /api/body/add_entry`, `POST /api/body/update_entry`, `POST /api/body/remove_entry`
-- The `Body Data` collection is schemaless — the backend `$set`s whatever it's given — so a Movement's `goal` rides along on its record without any backend change
+- Confirmed endpoints in use: `GET /api/posts` (all Reviews, or filtered by `?slug=`), `GET /api/body?today=YYYY-MM-DD` (every Body record plus the computed summary), and one `POST /api/body/...` route for each write — the full list is `routes/public/body.js` in the backend
+- Body's five collections each hold one kind of record, and the backend refuses a write with a field it does not name. The window never computes what is due, the weekly grid or the bodyweight average; they arrive in `summary` ([ADR-0013](./adr/0013-body-plan-replaces-goal.md))
 - `ReviewDetail` also manages mods, audio tracks, and screenshots per Review — check that file directly for current endpoints rather than assuming, since this doc doesn't track them individually
 
 ## Known data-model drift
