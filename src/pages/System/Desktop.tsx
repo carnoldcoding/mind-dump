@@ -153,7 +153,7 @@ const Desktop = () => {
                     {/* The blank slate — folders that launch apps. Always in the
                         tree so it reveals with the desktop; hidden while an app
                         is on screen. */}
-                    <div className={`absolute top-4 left-4 flex gap-4 z-0 ${activeTab === null ? "" : "hidden"}`}>
+                    <div className={`absolute top-4 left-4 right-4 flex flex-wrap gap-4 z-0 ${activeTab === null ? "" : "hidden"}`}>
                         {APPS.map(app => (
                             <button
                                 key={app.id}
